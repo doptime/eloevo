@@ -43,6 +43,8 @@ func ToolcallParserDefault(resp openai.ChatCompletionResponse) (toolCalls []*Fun
 		rsp = strings.ReplaceAll(rsp, "\n```", "<tool_call>")
 		rsp = strings.ReplaceAll(rsp, "```\n", "<tool_call>")
 
+		rsp = strings.ReplaceAll(rsp, "```tool_call>", "<tool_call>")
+
 		items := strings.Split(rsp, "<tool_call>")
 		//case json only
 		if len(items) > 3 {
@@ -58,6 +60,17 @@ func ToolcallParserDefault(resp openai.ChatCompletionResponse) (toolCalls []*Fun
 			if i := strings.LastIndex(toolcallString, "}"); i > 0 {
 				toolcallString = toolcallString[:i+1]
 			}
+			//remove comment
+			lines := strings.Split(toolcallString, "\n")
+			for i := 0; i < len(lines); i++ {
+				txt := strings.TrimSpace(lines[i])
+				//remove +number in json
+				txt = strings.ReplaceAll(txt, "\": +", "\": ")
+				//remove comment
+				txt = strings.Split(txt, "\\")[0]
+				lines[i] = txt
+			}
+			toolcallString = strings.Join(lines, "\n")
 
 			if toolcall := parseOneToolcall(toolcallString); toolcall != nil {
 				toolCalls = append(toolCalls, toolcall)

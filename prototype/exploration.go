@@ -27,8 +27,8 @@ func (u *ExporationFramwork) GetId() string {
 	return u.Id
 }
 
-// func (u *ExporationFramwork) Elo(delta ...int) int {
-// 	return mixincached.WithElo("projects", "ExporationFramwork", 1000).Elo(u.Id, float64(append(delta, 0)[0]))
+// func (u *ExporationFramwork) ScoreAccessor(delta ...int) int {
+// 	return mixincached.WithElo("projects", "ExporationFramwork", 1000).ScoreAccessor(u.Id, float64(append(delta, 0)[0]))
 // }
 
 // func (u *ExporationFramwork) Feedbacks(newFeedback ...string) []string {

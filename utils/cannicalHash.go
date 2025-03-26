@@ -2,6 +2,9 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
+	"math/big"
+	"time"
 
 	"github.com/cespare/xxhash/v2"
 )
@@ -31,4 +34,28 @@ func toCanonicalMap(val interface{}) (interface{}, error) {
 		return nil, err
 	}
 	return tmp, nil
+}
+
+func ID(v interface{}, Idlength ...int) string {
+	IdLen := append(Idlength, 6)[0]
+	var inputString string
+	switch v := v.(type) {
+	case string:
+		inputString = v
+	case []byte:
+		inputString = string(v)
+	default:
+		inputString = ""
+	}
+	if inputString == "" {
+		inputString = fmt.Sprintf("%v", time.Now().UnixNano())
+	}
+
+	// 使用 xxhash 计算哈希
+	hashValue := xxhash.Sum64String(inputString)
+
+	// 生成大整数并转为 base62 编码的字符串
+	result := new(big.Int).SetUint64(uint64(hashValue)).Text(62)[:IdLen]
+
+	return result
 }

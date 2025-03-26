@@ -15,8 +15,8 @@ func SaveToRedisHashKey(param *RedisHashKeyFieldValue) {
 	if param.Key == "" || param.Field == "" || param.Value == "" {
 		return
 	}
-	redisdb.HashKey[string, string](redisdb.WithKey(param.Key)).HSet(param.Field, param.Value)
+	redisdb.NewHashKey[string, string](redisdb.WithKey(param.Key)).HSet(param.Field, param.Value)
 
 }
 
-var SaveStringToRedisHashKey = tool.NewTool[*RedisHashKeyFieldValue]("RedisHashKeyFieldValue", "Save String to Redis Hash Key", SaveToRedisHashKey)
+var SaveStringToRedisHashKey = tool.NewTool("RedisHashKeyFieldValue", "Save String to Redis Hash Key", SaveToRedisHashKey)

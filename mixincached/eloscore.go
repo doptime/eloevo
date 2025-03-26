@@ -8,7 +8,7 @@ import (
 type EloScore struct {
 	Key        string
 	cache      map[string]int64
-	RedisKey   *redisdb.CtxHash[string, int64]
+	RedisKey   *redisdb.HashKey[string, int64]
 	DefaultElo int64
 }
 
@@ -19,12 +19,12 @@ func WithElo(redisDBName string, key string, DefaultEloScore ...int64) (ret *Elo
 		return v
 	}
 	ret = &EloScore{Key: key + ":eloscore", cache: map[string]int64{}, DefaultElo: append(DefaultEloScore, 1000)[0]}
-	ret.RedisKey = redisdb.HashKey[string, int64](redisdb.WithRds(redisDBName), redisdb.WithKey(ret.Key))
+	ret.RedisKey = redisdb.NewHashKey[string, int64](redisdb.WithRds(redisDBName), redisdb.WithKey(ret.Key))
 	ret.cache, _ = ret.RedisKey.HGetAll()
 	EloScoreMap.Set(key, ret)
 	return ret
 }
-func (es *EloScore) Elo(Id string, delta float64) int {
+func (es *EloScore) ScoreAccessor(Id string, delta float64) int {
 	currentElo, ok := es.cache[Id]
 	if !ok {
 		currentElo = es.DefaultElo

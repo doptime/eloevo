@@ -15,6 +15,7 @@ import (
 	"github.com/doptime/eloevo/tool"
 	"github.com/doptime/redisdb"
 	"github.com/samber/lo"
+	"github.com/samber/lo/mutable"
 )
 
 // FactorMeasurement 定义了用于评估项目的因素的度量标准。
@@ -74,16 +75,16 @@ func (u *EvaluationSchema) GetId() string {
 }
 
 // Rating 更新 EvaluationSchema 的 Elo 评分。
-func (u *EvaluationSchema) Elo(delta ...int) int {
+func (u *EvaluationSchema) ScoreAccessor(delta ...int) int {
 	var eloDelta int = append(delta, 0)[0]
-	return mixincached.WithElo("projects", "EvaluationSchema", 1200).Elo(u.Id, float64(eloDelta))
+	return mixincached.WithElo("projects", "EvaluationSchema", 1200).ScoreAccessor(u.Id, float64(eloDelta))
 }
 
 // activeSchemaKey 是用于存储活跃 EvaluationSchema 的 Redis Hash Key。
-var activeSchemaKey = redisdb.HashKey[string, *EvaluationSchema](redisdb.WithRds("projects"))
+var activeSchemaKey = redisdb.NewHashKey[string, *EvaluationSchema](redisdb.WithRds("projects"))
 
 // expiredSchemaKey 是用于存储过期 EvaluationSchema 的 Redis Hash Key。
-var expiredSchemaKey = redisdb.HashKey[string, *EvaluationSchema](redisdb.WithRds("projects"), redisdb.WithKey("UtilityFunctionSchemaExpired"))
+var expiredSchemaKey = redisdb.NewHashKey[string, *EvaluationSchema](redisdb.WithRds("projects"), redisdb.WithKey("UtilityFunctionSchemaExpired"))
 
 // evaluationSchemaMutex 用于保护 evaluationSchemas 的并发访问。
 var evaluationSchemaMutex sync.Mutex = sync.Mutex{}
@@ -135,7 +136,7 @@ ToDoList:
 		playersOrderByElo := lo.Values(evaluationSchemas)
 		// 根据 Elo 评分排序
 		slices.SortFunc(playersOrderByElo, func(i, j *EvaluationSchema) int {
-			return int(i.Elo() - j.Elo())
+			return int(i.ScoreAccessor() - j.ScoreAccessor())
 		})
 		// 移除最差的 2 个
 		fieldsToRemove := lo.Map(playersOrderByElo[:2], func(v *EvaluationSchema, i int) string { return v.Id })
@@ -154,7 +155,7 @@ ToDoList:
 
 		slices.Reverse(playersOrderByElo)
 		for i, v := range playersOrderByElo {
-			fmt.Println("Best Model,top ", i+1, v.Id, "Elo", v.Elo())
+			fmt.Println("Best Model,top ", i+1, v.Id, "Elo", v.ScoreAccessor())
 		}
 	}
 
@@ -180,7 +181,8 @@ func RefineEvaluationSchemas() {
 			defer wg.Done()
 			for j := 0; j < numCallsPerThread; j++ {
 				items := lo.Values(evaluationSchemas)
-				if items = lo.Shuffle(items); len(items) > topSchemaCount {
+				mutable.Shuffle(items)
+				if len(items) > topSchemaCount {
 					items = items[:topSchemaCount]
 				}
 				var ret strings.Builder

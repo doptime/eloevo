@@ -31,8 +31,8 @@ func BatchUpdateWinnings(winners []Elo, players []Elo, matchId string) {
 	for _, winner := range winners {
 		for _, loser := range losers {
 			// Aggregate expected scores for both winner and loser
-			expectedScores[winner.GetId()] += ExpectedScoreA(winner.Elo(), loser.Elo())
-			expectedScores[loser.GetId()] += ExpectedScoreA(loser.Elo(), winner.Elo())
+			expectedScores[winner.GetId()] += ExpectedScoreA(winner.ScoreAccessor(), loser.ScoreAccessor())
+			expectedScores[loser.GetId()] += ExpectedScoreA(loser.ScoreAccessor(), winner.ScoreAccessor())
 			comparisonsNum[winner.GetId()]++
 			comparisonsNum[loser.GetId()]++
 			// Set actual scores based on win/loss
@@ -55,7 +55,7 @@ func BatchUpdateWinnings(winners []Elo, players []Elo, matchId string) {
 		deltaInt := int(math.Round(delta))
 
 		// Update the player's rating
-		player.Elo(deltaInt)
+		player.ScoreAccessor(deltaInt)
 	}
 }
 
@@ -84,8 +84,8 @@ func BatchUpdateRanking(playersRanked ...Elo) {
 			}
 
 			// 计算预期得分
-			expectedScores[winner.GetId()] += ExpectedScoreA(winner.Elo(), loser.Elo())
-			expectedScores[loser.GetId()] += ExpectedScoreA(loser.Elo(), winner.Elo())
+			expectedScores[winner.GetId()] += ExpectedScoreA(winner.ScoreAccessor(), loser.ScoreAccessor())
+			expectedScores[loser.GetId()] += ExpectedScoreA(loser.ScoreAccessor(), winner.ScoreAccessor())
 			comparisonsNum[winner.GetId()]++
 			comparisonsNum[loser.GetId()]++
 
@@ -106,6 +106,6 @@ func BatchUpdateRanking(playersRanked ...Elo) {
 		deltaInt := int(math.Round(delta))
 
 		// 更新玩家评分
-		player.Elo(deltaInt)
+		player.ScoreAccessor(deltaInt)
 	}
 }

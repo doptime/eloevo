@@ -10,7 +10,7 @@ import (
 )
 
 type ToolInterface interface {
-	HandleCallback(Param interface{}) (err error)
+	HandleCallback(Param interface{}, CallMemory map[string]any) (err error)
 	OaiTool() *openai.Tool
 	Name() string
 }
@@ -38,7 +38,7 @@ func (t *Tool[v]) WithMemoryCacheKey(key string) *Tool[v] {
 	t.MemoryCacheKey = key
 	return t
 }
-func (t *Tool[v]) HandleCallback(Param interface{}) (err error) {
+func (t *Tool[v]) HandleCallback(Param interface{}, CallMemory map[string]any) (err error) {
 	var parambytes []byte
 	if str, ok := Param.(string); ok {
 		parambytes = []byte(str)
@@ -62,6 +62,17 @@ func (t *Tool[v]) HandleCallback(Param interface{}) (err error) {
 		memory.SaveToShareMemory(t.MemoryCacheKey, reflect.ValueOf(valPtr).Interface())
 		// Assign the dereferenced pointer to val
 		val = reflect.ValueOf(valPtr).Interface().(v)
+		//set val field named Extra to CallMemory
+		if CallMemory != nil {
+			valType := reflect.TypeOf(val).Elem()
+			valValue := reflect.ValueOf(val).Elem()
+			for i := 0; i < valType.NumField(); i++ {
+				field := valType.Field(i)
+				if field.Name == "Extra" {
+					valValue.Field(i).Set(reflect.ValueOf(CallMemory))
+				}
+			}
+		}
 	} else {
 		// Unmarshal directly into val
 		err = json.Unmarshal(parambytes, &val)
@@ -70,6 +81,17 @@ func (t *Tool[v]) HandleCallback(Param interface{}) (err error) {
 			return err
 		}
 		memory.SaveToShareMemory(t.MemoryCacheKey, val)
+		//set val field named Extra to CallMemory
+		if CallMemory != nil {
+			valType := reflect.TypeOf(val)
+			valValue := reflect.ValueOf(val)
+			for i := 0; i < valType.NumField(); i++ {
+				field := valType.Field(i)
+				if field.Name == "Extra" {
+					valValue.Field(i).Set(reflect.ValueOf(CallMemory))
+				}
+			}
+		}
 	}
 
 	for _, f := range t.Functions {
@@ -81,9 +103,11 @@ func (t *Tool[v]) HandleCallback(Param interface{}) (err error) {
 func NewTool[v any](name string, description string, fs ...func(param v)) *Tool[v] {
 	// Inspect the type of v , should be a struct
 	vType := reflect.TypeOf(new(v)).Elem()
+	vValue := reflect.ValueOf(new(v)).Elem()
 
 	for vType.Kind() == reflect.Ptr {
 		vType = vType.Elem()
+		vValue = vValue.Elem()
 	}
 
 	params := make(map[string]any)
@@ -94,6 +118,9 @@ func NewTool[v any](name string, description string, fs ...func(param v)) *Tool[
 			def := map[string]string{
 				"type":        mapKindToDataType(field.Type.Kind()),
 				"description": field.Tag.Get("description"),
+			}
+			if def["description"] == "-" {
+				continue
 			}
 			params[field.Name] = def
 		}
@@ -125,6 +152,7 @@ func mapKindToDataType(kind reflect.Kind) string {
 		reflect.Array:   "array",
 		reflect.Bool:    "boolean",
 		reflect.Invalid: "null",
+		reflect.Map:     "object",
 	}
 	return mapKindToDataType[kind]
 }

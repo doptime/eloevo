@@ -34,8 +34,8 @@ type AntiAging struct {
 }
 
 func (u *AntiAging) GetId() string { return u.Id }
-func (u *AntiAging) Elo(delta ...int) int {
-	return mixincached.WithElo("projects", "AntiAging", 1000).Elo(u.Id, float64(append(delta, 0)[0]))
+func (u *AntiAging) ScoreAccessor(delta ...int) int {
+	return mixincached.WithElo("projects", "AntiAging", 1000).ScoreAccessor(u.Id, float64(append(delta, 0)[0]))
 }
 
 //	.WithTools(tool.NewTool("SaveImprovements", "Save Improvements", func(model *prototype.ExporationImprovement) {
@@ -45,7 +45,7 @@ func (u *AntiAging) Elo(delta ...int) int {
 //		// }
 //		// Improvements.GetInsert(model.Id, model.ImprovementSuggestions...)
 //	}))
-var keyAntiAging = redisdb.HashKey[string, *AntiAging](redisdb.WithRds("projects"))
+var keyAntiAging = redisdb.NewHashKey[string, *AntiAging](redisdb.WithRds("projects"))
 
 var AgentUtilityFrameGen = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
 现在我们演进面向40岁男性的抗衰老方案，目标是最大化延长寿命，对衰老相关的器官进行有效抗衰老。
@@ -94,7 +94,7 @@ TaskToDo2:
 		playersOrderByElo := lo.Keys(all)
 		//sort the players by elo
 		slices.SortFunc(playersOrderByElo, func(i, j string) int {
-			return all[i].Elo() - all[j].Elo()
+			return all[i].ScoreAccessor() - all[j].ScoreAccessor()
 		})
 
 		//remove the worst 2
@@ -112,7 +112,7 @@ TaskToDo2:
 
 		slices.Reverse(playersOrderByElo)
 		for i, v := range playersOrderByElo[:min(5, len(playersOrderByElo))] {
-			fmt.Println("Best Model,top ", i+1, v, "Elo", all[v].Elo())
+			fmt.Println("Best Model,top ", i+1, v, "Elo", all[v].ScoreAccessor())
 		}
 	}
 
@@ -137,7 +137,7 @@ func AntiAgingExploration() {
 				elos := lo.MapEntries(best, func(Id string, v *AntiAging) (string, elo.Elo) { return Id, v })
 				values := elo.SamplingMap(elos, 5)
 				param := map[string]any{"AllItems": values, "Task": j % 2}
-				err := AgentUtilityFrameGen.WithModel(models.ModelDeepSeekR132B).Call(context.Background(), param)
+				err := AgentUtilityFrameGen.WithModel(models.DeepSeekR132B).Call(context.Background(), param)
 				if err != nil {
 					fmt.Printf("Agent call failed: %v\n", err)
 				}

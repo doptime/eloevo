@@ -5,7 +5,28 @@ import (
 	"math"
 	"math/rand/v2"
 	"time"
+
+	"github.com/mroth/weightedrand"
 )
+
+func LoadbalancedPick(models ...*Model) *Model {
+	Choices := make([]weightedrand.Choice, len(models))
+	for i, model := range models {
+		weight := uint(500000 / (model.ResponseTime().Seconds() + math.Sqrt(model.requestPerMin)))
+		Choices[i] = weightedrand.Choice{Item: model, Weight: weight}
+	}
+	ModelPicker, _ := weightedrand.NewChooser(Choices...)
+	return ModelPicker.Pick().(*Model)
+}
+
+// func LoadBalanceChoose(models ...*Model) *Model {
+// 	Choices := make([]weightedrand.Choice, len(models))
+// 	for i, model := range models {
+// 		Choices[i] = weightedrand.Choice{Item: model, Weight: uint(500000 / (model.ResponseTime().Seconds() + 1))}
+// 	}
+// 	ModelPicker, _ := weightedrand.NewChooser(Choices...)
+// 	return ModelPicker.Pick().(*Model)
+// }
 
 type ModelList struct {
 	Name         string
@@ -18,7 +39,7 @@ var EloModels = ModelList{
 	Models: []*Model{
 		//NewModel(EndPoint8007, ApiKey, NamePhi4),
 		//NewModel(EndPoint8008, ApiKey, NamePhi4),
-		ModelDeepSeekR132B,
+		DeepSeekR132B,
 		//NewModel(EndPoint8009, ApiKey, NameQwQ32BLocal),
 		//NewModel(EndPoint8010, ApiKey, NameQwQ32BLocal),
 		//NewModel(EndPoint8008, ApiKey, "/home/deaf/UwU-7B-Instruct-Q8_0.gguf"),
@@ -37,7 +58,7 @@ func PrintAverageResponseTime() {
 	lastPrintAverageResponseTime = time.Now()
 	for _, model := range EloModels.Models {
 		model.mutex.RLock()
-		fmt.Printf("Model %s: %v\n", model.Name, model.avgResponseTime)
+		fmt.Printf("Model %s: %v\n", model.Name, model.ResponseTime())
 		model.mutex.RUnlock()
 	}
 }
@@ -54,7 +75,7 @@ func (list *ModelList) SelectOne(policy string) *Model {
 	fatestResponseTime := int64(99999999999)
 	for i, model := range list.Models {
 		model.mutex.RLock()
-		avgTime := model.avgResponseTime
+		avgTime := model.ResponseTime()
 		if avgTime.Microseconds() < fatestResponseTime {
 			fatestResponseTime = avgTime.Microseconds()
 			fatestIndex = i

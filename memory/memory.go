@@ -1,14 +1,11 @@
 package memory
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/cespare/xxhash/v2"
 	"github.com/doptime/eloevo/config"
-	"github.com/doptime/redisdb"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/samber/lo"
 )
@@ -16,8 +13,6 @@ import (
 var SharedMemory = map[string]any{}
 var FilesInRealms []*config.FileData
 var IntentionFiles = cmap.New[*config.FileData]()
-
-var keySaveMemory = redisdb.HashKey[string, any](redisdb.WithKey("SharedMemoryForRedisdb"))
 
 func loadEovoLabIntention() {
 	for _, realm := range config.EvoRealms {
@@ -50,20 +45,6 @@ func init() {
 	SharedMemory["Files"] = FilesInRealms
 	loadEovoLabIntention()
 
-}
-
-func AutoSaveSharedMemory() {
-	SharedMemoryjson, _ := json.Marshal(SharedMemory)
-	var lstSaveHash = xxhash.Sum64(SharedMemoryjson)
-	for {
-		time.Sleep(1000)
-		SharedMemoryjson, _ = json.Marshal(SharedMemory)
-		hashOfSharedMemory := xxhash.Sum64(SharedMemoryjson)
-		if lstSaveHash != hashOfSharedMemory {
-			lstSaveHash = hashOfSharedMemory
-			keySaveMemory.HMSet(SharedMemory)
-		}
-	}
 }
 
 var SharedMemorySaveTM = map[string]int64{}

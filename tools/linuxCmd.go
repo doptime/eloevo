@@ -32,4 +32,4 @@ func executeCommand(param *LinuxCommand) {
 	log.Printf("Command '%s' executed successfully.\nOutput:\n%s", param.Command, string(output))
 }
 
-var CmdTool = tool.NewTool[*LinuxCommand]("linuxcmd", "After all revisions are Ready, commit the file to the directory using this tool", executeCommand)
+var CmdTool = tool.NewTool("linuxcmd", "After all revisions are Ready, commit the file to the directory using this tool", executeCommand)

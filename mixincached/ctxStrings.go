@@ -7,7 +7,7 @@ import (
 
 type CtxStrings struct {
 	Cache        map[string][]string
-	RedisKey     *redisdb.CtxHash[string, []string]
+	RedisKey     *redisdb.HashKey[string, []string]
 	ReserveNItem int
 }
 
@@ -18,7 +18,7 @@ func HashKeyStrs(redisDBName string, key string) (ret *CtxStrings) {
 		return v
 	}
 	ret = &CtxStrings{Cache: map[string][]string{}}
-	ret.RedisKey = redisdb.HashKey[string, []string](redisdb.WithRds(redisDBName), redisdb.WithKey(key))
+	ret.RedisKey = redisdb.NewHashKey[string, []string](redisdb.WithRds(redisDBName), redisdb.WithKey(key))
 	ret.Cache, _ = ret.RedisKey.HGetAll()
 	ret.ReserveNItem = -1
 	CtxStringsMap.Set(key, ret)

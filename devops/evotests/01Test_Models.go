@@ -23,7 +23,7 @@ type Solutions struct {
 	TestFeedbacks   []string `json:"-"`
 }
 
-var keyAircraftSolution = redisdb.HashKey[string, *Solutions](redisdb.WithKey("AircraftSolution"))
+var keyAircraftSolution = redisdb.NewHashKey[string, *Solutions](redisdb.WithKey("AircraftSolution"))
 
 // 模块结构体（简化版）
 type Model struct {
@@ -40,7 +40,7 @@ type Model struct {
 	CompileFeedbacks []string `description:"Feedbacks from compiling"`
 }
 
-var keyAircraftModels = redisdb.HashKey[string, *Model](redisdb.WithKey("AircraftModels"))
+var keyAircraftModels = redisdb.NewHashKey[string, *Model](redisdb.WithKey("AircraftModels"))
 var ModelMap = make(map[string]*Model)
 
 func init() {

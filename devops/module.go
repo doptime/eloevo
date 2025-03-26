@@ -1,4 +1,4 @@
-package module
+package devops
 
 import (
 	"github.com/spf13/afero"

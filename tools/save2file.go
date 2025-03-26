@@ -18,4 +18,4 @@ func SaveToFile(param *FileNameString) {
 
 }
 
-var SaveStringToFile = tool.NewTool[*FileNameString]("SaveToFile", "Save string to localfile", SaveToFile)
+var SaveStringToFile = tool.NewTool("SaveToFile", "Save string to localfile", SaveToFile)

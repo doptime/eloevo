@@ -12,21 +12,26 @@ type Model struct {
 	Client          *openai.Client
 	Name            string
 	TopP            float32
+	TopK            int
+	Temperature     float32
+	ToolInPrompt    bool
 	avgResponseTime time.Duration
+	lastReceived    time.Time
+	requestPerMin   float64
 	mutex           sync.RWMutex
 }
 
-func (model *Model) UpdateModelResponseTime(duration time.Duration) {
-	if duration < 10*time.Microsecond {
-		return
+func (model *Model) ResponseTime(duration ...time.Duration) time.Duration {
+	if len(duration) == 0 {
+		return model.avgResponseTime
 	}
 	model.mutex.Lock()
 	defer model.mutex.Unlock()
 	alpha := 0.1
-	model.avgResponseTime = time.Duration(float64(model.avgResponseTime)*(1.0-alpha) + float64(duration)*alpha)
-	if model.avgResponseTime < time.Second {
-		model.avgResponseTime = time.Second
-	}
+	model.avgResponseTime += time.Duration(int64(float64(time.Duration(int64(duration[0]-model.avgResponseTime))) * alpha))
+	model.requestPerMin += (60000000.0/float64(time.Since(model.lastReceived).Microseconds()+100) - model.requestPerMin) * 0.01
+	model.lastReceived = time.Now()
+	return model.avgResponseTime
 }
 
 // NewModel initializes a new Model with the given baseURL, apiKey, and modelName.
@@ -41,11 +46,22 @@ func NewModel(baseURL, apiKey, modelName string) *Model {
 		Client:          client,
 		Name:            modelName,
 		avgResponseTime: 120 * time.Second,
-		TopP:            0.9,
 	}
+}
+func (m *Model) WithToolInPrompt() *Model {
+	m.ToolInPrompt = true
+	return m
 }
 func (m *Model) WithTopP(topP float32) *Model {
 	m.TopP = topP
+	return m
+}
+func (m *Model) WithTopK(topK int) *Model {
+	m.TopK = topK
+	return m
+}
+func (m *Model) WithTemperature(temperature float32) *Model {
+	m.Temperature = temperature
 	return m
 }
 
@@ -97,22 +113,26 @@ var (
 	ModelQwen14B        = NewModel("http://gpu.lan:1214/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-14B-Instruct-AWQ/snapshots/539535859b135b0244c91f3e59816150c8056698")
 	ModelQwen7B         = NewModel(EndPoint8007, ApiKey, NameQwen7B)
 	ModelPhi3           = NewModel(EndPoint8006, ApiKey, "neuralmagic/Phi-3-medium-128k-instruct-quantized.w4a16")
-	ModelPhi4           = NewModel("http://gpu.lan:4714/v1", ApiKey, "phi-4")
 	ModelGemma          = NewModel(EndPoint8006, ApiKey, NameGemma)
 	ModelMistralNemo    = NewModel(EndPoint8003, ApiKey, NameMistralNemo)
 	ModelMistralSmall   = NewModel(EndPoint8003, ApiKey, NameMistralSmall)
 	ModelMistralNemoAwq = NewModel(EndPoint8003, ApiKey, NameMistralNemoAwq)
 	ModelLlama38b       = NewModel(EndPoint8007, ApiKey, NameLlama38b)
 	ModelMarcoo1        = NewModel(EndPoint8008, ApiKey, NameMarcoo1)
-	ModelDeepSeekR132B  = NewModel("http://gpu.lan:4732/v1", ApiKey, "DeepSeek-R1-Distill-Qwen-32B-AWQ").WithTopP(0.6)
 	ModelQwen32B12K     = NewModel(EndPoint8008, ApiKey, NameQwen32B)
 	ModelLlama33_70b    = NewModel(EndPoint8007, ApiKey, NameLlama33_70b)
 	//ModelDeepseek       = NewModel(EndPointDeepseek, ApiKeyDeepseek, NameDeepseek)
 	ModelQwen2_1d5B     = NewModel("http://gpu.lan:8215/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306")
 	ModelQwen2_7B       = NewModel("http://gpu.lan:1207/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct-AWQ/snapshots/b25037543e9394b818fdfca67ab2a00ecc7dd641")
 	DeepSeekR1_Qwen_14  = NewModel("http://gpu.lan:3214/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--casperhansen--deepseek-r1-distill-qwen-14b-awq/snapshots/1874537e80f451042f7993dfa2b21fd25b4e7223")
-	FuseO1              = NewModel("http://gpu.lan:4732/v1", ApiKey, "Valdemardi/FuseO1-DeepSeekR1-QwQ-SkyT1-32B-Preview-AWQ")
-	DolphinR1Mistral24B = NewModel("http://gpu.lan:7824/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Valdemardi--Dolphin3.0-R1-Mistral-24B-AWQ/snapshots/e650d4cb71fb0b4f00548898e1598f038cd5df2d")
+	DeepSeekR132B       = NewModel("http://gpu.lan:4733/v1", ApiKey, "DeepSeek-R1-Distill-Qwen-32B-AWQ").WithTopP(0.6)
+	DSV3Baidu           = NewModel("https://qianfan.baidubce.com/v2", "bce-v3/ALTAK-1KdAiPRybFWbZNrOeTTFd/85cb95cd9a135fdc5ce5dc01687e5e8d32ce6211", "deepseek-v3").WithTopP(0.6)
+	DolphinR1Mistral24B = NewModel("http://gpu.lan:4733/v1", ApiKey, "Dolphin3.0-R1-Mistral-24B-AWQ").WithToolInPrompt()
+	FuseO1              = NewModel("http://gpu.lan:4732/v1", ApiKey, "FuseO1").WithTopP(0.92).WithTemperature(0.6).WithTopK(40)
+	Qwq32B              = NewModel("http://gpu.lan:1232/v1", ApiKey, "QwQ-32B").WithTopP(0.92).WithTemperature(0.6) //.WithTopK(40)
+	Gemma3              = NewModel("http://gpu.lan:5527/v1", ApiKey, "gemma3").WithTopP(0.92).WithTemperature(0.9).WithToolInPrompt()
+	Reka3               = NewModel("http://gpu.lan:43813/v1", ApiKey, "reka3").WithTopP(0.92).WithTemperature(0.9).WithToolInPrompt()
+	Phi4                = NewModel("http://gpu.lan:7214/v1", ApiKey, "phi4").WithToolInPrompt()
 
 	//ModelDefault        = ModelQwen32BCoderLocal
 	ModelDefault = ModelQwen72BLocal

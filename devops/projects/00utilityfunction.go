@@ -15,6 +15,7 @@ import (
 	"github.com/doptime/eloevo/tool"
 	"github.com/doptime/redisdb"
 	"github.com/samber/lo"
+	"github.com/samber/lo/mutable"
 )
 
 // UtilityFunction = exp(WeightMarketSizeln(MarketSize) + 0.18ln(MarketGrowthRate) + 0.22ln(ExpectedReturn) + 0.10ln(TechnicalFeasibility) + 0.15ln(InnovationPotential) + 0.080ln(ResourceAllocation) - 0.12ln(ProjectRisk + 1) - 0.080ln(CompetitionIntensity) - 0.10ln(ImplementationDifficulty) + 0.060ln(TimeToMarket) + 0.040ln(TeamExperience) + 0.050ln(PolicySupport))
@@ -28,9 +29,9 @@ type UtilityFunctionExploration struct {
 func (u *UtilityFunctionExploration) GetId() string {
 	return u.Id
 }
-func (u *UtilityFunctionExploration) Elo(delta ...int) int {
+func (u *UtilityFunctionExploration) ScoreAccessor(delta ...int) int {
 	var eloDelta int = append(delta, 0)[0]
-	return mixincached.WithElo("projects", "UtilityFunctionExploration", 1000).Elo(u.Id, float64(eloDelta))
+	return mixincached.WithElo("projects", "UtilityFunctionExploration", 1000).ScoreAccessor(u.Id, float64(eloDelta))
 }
 
 func (u *UtilityFunctionExploration) String() string {
@@ -51,7 +52,7 @@ func UtilityFunctionExplorationList(us []*UtilityFunctionExploration) string {
 
 const ProjectsUtilityFunctionTopN = 10
 
-var keyProjectsUtilityFunction = redisdb.HashKey[string, *UtilityFunctionExploration](redisdb.WithRds("projects"))
+var keyProjectsUtilityFunction = redisdb.NewHashKey[string, *UtilityFunctionExploration](redisdb.WithRds("projects"))
 var AgentBusinessUtilityFunctionGen = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
 现在你要设计AGI时代商业项目的评估函数。目标是在一个以无人化的方式运营几乎一切的业务的世界中，确定运营业务的优先序。
 
@@ -91,7 +92,7 @@ ToDoList:
 		playersOrderByElo := lo.Values(projectFunctions)
 		//sort the players by elo
 		slices.SortFunc(playersOrderByElo, func(i, j *UtilityFunctionExploration) int {
-			return int(i.Elo() - j.Elo())
+			return int(i.ScoreAccessor() - j.ScoreAccessor())
 		})
 		//remove the worst 2
 		fieldsToRemove := lo.Map(playersOrderByElo[:2], func(v *UtilityFunctionExploration, i int) string { return v.Id })
@@ -109,7 +110,7 @@ ToDoList:
 
 		slices.Reverse(playersOrderByElo)
 		for i, v := range playersOrderByElo {
-			fmt.Println("Best Model,top ", i+1, v.Id, "Elo", v.Elo())
+			fmt.Println("Best Model,top ", i+1, v.Id, "Elo", v.ScoreAccessor())
 		}
 	}
 
@@ -129,7 +130,8 @@ func EvoUtilityFunctionExploration() {
 			defer wg.Done()
 			for j := 0; j < numCallsPerThread; j++ {
 				items := lo.Values(projectFunctions)
-				if items = lo.Shuffle(items); len(items) > ProjectsUtilityFunctionTopN {
+				mutable.Shuffle(items)
+				if len(items) > ProjectsUtilityFunctionTopN {
 					items = items[:ProjectsUtilityFunctionTopN]
 				}
 				err := AgentBusinessUtilityFunctionGen.WithModel(models.FuseO1).Call(context.Background(), map[string]any{

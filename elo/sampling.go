@@ -18,7 +18,7 @@ func Sampling(players []Elo) (Elo, Elo) {
 	weights := make([]float64, len(players))
 	for i, player := range players {
 		// 权重可以根据评分和比赛次数进行调整
-		weight := float64(player.Elo())
+		weight := float64(player.ScoreAccessor())
 		weights[i] = weight
 		totalWeight += weight
 	}
@@ -54,7 +54,7 @@ func SamplingMap(players map[string]Elo, N int) []Elo {
 	//  1.  计算每个玩家的权重
 	for key, player := range players {
 		// 权重计算方式与 Sampling 函数保持一致，可以根据实际需求调整
-		weight := math.Sqrt(math.Abs(float64(player.Elo())))
+		weight := math.Sqrt(math.Abs(float64(player.ScoreAccessor())))
 		weightsMap[key] = weight
 		totalWeight += weight
 		availablePlayers[key] = player //  将所有玩家复制到 availablePlayers map

@@ -14,7 +14,6 @@ import (
 	"github.com/doptime/eloevo/tool"
 	"github.com/doptime/eloevo/tools"
 	"github.com/doptime/eloevo/utils"
-	"github.com/samber/lo"
 	openai "github.com/sashabaranov/go-openai"
 	"golang.design/x/clipboard"
 )
@@ -30,7 +29,7 @@ type Agent struct {
 	Model               *models.Model
 	Prompt              *template.Template
 	Tools               []openai.Tool
-	toolsCallbacks      map[string]func(Param interface{}) error
+	toolsCallbacks      map[string]func(Param interface{}, CallMemory map[string]any) error
 	msgToMemKey         string
 	fileToMem           *FileToMem
 	msgDeFile           string
@@ -42,7 +41,6 @@ type Agent struct {
 	memDeCliboardKey    string
 	functioncallParsers []func(resp openai.ChatCompletionResponse) (toolCalls []*FunctionCall)
 
-	toolsInPrompt  bool
 	copyPromptOnly bool
 	CallBack       func(ctx context.Context, inputs string) error
 
@@ -53,7 +51,7 @@ func NewAgent(prompt *template.Template, tools ...tool.ToolInterface) (a *Agent)
 	a = &Agent{
 		Model:          models.ModelDefault,
 		Prompt:         prompt,
-		toolsCallbacks: map[string]func(Param interface{}) error{},
+		toolsCallbacks: map[string]func(Param interface{}, CallMemory map[string]any) error{},
 	}
 	a.WithTools(tools...)
 	a.WithToolcallParser(nil)
@@ -61,10 +59,6 @@ func NewAgent(prompt *template.Template, tools ...tool.ToolInterface) (a *Agent)
 }
 func (a *Agent) WithToolCallLocked() *Agent {
 	a.ToolCallRunningMutext = &sync.Mutex{}
-	return a
-}
-func (a *Agent) WithToolCallbacks(toolcallbacks map[string]func(Param interface{}) error) *Agent {
-	a.toolsCallbacks = toolcallbacks
 	return a
 }
 func (a *Agent) WithTools(tools ...tool.ToolInterface) *Agent {
@@ -105,7 +99,7 @@ func (a *Agent) WithContent2RedisHash(Key string, f FieldReaderFunc) *Agent {
 }
 func (a *Agent) Clone() *Agent {
 	var b Agent = *a
-	b.toolsCallbacks = map[string]func(Param interface{}) error{}
+	b.toolsCallbacks = map[string]func(Param interface{}, CallMemory map[string]any) error{}
 	for k, v := range a.toolsCallbacks {
 		b.toolsCallbacks[k] = v
 	}
@@ -121,10 +115,6 @@ func (a *Agent) WithMemDeClipboard(memoryKey string) *Agent {
 	a.memDeCliboardKey = memoryKey
 	return a
 }
-func (a *Agent) WithToolsInPrompt() *Agent {
-	a.toolsInPrompt = true
-	return a
-}
 func (a *Agent) WithModel(Model *models.Model) *Agent {
 	a.Model = Model
 	return a
@@ -137,6 +127,45 @@ func (a *Agent) WithCallback(callback func(ctx context.Context, inputs string) e
 func (a *Agent) CopyPromptOnly() *Agent {
 	a.copyPromptOnly = true
 	return a
+}
+func (a *Agent) withToolcallSysMsg(req *openai.ChatCompletionRequest) {
+
+	if len(a.Tools) == 0 {
+		return
+	}
+	ToolCallMsg, err := template.New("ToolCallMsg").Parse(`
+# Tools
+
+You may call one or more functions to assist with the user query.
+
+You are provided with function signatures within <tools></tools> XML tags:
+
+<tools>
+	{{range $ind, $val := .Tools}}
+		{{$val}}
+	{{end}}
+</tools>
+
+For each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:
+<tool_call>
+{\"name\": <function-name>, \"arguments\": <args-json-object>}
+</tool_call>
+`)
+	if err != nil {
+		fmt.Println("Error parsing ToolCallMsg template:", err)
+		return
+	}
+	ToolStr := []string{}
+	for _, v := range a.Tools {
+		toolBytes, _ := json.Marshal(v)
+		ToolStr = append(ToolStr, string(toolBytes))
+	}
+
+	var promptBuffer bytes.Buffer
+	if err := ToolCallMsg.Execute(&promptBuffer, map[string]any{"Tools": ToolStr}); err == nil {
+		msgToolCall := openai.ChatCompletionMessage{Role: openai.ChatMessageRoleSystem, Content: promptBuffer.String()}
+		req.Messages = append([]openai.ChatCompletionMessage{msgToolCall}, req.Messages...)
+	}
 }
 
 // ProposeGoals generates goals based on the provided file contents.
@@ -175,6 +204,9 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 
 	//model might be changed by other process
 	model := a.Model
+	if md, ok := params["Model"]; ok {
+		model = md.(*models.Model)
+	}
 	// Create the chat completion request with function calls enabled
 	req := openai.ChatCompletionRequest{
 		Model: model.Name,
@@ -184,17 +216,24 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 				Content: promptBuffer.String(),
 			},
 		},
-		TopP:      a.Model.TopP,
-		MaxTokens: 8192,
-		Tools:     a.Tools,
+		TopP:        model.TopP,
+		Temperature: model.Temperature,
 	}
-
-	if a.toolsInPrompt && len(a.Tools) > 0 {
-		functioncallprompt := `For each function call, return a json object with function name and arguments within <tool_call></tool_call>\n`
-		tools, _ := json.Marshal(map[string]any{"functions": lo.Map(a.Tools, func(tool openai.Tool, i int) *openai.FunctionDefinition {
-			return tool.Function
-		})})
-		req.Messages[0].Content = req.Messages[0].Content + "\n" + functioncallprompt + string(tools)
+	if model.Temperature > 0 {
+		req.Temperature = model.Temperature
+	}
+	if model.TopP > 0 {
+		req.TopP = model.TopP
+	}
+	if model.TopK > 0 {
+		req.N = model.TopK
+	}
+	if len(a.Tools) > 0 {
+		if model.ToolInPrompt {
+			a.withToolcallSysMsg(&req)
+		} else {
+			req.Tools = a.Tools
+		}
 	}
 
 	if a.copyPromptOnly {
@@ -205,7 +244,7 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 	timestart := time.Now()
 	resp, err := a.GetResponse(model.Client, req)
 	if err == nil {
-		model.UpdateModelResponseTime(time.Since(timestart))
+		model.ResponseTime(time.Since(timestart))
 	}
 
 	fmt.Println("resp:", resp)
@@ -243,10 +282,10 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 		if ok {
 			if a.ToolCallRunningMutext != nil {
 				a.ToolCallRunningMutext.(*sync.Mutex).Lock()
-				_tool(toolcall.Arguments)
+				_tool(toolcall.Arguments, params)
 				a.ToolCallRunningMutext.(*sync.Mutex).Unlock()
 			} else {
-				_tool(toolcall.Arguments)
+				_tool(toolcall.Arguments, params)
 			}
 		} else if !ok {
 			return fmt.Errorf("error: function not found in FunctionMap")
