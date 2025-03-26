@@ -1,6 +1,7 @@
 package models
 
 import (
+	"os"
 	"sync"
 	"time"
 
@@ -126,14 +127,14 @@ var (
 	ModelQwen2_7B       = NewModel("http://gpu.lan:1207/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct-AWQ/snapshots/b25037543e9394b818fdfca67ab2a00ecc7dd641")
 	DeepSeekR1_Qwen_14  = NewModel("http://gpu.lan:3214/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--casperhansen--deepseek-r1-distill-qwen-14b-awq/snapshots/1874537e80f451042f7993dfa2b21fd25b4e7223")
 	DeepSeekR132B       = NewModel("http://gpu.lan:4733/v1", ApiKey, "DeepSeek-R1-Distill-Qwen-32B-AWQ").WithTopP(0.6)
-	DSV3Baidu           = NewModel("https://qianfan.baidubce.com/v2", "bce-v3/ALTAK-1KdAiPRybFWbZNrOeTTFd/85cb95cd9a135fdc5ce5dc01687e5e8d32ce6211", "deepseek-v3").WithTopP(0.6)
+	DSV3Baidu           = NewModel("https://qianfan.baidubce.com/v2", os.Getenv("BDAPIKEY"), "deepseek-v3").WithTopP(0.6)
 	DolphinR1Mistral24B = NewModel("http://gpu.lan:4733/v1", ApiKey, "Dolphin3.0-R1-Mistral-24B-AWQ").WithToolInPrompt()
 	FuseO1              = NewModel("http://gpu.lan:4732/v1", ApiKey, "FuseO1").WithTopP(0.92).WithTemperature(0.6).WithTopK(40)
 	Qwq32B              = NewModel("http://gpu.lan:1232/v1", ApiKey, "QwQ-32B").WithTopP(0.92).WithTemperature(0.6) //.WithTopK(40)
 	Gemma3              = NewModel("http://gpu.lan:5527/v1", ApiKey, "gemma3").WithTopP(0.92).WithTemperature(0.9).WithToolInPrompt()
 	Reka3               = NewModel("http://gpu.lan:43813/v1", ApiKey, "reka3").WithTopP(0.92).WithTemperature(0.9).WithToolInPrompt()
 	Phi4                = NewModel("http://gpu.lan:7214/v1", ApiKey, "phi4").WithToolInPrompt()
-
+	DSAPIKEY
 	//ModelDefault        = ModelQwen32BCoderLocal
 	ModelDefault = ModelQwen72BLocal
 )
