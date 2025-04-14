@@ -105,7 +105,7 @@ func BusinessUtilityEvaluationExploration() {
 				"Model":       []*models.Model{models.Qwq32B, models.DeepSeekR132B}[i%2],
 				"TotoalNodes": len(best),
 			}
-			err := AgentBusinessUtilityEvaluation.WithModel(models.Qwq32B).Call(context.Background(), param)
+			err := AgentBusinessUtilityEvaluation.WithModels(models.Qwq32B).Call(context.Background(), param)
 			if err != nil {
 				fmt.Printf("Agent call failed: %v\n", err)
 			}

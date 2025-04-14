@@ -155,7 +155,7 @@ func GenRequirementParallel() {
 				}
 				fmt.Println("GenNicheMarketOpportunity...")
 				//return AgentGenNicheMarketOpportunity.WithModel(models.EloModels.SelectOne("roundrobin")).		Call(context.Background(), inputsParams)
-				AgentGenRequirement.WithModel(models.EloModels.SelectOne("roundrobin")).Call(context.Background(), inputsParams)
+				AgentGenRequirement.WithModels(models.EloModels.SelectOne("roundrobin")).Call(context.Background(), inputsParams)
 			}
 		}()
 	}

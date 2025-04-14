@@ -10,7 +10,6 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/doptime/eloevo/agent"
 	"github.com/doptime/eloevo/elo"
-	"github.com/doptime/eloevo/models"
 	"github.com/doptime/eloevo/prototype"
 	"github.com/doptime/eloevo/tool"
 	"github.com/doptime/redisdb"
@@ -124,10 +123,7 @@ func UseCaseExploration() {
 		}
 
 		param := map[string]any{
-			"ItemList": listSorted,
-			//[]*models.Model{models.FuseO1, models.DeepSeekR132B}[i%2],
-			//"Model":       []*models.Model{models.FuseO1, models.DeepSeekR132B,models.Reka3,models.Phi4,models.Gemma3,models.Qwq32B}[i%2],
-			"Model":       models.Qwq32B,
+			"ItemList":    listSorted,
 			"TotoalNodes": len(best),
 		}
 		go func(param map[string]any) {

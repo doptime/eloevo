@@ -12,7 +12,7 @@ type SolutionRefinement_v250319 struct {
 }
 
 type SolutionRefinement struct {
-	ProConsToItems   map[string]int `description:"Pros to Items, here key is item Id, value is int ∈ [-5,5], value above 0 will move item to top, below 0 will move item to bottom, item with negative value will be REMOVED from solution"`
+	ProConsToItems   map[string]int `description:"key: string, item Id ; value: int, ∈ [-5,5]. Votes cnt of Pros or Cons to Items, positive value moving item to top, while minus value moving item to bottom, item with negative votes value will be REMOVED from solution"`
 	NewProposedItems []string       `description:"If needs to improve current solution, proposed new Item content here; else keep it empty"`
 }
 type SolutionRefine struct {

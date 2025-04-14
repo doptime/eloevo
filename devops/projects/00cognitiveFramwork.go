@@ -161,7 +161,7 @@ func RationalCognitionFrameworkExploration() {
 				selected = append(NodesWithPriority, selected...)
 				selected = selected[:min(6, len(best))]
 				param := map[string]any{"RationalCognitionFrameworks": selected}
-				err := AgentUtilityFrameGen.WithModel(models.Qwq32B).Call(context.Background(), param)
+				err := AgentUtilityFrameGen.WithModels(models.Qwq32B).Call(context.Background(), param)
 				if err != nil {
 					fmt.Printf("Agent call failed: %v\n", err)
 				}

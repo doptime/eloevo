@@ -104,7 +104,7 @@ func BusinessUtilityExploration() {
 				"ItemList":    selected[:min(6, len(selected))],
 				"TotoalNodes": len(best),
 			}
-			err := AgentBusinessUtility.WithModel(models.Qwq32B).Call(context.Background(), param)
+			err := AgentBusinessUtility.WithModels(models.Qwq32B).Call(context.Background(), param)
 			if err != nil {
 				fmt.Printf("Agent call failed: %v\n", err)
 			}

@@ -117,14 +117,10 @@ func PersonalAdminExploration() {
 			for i, v := range listSorted {
 				fmt.Println("solution top ", i+1, v.GetId(), "Elo", v.ScoreAccessor(), v.Question)
 			}
-			param := map[string]any{
-				"ItemList": listSorted,
-				//[]*models.Model{models.FuseO1, models.DeepSeekR132B}[i%2],
-				//"Model":       models.LoadbalancedPick(models.FuseO1, models.Qwq32B),
-				"Model":       models.FuseO1,
-				"TotoalNodes": len(best),
-			}
-			err := AgentPersonalAdmin.Call(context.Background(), param)
+			//models.Qwq32B, models.Gemma3, models.DeepSeekV3
+			err := AgentPersonalAdmin.WithModels(models.Qwq32B).Call(context.Background(),
+				map[string]any{"ItemList": listSorted, "TotoalNodes": len(best)},
+			)
 			if err != nil {
 				fmt.Printf("Agent call failed: %v\n", err)
 			}

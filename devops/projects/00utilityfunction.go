@@ -134,7 +134,7 @@ func EvoUtilityFunctionExploration() {
 				if len(items) > ProjectsUtilityFunctionTopN {
 					items = items[:ProjectsUtilityFunctionTopN]
 				}
-				err := AgentBusinessUtilityFunctionGen.WithModel(models.FuseO1).Call(context.Background(), map[string]any{
+				err := AgentBusinessUtilityFunctionGen.WithModels(models.FuseO1).Call(context.Background(), map[string]any{
 					"UtilityFunctionExplorations": UtilityFunctionExplorationList(items),
 					"NewId":                       redisdb.NanoId(8),
 				})

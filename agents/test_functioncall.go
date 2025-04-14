@@ -24,4 +24,4 @@ var toolTestFunctionCall = tool.NewTool("ToolTester", "Test Tool by calling this
 
 var AgentFunctioncallTest = agent.NewAgent(template.Must(template.New("question").Parse(`
 请调用所提供的FunctionTool,Title 为"Hello", Content 为“Hello World”。
-`)), toolTestFunctionCall).WithModel(models.FuseO1)
+`)), toolTestFunctionCall).WithModels(models.FuseO1)

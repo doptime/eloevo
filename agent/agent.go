@@ -26,7 +26,8 @@ type FileToMem struct {
 // GoalProposer is responsible for proposing goals using an OpenAI model,
 // handling function calls, and managing callbacks.
 type Agent struct {
-	Model               *models.Model
+	Models []*models.Model
+
 	Prompt              *template.Template
 	Tools               []openai.Tool
 	toolsCallbacks      map[string]func(Param interface{}, CallMemory map[string]any) error
@@ -49,7 +50,7 @@ type Agent struct {
 
 func NewAgent(prompt *template.Template, tools ...tool.ToolInterface) (a *Agent) {
 	a = &Agent{
-		Model:          models.ModelDefault,
+		Models:         []*models.Model{models.ModelDefault},
 		Prompt:         prompt,
 		toolsCallbacks: map[string]func(Param interface{}, CallMemory map[string]any) error{},
 	}
@@ -115,8 +116,8 @@ func (a *Agent) WithMemDeClipboard(memoryKey string) *Agent {
 	a.memDeCliboardKey = memoryKey
 	return a
 }
-func (a *Agent) WithModel(Model *models.Model) *Agent {
-	a.Model = Model
+func (a *Agent) WithModels(Model ...*models.Model) *Agent {
+	a.Models = Model
 	return a
 }
 
@@ -203,10 +204,8 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 	}
 
 	//model might be changed by other process
-	model := a.Model
-	if md, ok := params["Model"]; ok {
-		model = md.(*models.Model)
-	}
+	model := models.LoadbalancedPick(a.Models...)
+	params["Model"] = model
 	// Create the chat completion request with function calls enabled
 	req := openai.ChatCompletionRequest{
 		Model: model.Name,

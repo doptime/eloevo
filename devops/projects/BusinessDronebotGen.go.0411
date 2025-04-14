@@ -1,0 +1,337 @@
+// package projects
+
+// import (
+// 	"context"
+// 	"encoding/json"
+// 	"fmt"
+// 	"io"
+// 	"math/rand/v2"
+// 	"os"
+// 	"slices"
+// 	"strings"
+// 	"sync"
+// 	"text/template"
+
+// 	// "github.com/yourbasic/graph"
+
+// 	"gonum.org/v1/gonum/graph"
+// 	"gonum.org/v1/gonum/graph/community"
+// 	"gonum.org/v1/gonum/graph/simple"
+
+// 	"github.com/doptime/eloevo/agent"
+// 	"github.com/doptime/eloevo/models"
+// 	"github.com/doptime/eloevo/tool"
+// 	"github.com/doptime/eloevo/utils"
+// 	"github.com/doptime/redisdb"
+// 	"github.com/mroth/weightedrand"
+// 	"github.com/samber/lo"
+// )
+
+// type BusinessPlans struct {
+// 	Id   string `description:"Required when update. Id, string, unique."`
+// 	Item string `description:"Required when create. item of the solution. Bullet Name of Module, Constraints, Guidelines, Architecturals, Nexus or Specifications."`
+
+// 	Importance int64 `msgpack:"alias:Utilify" description:"int ∈[-5,5], Importance. \nRequired when create; optional when update. "`
+// 	Remove     int64 `msgpack:"alias:Remove" description:"int ∈[-5,5], Remove. \nOptional. making RemoveVoted > 5  to delete Plan from solution"`
+
+// 	//描述关系节点的内容。协议，约定，标准，规范，想法，技术路线等
+// 	ConstraintCost map[string]float64 `description:"object, string: constraint node Ids, value: positive cost value needed to implete Constrain; setting negtive cost is a feature to delete constrain.\nRequired when create and modify. "`
+// }
+
+// func (u *BusinessPlans) GetId() string {
+// 	return u.Id
+// }
+
+// var Id2Index = func() func(id string) int {
+// 	var seqmap = map[string]int{}
+// 	var idSeqMtx sync.RWMutex
+// 	return func(id string) int {
+// 		idSeqMtx.RLock()
+// 		defer idSeqMtx.RUnlock()
+// 		_, ok := seqmap[id]
+// 		if !ok {
+// 			seqmap[id] = len(seqmap)
+// 		}
+// 		return seqmap[id]
+// 	}
+// }()
+
+// func (u *BusinessPlans) ID() int64 {
+// 	return int64(Id2Index(u.Id))
+// }
+// func (u *BusinessPlans) Seq() int {
+// 	return Id2Index(u.Id)
+// }
+// func (u *BusinessPlans) String(layer ...int) string {
+// 	numLayer := append(layer, 0)[0]
+// 	indence := strings.Repeat("\t", numLayer)
+// 	ConstraintCost, _ := json.Marshal(u.ConstraintCost)
+// 	return fmt.Sprint(indence, "Id:", u.Id, " Importance:", u.Importance, " Remove:", u.Remove, " ConstraintCost:", string(ConstraintCost), "\n", u.Item, "\n\n")
+// }
+
+// type BusinessPlansSlice map[string]*BusinessPlans
+
+// // 定义带权重的边
+// type WeightedEdge struct {
+// 	F, T graph.Node // 边的起点和终点
+// 	W    float64    // 边的权重
+// }                                       // 实现 graph.Edge 接口
+// func (e WeightedEdge) From() graph.Node { return e.F }
+// func (e WeightedEdge) To() graph.Node   { return e.T }
+
+// // 实现 graph.WeightedEdge 接口
+// func (e WeightedEdge) Weight() float64 { return e.W }
+
+// // 实现 ReversedEdge 方法
+// func (e WeightedEdge) ReversedEdge() graph.Edge {
+// 	return WeightedEdge{F: e.T, T: e.F, W: e.W}
+// }
+// func (_map BusinessPlansSlice) AnalyzeLouvainContext() (ret [][]graph.Node) {
+// 	g := simple.NewUndirectedGraph()
+// 	for _, v := range _map {
+// 		g.AddNode(v)
+// 	}
+
+// 	for _, v := range _map {
+// 		for idDendency, cost := range v.ConstraintCost {
+// 			if item2, ok := _map[idDendency]; ok && (v.Id != item2.Id) {
+// 				edge := WeightedEdge{F: v, T: item2, W: cost}
+// 				g.SetEdge(edge)
+// 				g.SetEdge(edge.ReversedEdge())
+
+// 			}
+// 		}
+// 	}
+// 	src := rand.New(rand.NewPCG(1, 1)) // 初始化一个随机数生成器
+// 	//平滑地切换社区粒度
+// 	qvalue := 1.0 + rand.Float64()
+// 	// 使用 Louvain 算法进行社区划分
+// 	reducedGraph := community.Modularize(g, qvalue, src)
+// 	communities := reducedGraph.Communities()
+// 	//
+// 	for _, community := range communities {
+// 		if len(community) == 1 {
+// 			keyBusinessDronebot.HDel(community[0].(*BusinessPlans).Id)
+// 		}
+// 	}
+// 	communitiesLeft := lo.Filter(communities, func(community []graph.Node, _ int) bool {
+// 		return len(community) > 1
+// 	})
+// 	for _, community := range communitiesLeft {
+// 		slices.SortFunc(community, func(a, b graph.Node) int {
+// 			return -(g.From(a.ID()).Len() - g.From(b.ID()).Len())
+// 		})
+// 		slice := make([]graph.Node, 0, len(community))
+// 		for _, node := range community {
+// 			slice = append(slice, node)
+// 			for tos := g.From(node.ID()); tos.Next(); {
+// 				slice = append(slice, tos.Node())
+// 			}
+// 		}
+// 		slice = lo.Uniq(slice)
+// 		ret = append(ret, slice)
+// 	}
+
+// 	return
+// }
+
+// var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.WithRds("Catalogs"), redisdb.WithKey("BusinessDronebot250402Constraints"))
+// var taskChooser, _ = weightedrand.NewChooser(
+// 	weightedrand.Choice{Item: "error_fixing", Weight: 10},
+// 	weightedrand.Choice{Item: "validate_middle_result", Weight: 30},
+// 	weightedrand.Choice{Item: "subgoal_setting", Weight: 20},
+// 	weightedrand.Choice{Item: "reverse_thinking", Weight: 10},
+// 	weightedrand.Choice{Item: "modularization", Weight: 20},
+// )
+
+// var ForbiddenWords = []string{"区块链", "量子", "氢燃料", "纠缠", "Quantum", "Blockchain", "Hydrogen", "Entanglement", "CO2", "Carbon Sequestration"}
+
+// var AgentBusinessPlans = agent.NewAgent(template.Must(template.New("AgentBusinessPlansDrone").Parse(`
+// 你是 “创业生态架构师”、“技术趋势预言家”、“商业模式创新专家”、“连续创业家”。
+// 通过 “寻找未被满足的市场需求”、“发现技术创新带来的机会”、“预测未来趋势”和其它的动态认知框架，深入分析商业领域。
+// 最终目标是获得在该商业领域创业需要的高价值、前瞻性的，既有战略深度又具备创新活力的创业项目矩阵。
+// 预期这些创业项目在接下来的世界中，能够产生最大化的联合商业效用，以产生强大的社会效用。
+
+// ## 涉及的目标行业包括：
+// - AI-Driven Bobotic Development
+// - AI-Driven Business Model Innovation
+// - Robotic As a Service
+// - Robotic Ecosystem
+// - Autonomous Vehicle Solution
+// - Drone Technology & Solution
+// - Suppy Chain & Drone & Logistics Technology
+// - Sustainable Packaging Technology
+// - Sustainable Transportation Infrastructure
+
+// ## 小部分愿景想象:
+// - 一个可以借助外接电源或超高速放电电池，垂直起飞的固定翼无人机
+// - 它是一个非常便利的载具平台。可以提供各种机器人的投送和收回服务
+// - 由于极高的滑翔比。它的物流成本只有汽车的1/10和船运的1/2. 可以在全球内完成有中继的长途运输
+// - 它可以借助地形和动态风向变化，实现能量的节约。
+// - 联合多机器人和多飞机。送外卖，入户医疗检查。在户外部署就餐，住宿，岗哨体验，它能做很多。
+// - 在未来的世界中，这些商业应用是最底层的，最重要的基础设施。
+
+// ## 已明确的技术路线:
+// - 采用上市的高放电的电池
+// - 超低成本模块化无人机。机身(包裹)可拆卸，可以动态装配到固定翼和多旋翼无人机上
+// - 分布式的高塔式无人机中继站。提供机身维护和电池充电，包裹路由服务。
+// - 低速、低空、超高滑翔比的飞机。
+// - 不采用操作系统。不采用软件。只采用硬件运行大型神经网络模型，只有Wifi,GPS，摄像头和姿控等最少的输入信号。
+
+// ## 本系统迭代解决方案的原理：
+// - 解决方案被视为顶点和边的图。Id-Item 是顶点，ConstraintCost是边。通过Louvain 算法, 解决方案被拆分成为多个Community组合。
+// - 约束节点是解决方案中的超边；但当做节点处理。
+// - 节点如果没有出于引用关系当中，是孤立节点。它将会被删除。
+// - 现有的方案由两类节点构成:
+// 	1) 约束节点
+// 		约束节点是指解决方案的必要约束条件，包括反馈、技术路径、规范、洞察等用来影响模块节点生成和调整的节点。约束节点被构建用以驱动系统的变化。
+// 		约束节点ConstraintCost为空,无需,不应该填写ConstraintCost；意图是让约束节点给抽象信息约束，这种需求不受具体实现的约束。
+// 		约束节Item内容要符合第一性原理，以确保其必要性。
+// 	2) 模块节点
+// 		模块节点是直接给出解决方案的节点
+// 		模块只能通过约束节点和其它的模块节点完成耦合。也就是通过实现其它的约束节点实现实现自身定义
+// 		模块节点 ConstraintCost 不为空，必须引用Constraint节点Id, 如果Constraint节点不存在，需要预先创建相应约束节点。也就是需填写ConstraintCost,也就是普通节点关注如何实现节点的约束，准确充要地实现约束节点之间的关系。
+
+// ## 这是现有的方案中的一个Community ：
+// {{.SolutionAccordingToOneConstraint}}
+
+//  ## ToDo:
+// - 你需要深入讨论本次迭代中的Community，并最终一次或多次调用 FunctionCall:BusinessPlanItemRefine 来保存讨论的结果。
+// - 改进形式包括 1)可以发表新节点，来完善系统; 2)通过指定Id来修改现有不准确的节点，以调优方案; 3)通过指定Id,修改Remove >= 5 来删除无效节点:
+// {{if eq .task "error_fixing"}}
+// - 本次迭代核心目标: 对回溯或检测到的错误进行显式删除或修改；
+// 	- 该需求是否是基于错误的幻想或者错误的假设；
+// 	- 一致性、清晰度、是否合理；
+// 	- ConstraintCost 当中的引用到约束节点是否适当，约束节点的实现代价是否适当；
+// 	- 格式，内容是否异常；
+// 	- Importance、Removed 相对值是否合理；
+// {{else if eq .task "validate_middle_result"}}
+// 本次迭代重点围绕：验证或系统地检查中间结果；
+//  	看看从第一性原理出发，这个需要是否可以被绕过或者替代；如果是，补充更简单的实现方式；或者只是删除需要放弃条目；
+// 	可行性、
+// 	是否属于愚蠢的需求；比如开发加密算法等边际效用趋零的，和项目实质需求弱关联的需求；
+// 	删除使用量子科技，量子纠缠，空中无线充电、区块链这种高风险，边际效用低的项目。
+// 	删除描述不清，边界不清的条目。所有模块节点必须面向有意义的，确切而必须的需求。模糊技术路线并不能作为有意义的模块节点，因为此类情形需求不明确，无法定义出需求的边界。
+// 	如果存在良好第三方的方案，要直给出第三方案，不要尝试自己实现。像是Climate Modeling, 3D 打印，直接给出条目：使用***的** 服务完成**。
+// 	如果技术路线已经被明确化，那么放弃过时的技术路线。
+
+// {{else if eq .task "subgoal_setting"}}
+// 本次迭代重点围绕：子目标设定，即将复杂问题分解为可管理的步骤；
+//  	需求是否需要进一步细化，以便更好地建构；如果是，删除旧的条目，并且补充细分后的条目
+// {{else if eq .task "reverse_thinking"}}
+// 本次迭代重点围绕：逆向思考，即在目标导向的推理问题中，从期望的结果出发，逐步向后推导，找到解决问题的路径:
+// 	本次迭代的子主题和最终最终目标对应的最终方案区别是什么。要如何才能弥补这个差距。
+// {{else if eq .task "modularization"}}
+// 本次迭代重点围绕：模块化建构
+// 	如何使得当前Community 和其它的全部Community 围绕系统目标的构建，能组成层次化的模块化清晰的系统。
+// 	要善于抽象出隐藏概念；更低成本，更可行的技术路线；市场需求；把它们作为模块的超边（约束节点）
+// 	删除和调整条目/模块 条目，确保层次化，模块化的组织关系。
+// 	冗余条目/模块，只能保留Id排序靠前的第一个，确保层次化，模块化的组织关系。
+// {{end}}
+// `))).WithToolCallLocked().WithTools(tool.NewTool("BusinessPlanItemRefine", "Propose/edit/delete solution item to improve solution.", func(newItem *BusinessPlans) {
+// 	newItem.Item = strings.TrimSpace(newItem.Item)
+// 	var oItem *BusinessPlans = nil
+// 	if newItem.Id != "" {
+// 		oItem, _ = keyBusinessDronebot.HGet(newItem.Id)
+// 	}
+// 	if newItem.Id = utils.ID(newItem.Item, 4); oItem != nil {
+// 		newItem.Id = oItem.Id
+// 		oItem.Importance = newItem.Importance
+// 		oItem.Remove = newItem.Remove
+// 		oItem.Item, _ = lo.Coalesce(newItem.Item, oItem.Item)
+
+// 	}
+// 	if isNewModel := oItem == nil; isNewModel {
+// 		if len(newItem.Item) > 0 && !utils.HasForbiddenWords(newItem.Item, ForbiddenWords) {
+// 			keyBusinessDronebot.HSet(newItem.Id, newItem)
+// 		}
+// 		return
+// 	}
+// 	oItem.ConstraintCost = lo.Assign(oItem.ConstraintCost, newItem.ConstraintCost)
+// 	keyBusinessDronebot.HSet(oItem.Id, oItem)
+// }))
+// var businessPlans BusinessPlansSlice
+
+// func BusinessPlansDronebotExploration() {
+// 	// Create a new weighted chooser
+// 	const MaxThreads = 24
+// 	MaxThreadsSemaphore := make(chan struct{}, MaxThreads)
+
+// 	for i, TotalTasks := 0, 2000; i < TotalTasks; i++ {
+// 		businessPlans, _ = keyBusinessDronebot.HGetAll()
+// 		//commit remove where remove >= 5
+// 		for _, key := range lo.Keys(businessPlans) {
+// 			item := businessPlans[key]
+// 			if item.Remove >= 5 || utils.HasForbiddenWords(item.Item, ForbiddenWords) {
+// 				keyBusinessDronebot.ConcatKey("Archive", item.Id).HSet(item.Id, item)
+// 				keyBusinessDronebot.HDel(item.Id)
+// 				delete(businessPlans, item.Id)
+// 			}
+// 		}
+// 		//remove invalid constraints
+// 		for _, v := range businessPlans {
+// 			for Id, cost := range v.ConstraintCost {
+// 				if _, ok := businessPlans[Id]; !ok || cost <= 0 || v.Id == Id {
+// 					delete(v.ConstraintCost, Id)
+// 					keyBusinessDronebot.HSet(v.Id, v)
+// 				}
+// 			}
+// 		}
+
+// 		// for _, v := range businessPlans {
+// 		// 	keyBusinessDronebot.HSet(v.Id, v)
+// 		// 	if v.Remove >= 5 {
+// 		// 		keyBusinessDronebot.HDel(v.Id)
+// 		// 		delete(businessPlans, v.Id)
+// 		// 	}
+// 		// }
+// 		SolutionList := lo.Values(businessPlans)
+// 		slices.SortFunc(SolutionList, func(a, b *BusinessPlans) int {
+// 			if a.Importance > b.Importance {
+// 				return -1
+// 			} else if a.Importance < b.Importance {
+// 				return 1
+// 			}
+// 			return 0
+// 		})
+
+// 		Communities := businessPlans.AnalyzeLouvainContext()
+// 		//save solution to file to visualize
+// 		outputfile, _ := os.Create("BusinessPlans.md")
+// 		childrenStr := strings.Builder{}
+// 		childrenStr.WriteString(fmt.Sprint("条目数量为：", len(SolutionList), "\n"))
+// 		lo.ForEach(Communities, func(Communitie []graph.Node, i int) {
+// 			childrenStr.WriteString(fmt.Sprint("\n#### Community", i+1, "\n"))
+// 			for _, item := range Communitie {
+// 				childrenStr.WriteString("\n" + item.(*BusinessPlans).String())
+// 			}
+// 		})
+// 		_, _ = io.WriteString(outputfile, childrenStr.String())
+// 		outputfile.Close()
+
+// 		lo.ForEach(Communities, func(Communitie []graph.Node, i int) {
+// 			childrenStr := strings.Builder{}
+// 			for _, item := range Communitie {
+// 				childrenStr.WriteString("\n" + item.(*BusinessPlans).String())
+// 			}
+
+// 			MaxThreadsSemaphore <- struct{}{} // Acquire a spot in the semaphore
+// 			go func(solutionParted string) {
+// 				defer func() { <-MaxThreadsSemaphore }()
+// 				//models.Qwq32B, models.Gemma3, models.DeepSeekV3, models.DeepSeekV3TB
+// 				err := AgentBusinessPlans.WithModels(models.Qwq32B, models.Gemma3).Call(context.Background(), map[string]any{
+// 					"SolutionAccordingToOneConstraint": solutionParted,
+// 					"task":                             taskChooser.Pick().(string),
+// 				})
+// 				if err != nil {
+// 					fmt.Printf("Agent call failed: %v\n", err)
+// 				}
+// 			}(childrenStr.String())
+// 		})
+// 	}
+// 	// Wait for all the goroutines to finish)
+// 	for i := 0; i < MaxThreads; i++ {
+// 		MaxThreadsSemaphore <- struct{}{}
+// 	}
+
+// }

@@ -40,6 +40,7 @@ func ToolcallParserDefault(resp openai.ChatCompletionResponse) (toolCalls []*Fun
 		rsp = strings.ReplaceAll(rsp, "</tool_call>", "<tool_call>")
 		//json tool call
 		rsp = strings.ReplaceAll(rsp, "```json\n", "<tool_call>")
+		rsp = strings.ReplaceAll(rsp, "```tool_call\n", "<tool_call>")
 		rsp = strings.ReplaceAll(rsp, "\n```", "<tool_call>")
 		rsp = strings.ReplaceAll(rsp, "```\n", "<tool_call>")
 

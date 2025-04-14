@@ -67,16 +67,15 @@ func (m *Model) WithTemperature(temperature float32) *Model {
 }
 
 const (
-	EndPoint8010     = "http://gpu.lan:8010/v1"
-	EndPoint8009     = "http://gpu.lan:8009/v1"
-	EndPoint8008     = "http://gpu.lan:8008/v1"
-	EndPoint8007     = "http://gpu.lan:8007/v1"
-	EndPoint8006     = "http://gpu.lan:8006/v1"
-	EndPoint8003     = "http://gpu.lan:8003/v1"
-	EndPointDeepseek = "https://api.deepseek.com/"
-	ApiKey           = "token-deaf"
-	ApiKeyDeepseek   = "sk-2d9e2689120c4544820485740ea2f36c"
-	NameQwen32B      = "Qwen/Qwen2.5-32B-Instruct-AWQ"
+	EndPoint8010   = "http://gpu.lan:8010/v1"
+	EndPoint8009   = "http://gpu.lan:8009/v1"
+	EndPoint8008   = "http://gpu.lan:8008/v1"
+	EndPoint8007   = "http://gpu.lan:8007/v1"
+	EndPoint8006   = "http://gpu.lan:8006/v1"
+	EndPoint8003   = "http://gpu.lan:8003/v1"
+	ApiKey         = "token-deaf"
+	ApiKeyDeepseek = "sk-2d9e2689120c4544820485740ea2f36c"
+	NameQwen32B    = "Qwen/Qwen2.5-32B-Instruct-AWQ"
 
 	NameQwen32BCoder      = "Qwen/Qwen2.5-Coder-32B-Instruct-AWQ"
 	NameQwen32BCoderLocal = "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-32B-Instruct-AWQ/snapshots/5c7cb76a268fc6cfbb9c4777eb24ba6e27f9ee6c"
@@ -123,18 +122,22 @@ var (
 	ModelQwen32B12K     = NewModel(EndPoint8008, ApiKey, NameQwen32B)
 	ModelLlama33_70b    = NewModel(EndPoint8007, ApiKey, NameLlama33_70b)
 	//ModelDeepseek       = NewModel(EndPointDeepseek, ApiKeyDeepseek, NameDeepseek)
-	ModelQwen2_1d5B     = NewModel("http://gpu.lan:8215/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306")
-	ModelQwen2_7B       = NewModel("http://gpu.lan:1207/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct-AWQ/snapshots/b25037543e9394b818fdfca67ab2a00ecc7dd641")
-	DeepSeekR1_Qwen_14  = NewModel("http://gpu.lan:3214/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--casperhansen--deepseek-r1-distill-qwen-14b-awq/snapshots/1874537e80f451042f7993dfa2b21fd25b4e7223")
-	DeepSeekR132B       = NewModel("http://gpu.lan:4733/v1", ApiKey, "DeepSeek-R1-Distill-Qwen-32B-AWQ").WithTopP(0.6)
-	DSV3Baidu           = NewModel("https://qianfan.baidubce.com/v2", os.Getenv("BDAPIKEY"), "deepseek-v3").WithTopP(0.6)
+	ModelQwen2_1d5B    = NewModel("http://gpu.lan:8215/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306")
+	ModelQwen2_7B      = NewModel("http://gpu.lan:1207/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct-AWQ/snapshots/b25037543e9394b818fdfca67ab2a00ecc7dd641")
+	DeepSeekR1_Qwen_14 = NewModel("http://gpu.lan:3214/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--casperhansen--deepseek-r1-distill-qwen-14b-awq/snapshots/1874537e80f451042f7993dfa2b21fd25b4e7223")
+	DeepSeekR132B      = NewModel("http://gpu.lan:4733/v1", ApiKey, "DeepSeek-R1-Distill-Qwen-32B-AWQ").WithTopP(0.6)
+	DSV3Baidu          = NewModel("https://qianfan.baidubce.com/v2", os.Getenv("BDAPIKEY"), "deepseek-v3").WithTopP(0.6)
+	DeepSeekV3         = NewModel("https://api.deepseek.com/", os.Getenv("DSAPIKEY"), "deepseek-chat").WithTopP(0.6).WithToolInPrompt()
+	//https://tbnx.plus7.plus/token
+	DeepSeekV3TB = NewModel("https://tbnx.plus7.plus/v1", os.Getenv("DSTB"), "deepseek-chat").WithTopP(0.6)
+
 	DolphinR1Mistral24B = NewModel("http://gpu.lan:4733/v1", ApiKey, "Dolphin3.0-R1-Mistral-24B-AWQ").WithToolInPrompt()
 	FuseO1              = NewModel("http://gpu.lan:4732/v1", ApiKey, "FuseO1").WithTopP(0.92).WithTemperature(0.6).WithTopK(40)
 	Qwq32B              = NewModel("http://gpu.lan:1232/v1", ApiKey, "QwQ-32B").WithTopP(0.92).WithTemperature(0.6) //.WithTopK(40)
 	Gemma3              = NewModel("http://gpu.lan:5527/v1", ApiKey, "gemma3").WithTopP(0.92).WithTemperature(0.9).WithToolInPrompt()
 	Reka3               = NewModel("http://gpu.lan:43813/v1", ApiKey, "reka3").WithTopP(0.92).WithTemperature(0.9).WithToolInPrompt()
 	Phi4                = NewModel("http://gpu.lan:7214/v1", ApiKey, "phi4").WithToolInPrompt()
-	DSAPIKEY
+
 	//ModelDefault        = ModelQwen32BCoderLocal
 	ModelDefault = ModelQwen72BLocal
 )

@@ -131,7 +131,7 @@ func GenModelParallel() {
 					}),
 					"ModelId": redisdb.NanoId(8),
 				}
-				err := AgentGenSolutionModel.WithModel(models.FuseO1).Call(context.Background(), inputsParams)
+				err := AgentGenSolutionModel.WithModels(models.FuseO1).Call(context.Background(), inputsParams)
 				if err == nil {
 					continue
 				}

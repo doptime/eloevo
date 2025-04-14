@@ -75,7 +75,7 @@ Filename = "filename.ext"
 	}
 	toolClustering(&toolCall)
 	return nil
-}).WithModel(models.EloModels.SelectOne("roundrobin"))
+}).WithModels(models.EloModels.SelectOne("roundrobin"))
 
 var mutex = &sync.Mutex{}
 

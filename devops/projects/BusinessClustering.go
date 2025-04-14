@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"text/template"
 
 	"github.com/doptime/eloevo/agent"
@@ -13,6 +14,7 @@ import (
 	"github.com/doptime/eloevo/utils"
 	"github.com/doptime/redisdb"
 	"github.com/samber/lo"
+	"github.com/samber/lo/mutable"
 )
 
 // {"Id":"H3URX2jY","BusinessClusters":{"AI-Driven Public Policy Analysis":2500,"AI-Driven Fashion & Wearable Tech":5200,"AI in Public Services & Governance":2500,"Advanced Materials & Nanotechnology":24000,"Virtual & Digital Asset Management":15200,"AI-Driven Customer Experience":6200,"AI-Driven Agricultural & Farm Management":16100,"AI in Waste Management & Circular Economy":45000,"Green Energy & Renewable Tech":124000,"AI-Driven Tourism & Hospitality":5500,"AI-Driven Automotive & Mobility Solutions":6800,"AI in Disaster Management & Safety":2500,"AI-Driven Supply Chain & Inventory Optimization":7500,"AI-Driven Urban Planning & Development":5000,"AI in Climate & Environmental Science":124000,"AI in Energy & Utilities":124000,"AI-Driven Analytics & Big Data":22500,"AI-Driven Real Estate & Architecture":9100,"AI-Driven Fraud Detection & Compliance":7300,"AI Core Technologies":45000,"AI in Agriculture & Food Tech":16100,"Extended Reality (XR) & Virtual Worlds":9800,"Health Informatics & Telemedicine":41000,"AI in Legal & Compliance":11100,"AI in Telecommunications & Networks":9900,"Digital Payment Systems & Fintech":89000,"AI-Driven Cultural & Heritage Preservation":3600,"AI in Media & Entertainment":2000,"Smart Manufacturing & Industry 4.0":34000,"Space Commerce & Satellite Tech":10500,"AI-Driven Risk Management & Insurance":4800,"AI-Driven Legal Document Analysis":7900,"AI-Driven Journalism & Media Analysis":3200,"AI in Manufacturing & Industry 4.0":34000,"AI in Marketing & Advertising":6200,"AI in Blockchain & Digital Assets":94100,"Neural Interfaces & Bioelectronics":9300,"Smart Home & IoT Solutions":5800,"AI in Education & EdTech":21000,"AI-Driven Personalized Learning":21000,"AI-Driven Sports & Fitness Tech":5200,"AI-Driven Public Safety & Defense Systems":2500,"AI in Water & Environmental Tech":6500,"AI-Driven Mining & Resources":9200,"AI-Driven Disaster Response Systems":2500,"AI-Driven Security & Surveillance Systems":2500,"AI in Transportation & Logistics":15000,"Drone & Autonomous Systems":38000,"Smart Agriculture & Farming Tech":16500,"Smart Transportation & Urban Mobility":13300,"AI-Driven Media & Content Creation":3200,"Quantum Computing & Sensing":10000,"Smart Energy & Grid Management":9900,"Synthetic Biology & Bioengineering":6700,"AI-Driven Public Infrastructure Management":8900,"AI in Retail & E-commerce":15000,"AI in Cultural Preservation & Heritage":3600,"AI in Robotics & Automation":42000,"Hydrogen & Clean Energy Solutions":34200,"AI-Driven Telecom & Network Optimization":9900,"AI-Driven Customer Support & Chatbots":5800,"AI in Healthcare & Biotech":45000,"AI in Smart Cities & Urban Tech":27500,"Cybersecurity Infrastructure & Quantum Security":38000,"AI-Driven Virtual Asset Trading":15200,"AI-Driven Climate & Environmental Modeling":7200,"AI in Finance & Banking":22500,"AI in Cybersecurity & Digital Defense":38000,"Biotech & Medical Innovations":54000,"AI-Driven Emergency Response":2500,"AI-Driven Energy Efficiency Solutions":9500}}
@@ -48,11 +50,11 @@ var AgentBusinessClustering = agent.NewAgent(template.Must(template.New("utilify
 
 要关注类目的分布的覆盖性,能够覆盖世界上绝大多数的商业活动，并且按照重要性排序。
 
-我们的最终目标是寻找具有长期市场重要性的商业活动类目。
+我们的最终目标是寻找具有长期市场重要性和良好盈利能力的商业活动类目。
 
 这是现有的商业活分类方案 ：
 {{range  $index, $item := .ItemList}}
-"Id":"{{$item.Id}}" "Votes":"{{$item.Votes}}" 
+Id:"{{$item.Id}}" Votes:{{$item.Votes}} 
 {{$item.Item}}
 {{end}}
 
@@ -64,6 +66,8 @@ ToDo:
 	3、子目标设定，即将复杂问题分解为可管理的步骤
 	4、逆向思考，即在目标导向的推理问题中，从期望的结果出发，逐步向后推导，找到解决问题的路径。
 
+	现在条目太多，请先淘汰冗余、无效、不明确，不合理的条目。目前先不要提升条目排序，也不要添加新的条目。
+
 	- 在讨论的基础上，投票以修改解决方案选项的权重（排序），形成ProConsToItems。
 	- 按照讨论。如果存在改进解决方案的可能，请提出新的Items. 请直接补充描述0条或者多条Items，形成NewProposedItems。
 最后调用FunctionCall:SolutionRefine 保存排序结果。
@@ -74,13 +78,15 @@ ToDo:
 	}
 	all, _ := keyBusinessClustering.HGetAll()
 	for k, v := range model.ProConsToItems {
-		if item, ok := all[k]; ok {
+		if item, ok := all[k]; ok && v >= -5 && v <= 5 {
 			item.ScoreAccessor(v)
 		}
 	}
 	for _, v := range model.NewProposedItems {
-		item := &BusinessClusterItem{Votes: 1, Item: v, Id: utils.ID(v)}
-		keyBusinessClustering.HSet(item.Id, item)
+		if len(v) > 10 {
+			item := &BusinessClusterItem{Votes: 1, Item: v, Id: utils.ID(v, 3)}
+			keyBusinessClustering.HSet(item.Id, item)
+		}
 	}
 }))
 
@@ -162,30 +168,35 @@ func BusinessClusteringExploration() {
 	// 	idStr := fmt.Sprintf("%x", xxhash.Sum64String(k))
 	// 	keyBusinessClustering.HSet(idStr, &BusinessClusterItem{Id: idStr, Votes: int64(rand.Intn(5) + 3), Market: int64(v)})
 	// }
-	const MaxThreads = 24
+	const MaxThreads = 1
 	MaxThreadsSemaphore := make(chan struct{}, MaxThreads)
 
-	for i, TotalTasks := 0, 1000*1000; i < TotalTasks; i++ {
+	for i, TotalTasks := 0, 400; i < TotalTasks; i++ {
 		MaxThreadsSemaphore <- struct{}{} // Acquire a spot in the semaphore
 		best, _ := keyBusinessClustering.HGetAll()
 		listSorted := lo.Values(best)
 		slices.SortFunc(listSorted, func(a, b *BusinessClusterItem) int {
 			return -(a.ScoreAccessor() - b.ScoreAccessor())
 		})
+
 		//print the lefts
 		for i, v := range listSorted {
-			fmt.Println("Rank", i+1, v.GetId(), "Score", int(1000*v.ScoreAccessor()), v.Item)
+			if strings.Trim(v.Item, " ") != v.Item {
+				v.Item = strings.Trim(v.Item, " ")
+				keyBusinessClustering.HSet(v.Id, v)
+			}
+			fmt.Println("Rank", i+1, v.GetId(), "Votes", v.ScoreAccessor(), v.Item)
 		}
 
-		param := map[string]any{
-			"ItemList": listSorted,
-			//"Model":       models.LoadbalancedPick(models.Qwq32B,models.Gemma3) ,
-			"Model":       models.LoadbalancedPick(models.Gemma3),
-			"TotoalNodes": len(best),
-		}
+		fmt.Println("\"", strings.Join(lo.Map(listSorted[:128], func(item *BusinessClusterItem, i int) string {
+			return item.Item
+		}), "\",\""), "\"")
+		mutable.Shuffle(listSorted)
+
+		param := map[string]any{"ItemList": listSorted, "TotoalNodes": len(best)}
 		go func(param map[string]any) {
 			defer func() { <-MaxThreadsSemaphore }()
-			err := AgentBusinessClustering.Call(context.Background(), param)
+			err := AgentBusinessClustering.WithModels(models.Qwq32B).Call(context.Background(), param)
 			if err != nil {
 				fmt.Printf("Agent call failed: %v\n", err)
 			}

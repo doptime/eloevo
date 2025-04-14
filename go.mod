@@ -15,6 +15,7 @@ require (
 	github.com/spf13/afero v1.12.0
 	golang.design/x/clipboard v0.7.0
 	golang.org/x/exp v0.0.0-20190731235908-ec7cb31e5a56
+	gonum.org/v1/gonum v0.16.0
 )
 
 require (
@@ -36,7 +37,7 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
-	golang.org/x/image v0.6.0 // indirect
+	golang.org/x/image v0.25.0 // indirect
 	golang.org/x/mobile v0.0.0-20230301163155-e0f57694e12c // indirect
 	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect

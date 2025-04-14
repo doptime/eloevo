@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/doptime/eloevo/devops"
 	"github.com/doptime/eloevo/devops/projects"
 )
@@ -11,7 +13,10 @@ type TestStruct struct {
 }
 
 func main() {
-	projects.BusinessPlansExploration()
+	projects.BusinessPlansDronebotExploration()
+	go projects.BusinessPlansEdTechExploration()
+	time.Sleep(1000000 * time.Second)
+	go projects.BusinessPlansPWAExploration()
 	projects.BusinessClusteringExploration()
 	devops.UseCaseExploration()
 	//projects.GenBusinessPlanParallel()

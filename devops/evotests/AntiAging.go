@@ -137,7 +137,7 @@ func AntiAgingExploration() {
 				elos := lo.MapEntries(best, func(Id string, v *AntiAging) (string, elo.Elo) { return Id, v })
 				values := elo.SamplingMap(elos, 5)
 				param := map[string]any{"AllItems": values, "Task": j % 2}
-				err := AgentUtilityFrameGen.WithModel(models.DeepSeekR132B).Call(context.Background(), param)
+				err := AgentUtilityFrameGen.WithModels(models.DeepSeekR132B).Call(context.Background(), param)
 				if err != nil {
 					fmt.Printf("Agent call failed: %v\n", err)
 				}
