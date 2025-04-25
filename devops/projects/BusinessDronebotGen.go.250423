@@ -79,8 +79,8 @@ package projects
 // 	return fmt.Sprint(indence, "Id:", u.Id, " Importance:", u.Importance, communityCore, " Priority:", u.Priority, "\n", u.Item, "\n\n")
 // }
 
-// // var keyBusinessDronebotbak = redisdb.NewHashKey[string, *BusinessPlans](redisdb.WithRds("Catalogs"), redisdb.WithKey("BusinessDronebot250412"))
-// var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.WithRds("Catalogs"))
+// // var keyBusinessDronebotbak = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"), redisdb.Opt.Key("BusinessDronebot250412"))
+// var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"))
 // var taskChooser, _ = weightedrand.NewChooser(
 // 	weightedrand.Choice{Item: "remover", Weight: 10},
 // 	weightedrand.Choice{Item: "improver", Weight: 25},
@@ -94,7 +94,7 @@ package projects
 // 	SuperEdgeIds   []string `description:"Super edge Ids, []string"`
 // }
 
-// var keyIterPlannedDrone = redisdb.NewListKey[*SuperEdgePlannedForNextLoop](redisdb.WithRds("Catalogs"))
+// var keyIterPlannedDrone = redisdb.NewListKey[*SuperEdgePlannedForNextLoop](redisdb.Opt.Rds("Catalogs"))
 
 // var AgentBusinessPlans = agent.NewAgent(template.Must(template.New("AgentBusinessPlansDrone").Parse(`
 // 你是 “创业生态架构师”、“技术趋势预言家”、“商业模式创新专家”、“连续创业家”。

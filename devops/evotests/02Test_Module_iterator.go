@@ -22,7 +22,7 @@ type ModuleFile struct {
 	Content     string `description:"Content of the module file"`
 }
 
-var keyAircraftModuleFiles = redisdb.NewHashKey[string, *ModuleFile](redisdb.WithKey("AircraftModules"))
+var keyAircraftModuleFiles = redisdb.NewHashKey[string, *ModuleFile](redisdb.Opt.Key("AircraftModules"))
 
 var AgentModuleEvalBuild = agent.NewAgent(template.Must(template.New("GenTestSolution").Parse(`
 You are TestBuilder. 你的存在是为了通过创建商业场景来建构系统，并最终在真实场景中通过大量的测试。

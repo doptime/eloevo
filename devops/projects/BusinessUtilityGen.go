@@ -32,7 +32,7 @@ func (u *BusinessUtility) ScoreAccessor(delta ...int) int {
 	return mixincached.WithElo("projects", "BusinessUtility", 1000).ScoreAccessor(u.Id, float64(eloDelta))
 }
 
-var keyBusinessUtility = redisdb.NewHashKey[string, *BusinessUtility](redisdb.WithRds("projects"))
+var keyBusinessUtility = redisdb.NewHashKey[string, *BusinessUtility](redisdb.Opt.Rds("projects"))
 
 // 为什么Qwen能自我改进推理，Llama却不行 https://mp.weixin.qq.com/s/OvS61OrDp6rB-R5ELg48Aw
 // 并且每次就一个确切的改进方向进行深度分析，反代的深度分析第一性原理之上的需求，深度创新以做出实质的改进。要痛恨泛泛而谈的内容，重复空洞的内容，因为现在是在开发世界级的工具。

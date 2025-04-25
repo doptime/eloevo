@@ -7,7 +7,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/doptime/config v0.0.0-20250322030901-0115e7134058
 	github.com/doptime/qmilvus v1.6.13-0.20250422080042-d2329ffbc633
-	github.com/doptime/redisdb v0.0.0-20250422035418-c18a1c6dcff8
+	github.com/doptime/redisdb v0.0.0-20250425062105-2c0836354d24
 	github.com/faiface/beep v1.1.0
 	github.com/mroth/weightedrand v1.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1

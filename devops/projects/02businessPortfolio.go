@@ -170,8 +170,8 @@ These are current Business plans:
 }))
 
 var BusinessPlanMap = map[string]*BusinessPlan{}
-var keyBusinessPlan = redisdb.NewHashKey[string, *BusinessPlan](redisdb.WithRds("projects"))
-var keyBusinessPlanExpired = redisdb.NewHashKey[string, *BusinessPlan](redisdb.WithKey("BusinessPlanExpired"), redisdb.WithRds("projects"))
+var keyBusinessPlan = redisdb.NewHashKey[string, *BusinessPlan](redisdb.Opt.Rds("projects"))
+var keyBusinessPlanExpired = redisdb.NewHashKey[string, *BusinessPlan](redisdb.Opt.Key("BusinessPlanExpired"), redisdb.Opt.Rds("projects"))
 
 // GenNicheMarketOpportunityParallel calls GenNicheMarketOpportunity 1000 times in 16 parallel threads.
 func GenBusinessPlanParallel() {

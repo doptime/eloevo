@@ -177,7 +177,7 @@ type QAPaire struct {
 	Answer   string `json:"answer"`
 }
 
-var keyQA = redisdb.NewHashKey[string, *QAPaire](redisdb.WithRds("Catalogs"))
+var keyQA = redisdb.NewHashKey[string, *QAPaire](redisdb.Opt.Rds("Catalogs"))
 
 // ProposeGoals generates goals based on the provided file contents.
 // It renders the prompt, sends a request to the OpenAI model, and processes the response.

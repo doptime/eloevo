@@ -52,7 +52,7 @@ func UtilityFunctionExplorationList(us []*UtilityFunctionExploration) string {
 
 const ProjectsUtilityFunctionTopN = 10
 
-var keyProjectsUtilityFunction = redisdb.NewHashKey[string, *UtilityFunctionExploration](redisdb.WithRds("projects"))
+var keyProjectsUtilityFunction = redisdb.NewHashKey[string, *UtilityFunctionExploration](redisdb.Opt.Rds("projects"))
 var AgentBusinessUtilityFunctionGen = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
 现在你要设计AGI时代商业项目的评估函数。目标是在一个以无人化的方式运营几乎一切的业务的世界中，确定运营业务的优先序。
 

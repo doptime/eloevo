@@ -18,7 +18,7 @@ type Module struct {
 	CompileFeedbacks []string `description:"Feedbacks from compiling"`
 }
 
-var keyAircraftModules = redisdb.HashKey[string, *Module](redisdb.WithKey("AircraftModules"))
+var keyAircraftModules = redisdb.HashKey[string, *Module](redisdb.Opt.Key("AircraftModules"))
 var ModulesMap = make(map[string]*Module)
 
 func init() {

@@ -109,7 +109,7 @@ func Clustering() {
 var clustered map[string]string
 
 // func LoadEvoTable() {
-// 	var keyProjectsAll = redisdb.HashKey[string, string](redisdb.WithKey("NicheMarketOpportunityAll"))
+// 	var keyProjectsAll = redisdb.HashKey[string, string](redisdb.Opt.Key("NicheMarketOpportunityAll"))
 // 	OptunityDescription, _ = keyProjectsAll.HGetAll()
 // 	Elos, _ = keyElos.HGetAll()
 // 	for k := range OptunityDescription {
@@ -120,12 +120,12 @@ var clustered map[string]string
 // 	keyElos.HMSet(Elos)
 // }
 
-var keyProjectsClustered = redisdb.NewHashKey[string, string](redisdb.WithKey("MarketOpportunityClustered"))
+var keyProjectsClustered = redisdb.NewHashKey[string, string](redisdb.Opt.Key("MarketOpportunityClustered"))
 
 func LoadEvoTable() {
-	var keyProjectsAll = redisdb.NewHashKey[string, string](redisdb.WithKey("NicheMarketOpportunityAll"))
+	var keyProjectsAll = redisdb.NewHashKey[string, string](redisdb.Opt.Key("NicheMarketOpportunityAll"))
 	OptunityDescriptionOriginal, _ := keyProjectsAll.HGetAll()
-	var keyProjectsClustered = redisdb.NewHashKey[string, string](redisdb.WithKey("MarketOpportunityClustered"))
+	var keyProjectsClustered = redisdb.NewHashKey[string, string](redisdb.Opt.Key("MarketOpportunityClustered"))
 	clustered, _ = keyProjectsClustered.HGetAll()
 	values := lo.Values(clustered)
 	ModifiedN := 0

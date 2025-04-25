@@ -97,7 +97,7 @@ var AgentGenTestModule1 = agent.NewAgent(template.Must(template.New("question").
 请面向目标意图，为列表中的内容，依照实现目标意图所需要的基于MECE原则的方案拆解。为这些方案排名。请为这些方案中实质雷同的方案中的劣质版本
 
    `))).WithCallback(func(ctx context.Context, inputs string) error {
-	keyAircraftRequirementName := redisdb.HashKey[string, string](redisdb.WithKey("AircraftRequirements"))
+	keyAircraftRequirementName := redisdb.HashKey[string, string](redisdb.Opt.Key("AircraftRequirements"))
 	name := utils.ExtractTagValue(inputs, "需求名称")
 	keyAircraftRequirementName.HSet(name, inputs)
 	return nil

@@ -133,7 +133,7 @@
 // 	return
 // }
 
-// var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.WithRds("Catalogs"), redisdb.WithKey("BusinessDronebot250412"))
+// var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"), redisdb.Opt.Key("BusinessDronebot250412"))
 // var taskChooser, _ = weightedrand.NewChooser(
 // 	weightedrand.Choice{Item: "remover", Weight: 10},
 // 	weightedrand.Choice{Item: "improver", Weight: 25},

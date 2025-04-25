@@ -76,7 +76,7 @@ You are TestBuilder. 你的存在是为了通过创建商业场景来建构系�
 	AircraftTests[param.Id] = param
 	keyAircraftTests.HSet(param.Id, param)
 }))
-var keyAircraftTests = redisdb.NewHashKey[string, *TestScenario](redisdb.WithKey("AircraftTests"))
+var keyAircraftTests = redisdb.NewHashKey[string, *TestScenario](redisdb.Opt.Key("AircraftTests"))
 
 var AircraftTests = map[string]*TestScenario{}
 

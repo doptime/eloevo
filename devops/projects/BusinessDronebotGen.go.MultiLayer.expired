@@ -51,7 +51,7 @@
 // 	return fmt.Sprint(indence, "Id:", u.Id, " Votes:", u.Votes, " Item:", u.Item, childrenStr.String())
 // }
 
-// var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.WithRds("Catalogs"), redisdb.WithKey("BusinessDronebot"))
+// var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"), redisdb.Opt.Key("BusinessDronebot"))
 // var BusinessList = []*BusinessPlans{}
 
 // var AgentBusinessPlans = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`

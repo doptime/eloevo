@@ -68,6 +68,8 @@ github.com/doptime/redisdb v0.0.0-20250422033732-de288d43f2db h1:mX6TuCsyQ73+JjZ
 github.com/doptime/redisdb v0.0.0-20250422033732-de288d43f2db/go.mod h1:B6zdA6w8FI91OWSRCj1Y0mErUCCNW+CDSsjBJMHZBcg=
 github.com/doptime/redisdb v0.0.0-20250422035418-c18a1c6dcff8 h1:sE5/Sdb7gnwqm8xtmpCoQO8+cYDAnb6IJL9UTpJ0lRY=
 github.com/doptime/redisdb v0.0.0-20250422035418-c18a1c6dcff8/go.mod h1:B6zdA6w8FI91OWSRCj1Y0mErUCCNW+CDSsjBJMHZBcg=
+github.com/doptime/redisdb v0.0.0-20250425062105-2c0836354d24 h1:U+y7RxJw/8BE9G5cVCQaLcxLMOOPnByYcs007QVEa10=
+github.com/doptime/redisdb v0.0.0-20250425062105-2c0836354d24/go.mod h1:B6zdA6w8FI91OWSRCj1Y0mErUCCNW+CDSsjBJMHZBcg=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1mIlRU8Am5FuJP05cCM98=

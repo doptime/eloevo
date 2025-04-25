@@ -34,13 +34,24 @@ type BusinessPlans struct {
 	Priority   int64 `description:"int ,0 <= value <= 10 . \n Required for module node. use in Gatt chart to determin the priority of the item. the lower the higher the priority."`
 
 	EmbedingVector []float32 `description:"-" milvus:"dim=1024,index" `
+
+	//初始添加的时候得分为0，Elo 后产生Elo分数
+	Elo float64 `description:"-"`
+	//被人类专家标记为锁定的条目。Locked = true. 不能被删除和修改
+	Locked bool `description:"-"`
 }
 
-var milvusCollection = qmilvus.NewCollection[*BusinessPlans]("milvus.lan:19530").CreateCollection()
-
+func (u *BusinessPlans) ScoreAccessor(delta ...int) int {
+	if len(delta) > 0 {
+		u.Elo += float64(delta[0])
+	}
+	return int(u.Elo)
+}
 func (u *BusinessPlans) GetId() string {
 	return u.Id
 }
+
+var milvusCollection = qmilvus.NewCollection[*BusinessPlans]("milvus.lan:19530").CreateCollection()
 
 func (u *BusinessPlans) Embed(embed ...[]float32) []float32 {
 	if len(embed) > 0 {
@@ -57,8 +68,8 @@ func (u *BusinessPlans) String(layer ...int) string {
 	return fmt.Sprint(indence, "Id:", u.Id, " Importance:", u.Importance, communityCore, " Priority:", u.Priority, "\n", u.Item, "\n\n")
 }
 
-// var keyBusinessDronebotbak = redisdb.NewHashKey[string, *BusinessPlans](redisdb.WithRds("Catalogs"), redisdb.WithKey("BusinessDronebot250412"))
-var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.WithRds("Catalogs"))
+// var keyBusinessDronebotbak = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"), redisdb.Opt.Key("BusinessDronebot250412"))
+var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"))
 var ForbiddenWords = []string{"区块链", "量子", "氢燃料", "纠缠", "quantum", "blockchain", "hydrogen", "entanglement", "co2", "carbon sequestration"}
 
 type SuperEdgePlannedForNextLoop struct {
@@ -66,7 +77,7 @@ type SuperEdgePlannedForNextLoop struct {
 	SuperEdgeIds   []string `description:"Super edge Ids, []string"`
 }
 
-var keyIterPlannedDrone = redisdb.NewListKey[*SuperEdgePlannedForNextLoop](redisdb.WithRds("Catalogs"))
+var keyIterPlannedDrone = redisdb.NewListKey[*SuperEdgePlannedForNextLoop](redisdb.Opt.Rds("Catalogs"))
 var tp1 = template.Must(template.New("AgentBusinessPlansDrone").Parse(`
 你的核心目标是基于第一性原理的工程学实现，构建一个在无人机平台和机器人应用领域具有高价值、高可行性的项目模块矩阵，这些项目应能在未来的世界中产生最大的联合商业效用和社会效用。
 
@@ -201,13 +212,9 @@ func EdgeCommunitiesWithExploration(allNodes map[string]*BusinessPlans, centerEd
 	return append(ret, left1[:min(RandomExplorationNum, len(left1))]...)
 
 }
-func NodeListToString(nodes []*BusinessPlans, uniq bool) string {
-	//nodes = lo.Uniq(nodes)
-	var sb strings.Builder
-	for _, node := range nodes {
-		sb.WriteString("\n" + node.String())
-	}
-	return sb.String()
+func NodeListToString(nodes []*BusinessPlans, uniq bool) (list string) {
+	nodes = lo.Ternary(uniq, lo.Uniq(nodes), nodes)
+	return strings.Join(lo.Map(nodes, func(v *BusinessPlans, _ int) string { return v.String() }), "\n")
 }
 
 func BusinessPlansDronebotExploration() {

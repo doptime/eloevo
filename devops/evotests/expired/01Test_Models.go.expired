@@ -23,7 +23,7 @@ type Solutions struct {
 	TestFeedbacks   []string `json:"-"`
 }
 
-var keyAircraftSolution = redisdb.HashKey[string, *Solutions](redisdb.WithKey("AircraftSolution"))
+var keyAircraftSolution = redisdb.HashKey[string, *Solutions](redisdb.Opt.Key("AircraftSolution"))
 
 var AgentGenSolutionAndModule = agent.NewAgent(template.Must(template.New("GenTestSolution").Parse(`
 You are TestBuilder. 你的存在是为了通过创建商业场景来建构系统，并最终在真实场景中通过大量的测试。

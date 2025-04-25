@@ -45,7 +45,7 @@ func (u *AntiAging) ScoreAccessor(delta ...int) int {
 //		// }
 //		// Improvements.GetInsert(model.Id, model.ImprovementSuggestions...)
 //	}))
-var keyAntiAging = redisdb.NewHashKey[string, *AntiAging](redisdb.WithRds("projects"))
+var keyAntiAging = redisdb.NewHashKey[string, *AntiAging](redisdb.Opt.Rds("projects"))
 
 var AgentUtilityFrameGen = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
 现在我们演进面向40岁男性的抗衰老方案，目标是最大化延长寿命，对衰老相关的器官进行有效抗衰老。

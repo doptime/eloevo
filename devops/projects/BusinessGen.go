@@ -53,7 +53,7 @@ package projects
 // 	return fmt.Sprint(indence, "Id:", u.Id, " Votes:", u.Votes, " Item:", u.Item, childrenStr.String())
 // }
 
-// var keyBusinessPlans = redisdb.NewHashKey[string, *BusinessPlans](redisdb.WithRds("Catalogs"))
+// var keyBusinessPlans = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"))
 
 // var AgentBusinessPlans = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
 // 你是集 “创业生态架构师”、“技术趋势预言家”、“商业模式创新专家” 三位一体的连续创业家。

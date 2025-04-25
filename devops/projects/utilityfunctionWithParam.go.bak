@@ -60,8 +60,8 @@ func (u *UtilityFunctionSchema) Rating(delta int) int {
 	return int(u.Elo)
 }
 
-var keyUtilityFunctionSchema = redisdb.HashKey[string, *UtilityFunctionSchema](redisdb.WithRds("projects"))
-var keyUtilityFunctionSchemaExpired = redisdb.HashKey[string, *UtilityFunctionSchema](redisdb.WithRds("projects"), redisdb.WithKey("UtilityFunctionSchemaExpired"))
+var keyUtilityFunctionSchema = redisdb.HashKey[string, *UtilityFunctionSchema](redisdb.Opt.Rds("projects"))
+var keyUtilityFunctionSchemaExpired = redisdb.HashKey[string, *UtilityFunctionSchema](redisdb.Opt.Rds("projects"), redisdb.Opt.Key("UtilityFunctionSchemaExpired"))
 var keyUtilityFunctionMap = make(map[string]*UtilityFunctionSchema)
 
 var UtilitySchemaLock sync.Mutex = sync.Mutex{}

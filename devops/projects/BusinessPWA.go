@@ -51,7 +51,7 @@ func (u *BusinessPlansPWA) String(layer ...int) string {
 	return fmt.Sprint(indence, "Id:", u.Id, " Votes:", u.Votes, " Item:", u.Item, childrenStr.String())
 }
 
-var keyBusinessPWA = redisdb.NewHashKey[string, *BusinessPlansPWA](redisdb.WithRds("Catalogs"), redisdb.WithKey("BusinessPWA"))
+var keyBusinessPWA = redisdb.NewHashKey[string, *BusinessPlansPWA](redisdb.Opt.Rds("Catalogs"), redisdb.Opt.Key("BusinessPWA"))
 var BusinessListPWA = []*BusinessPlansPWA{}
 var AgentBusinessPlansPWAEd = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
 你是集 “创业生态架构师”、“技术趋势预言家”、“商业模式创新专家” 三位一体的连续创业家。
