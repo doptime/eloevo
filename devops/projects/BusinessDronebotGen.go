@@ -2,153 +2,74 @@ package projects
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand/v2"
 	"os"
-	"slices"
+	"strconv"
 	"strings"
-	"sync"
 	"text/template"
 
 	// "github.com/yourbasic/graph"
 
-	"gonum.org/v1/gonum/graph"
-	"gonum.org/v1/gonum/graph/community"
-	"gonum.org/v1/gonum/graph/simple"
+	"github.com/doptime/qmilvus"
 
 	"github.com/doptime/eloevo/agent"
 	"github.com/doptime/eloevo/models"
 	"github.com/doptime/eloevo/tool"
 	"github.com/doptime/eloevo/utils"
 	"github.com/doptime/redisdb"
-	"github.com/mroth/weightedrand"
 	"github.com/samber/lo"
 	"github.com/samber/lo/mutable"
 )
 
 type BusinessPlans struct {
-	Id              string `description:"Required when update. Id, string, unique."`
-	Item            string `description:"Required when create. item of the solution. Bullet Name of Module, Constraints, Guidelines, Architecturals, Nexus or Specifications."`
-	IsCommunityCore bool   `description:"bool, optional. IsCommunityCore, true if the item is the core of the community. "`
+	Id   string `description:"Required when update. Id, string, unique." milvus:"PK,in,out"`
+	Item string `description:"Required when create. item of the solution. Bullet Name of Module, Constraints, Guidelines, Architecturals, Nexus or Specifications."`
 
-	Importance int64 `description:"int ∈[-1,10], Importance. \nRequired when create; optional when update. making Importance < 0  to Remove the item."`
-	Priority   int64 `description:"int ∈[0,10] . \n Required for module node. use in Gatt chart to determin the priority of the item. the lower the higher the priority."`
+	SuperEdge      bool     `description:"bool,true if the item is super edge of the solution graph. super edge 描述节点之间的协议,约定,约束,标准,规范,想法,技术路线,时间限制,资源限制,法律客户需求,反馈限制、层次化约束等 "`
+	SuperEdgeNodes []string `description:"array of Ids. If this node is super edge. here lists the child nodes that belongs to this SuperEdge. SuperEdgeNodes不能包含超边节点，因为超边节点实际上是图的边而不是图的节点，超边包含超边会破坏图结构. \nRequired by SuperEdge item. update each time super edge revised. "`
 
-	Constraints    []string           `description:"array, string: constraint node Ids. constraint node 描述关系节点的内容。协议，约定，标准，规范，想法，技术路线,时间限制，资源限制、法律客户需求，反馈限制等. \nRequired when create and modify model node. "`
-	ConstraintCost map[string]float64 `description:"array, string: constraint node Ids. constraint node 描述关系节点的内容。协议，约定，标准，规范，想法，技术路线,时间限制，资源限制、法律客户需求，反馈限制等. \nRequired when create and modify model node. "`
+	Importance int64 `description:"int , -1 <= value <= 10, Importance. \nRequired when create; optional when update. making Importance < 0  to Remove the item."`
+	Priority   int64 `description:"int ,0 <= value <= 10 . \n Required for module node. use in Gatt chart to determin the priority of the item. the lower the higher the priority."`
+
+	EmbedingVector []float32 `description:"-" milvus:"dim=1024,index" `
 }
+
+var milvusCollection = qmilvus.NewCollection[*BusinessPlans]("milvus.lan:19530").CreateCollection()
 
 func (u *BusinessPlans) GetId() string {
 	return u.Id
 }
 
-var Id2Index = func() func(id string) int {
-	var seqmap = map[string]int{}
-	var idSeqMtx sync.RWMutex
-	return func(id string) int {
-		idSeqMtx.RLock()
-		defer idSeqMtx.RUnlock()
-		_, ok := seqmap[id]
-		if !ok {
-			seqmap[id] = len(seqmap)
-		}
-		return seqmap[id]
+func (u *BusinessPlans) Embed(embed ...[]float32) []float32 {
+	if len(embed) > 0 {
+		u.EmbedingVector = embed[0]
+		keyBusinessDronebot.HSet(u.Id, u)
 	}
-}()
+	return u.EmbedingVector
+}
 
-func (u *BusinessPlans) ID() int64 {
-	return int64(Id2Index(u.Id))
-}
-func (u *BusinessPlans) Seq() int {
-	return Id2Index(u.Id)
-}
 func (u *BusinessPlans) String(layer ...int) string {
 	numLayer := append(layer, 0)[0]
 	indence := strings.Repeat("\t", numLayer)
-	Constraints, _ := json.Marshal(u.Constraints)
-	ConstraintsStr := lo.Ternary(len(u.Constraints) > 2, string(Constraints), "[]")
-	communityCore := lo.Ternary(u.IsCommunityCore, " IsCommunityCore:true", "")
-	return fmt.Sprint(indence, "Id:", u.Id, " Importance:", u.Importance, communityCore, " Priority:", u.Priority, " Constraints:", ConstraintsStr, "\n", u.Item, "\n\n")
+	communityCore := lo.Ternary(u.SuperEdge, " SuperEdge:true", "")
+	return fmt.Sprint(indence, "Id:", u.Id, " Importance:", u.Importance, communityCore, " Priority:", u.Priority, "\n", u.Item, "\n\n")
 }
 
-type BusinessPlansSlice map[string]*BusinessPlans
+// var keyBusinessDronebotbak = redisdb.NewHashKey[string, *BusinessPlans](redisdb.WithRds("Catalogs"), redisdb.WithKey("BusinessDronebot250412"))
+var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.WithRds("Catalogs"))
+var ForbiddenWords = []string{"区块链", "量子", "氢燃料", "纠缠", "quantum", "blockchain", "hydrogen", "entanglement", "co2", "carbon sequestration"}
 
-// 定义带权重的边
-type WeightedEdge struct {
-	F, T graph.Node // 边的起点和终点
-	W    float64    // 边的权重
-}                                       // 实现 graph.Edge 接口
-func (e WeightedEdge) From() graph.Node { return e.F }
-func (e WeightedEdge) To() graph.Node   { return e.T }
-
-// 实现 graph.WeightedEdge 接口
-func (e WeightedEdge) Weight() float64 { return e.W }
-
-// 实现 ReversedEdge 方法
-func (e WeightedEdge) ReversedEdge() graph.Edge {
-	return WeightedEdge{F: e.T, T: e.F, W: e.W}
-}
-func (_map BusinessPlansSlice) AnalyzeLouvainContext() (ret [][]graph.Node) {
-	g := simple.NewUndirectedGraph()
-	for _, v := range _map {
-		g.AddNode(v)
-	}
-
-	for _, v := range _map {
-		for _, idDendency := range v.Constraints {
-			if item2, ok := _map[idDendency]; ok && (v.Id != idDendency) {
-				edge := WeightedEdge{F: v, T: item2, W: float64(v.Importance)}
-				g.SetEdge(edge)
-				g.SetEdge(edge.ReversedEdge())
-
-			}
-		}
-	}
-	src := rand.New(rand.NewPCG(1, 1)) // 初始化一个随机数生成器
-	//平滑地切换社区粒度
-	//qvalue := 1.0 + rand.Float64()
-	const qvalue = 1.0
-	// 使用 Louvain 算法进行社区划分
-	reducedGraph := community.Modularize(g, qvalue, src)
-	communities := reducedGraph.Communities()
-	// communitiesLeft := lo.Filter(communities, func(community []graph.Node, _ int) bool {
-	// 	return len(community) > 1
-	// })
-	for _, community := range communities {
-		slices.SortFunc(community, func(a, b graph.Node) int {
-			return -(g.From(a.ID()).Len() - g.From(b.ID()).Len())
-		})
-		slice := make([]graph.Node, 0, len(community))
-		for _, node := range community {
-			slice = append(slice, node)
-			for tos := g.From(node.ID()); tos.Next(); {
-				slice = append(slice, tos.Node())
-			}
-		}
-		slice = lo.Uniq(slice)
-		ret = append(ret, slice)
-	}
-
-	return
+type SuperEdgePlannedForNextLoop struct {
+	TopicToDiscuss string   `description:"Topic to discuss, string"`
+	SuperEdgeIds   []string `description:"Super edge Ids, []string"`
 }
 
-var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.WithRds("Catalogs"), redisdb.WithKey("BusinessDronebot250412"))
-var taskChooser, _ = weightedrand.NewChooser(
-	weightedrand.Choice{Item: "remover", Weight: 10},
-	weightedrand.Choice{Item: "improver", Weight: 25},
-	weightedrand.Choice{Item: "modularization", Weight: 15},
-	weightedrand.Choice{Item: "creator", Weight: 20},
-)
+var keyIterPlannedDrone = redisdb.NewListKey[*SuperEdgePlannedForNextLoop](redisdb.WithRds("Catalogs"))
+var tp1 = template.Must(template.New("AgentBusinessPlansDrone").Parse(`
+你的核心目标是基于第一性原理的工程学实现，构建一个在无人机平台和机器人应用领域具有高价值、高可行性的项目模块矩阵，这些项目应能在未来的世界中产生最大的联合商业效用和社会效用。
 
-var ForbiddenWords = []string{"区块链", "量子", "氢燃料", "纠缠", "Quantum", "Blockchain", "Hydrogen", "Entanglement", "CO2", "Carbon Sequestration"}
-
-var AgentBusinessPlans = agent.NewAgent(template.Must(template.New("AgentBusinessPlansDrone").Parse(`
-你是 “创业生态架构师”、“技术趋势预言家”、“商业模式创新专家”、“连续创业家”。
-通过 “寻找未被满足的市场需求”、“发现技术创新带来的机会”、“预测未来趋势”和其它的动态认知框架，深入分析商业领域。
-最终目标是获得在该商业领域创业需要的高价值、前瞻性的，既有战略深度又具备创新活力的创业项目矩阵。
-预期这些创业项目在接下来的世界中，能够产生最大化的联合商业效用，以产生强大的社会效用。
 
 ## 涉及的目标行业包括：
 - AI-Driven Bobotic Development
@@ -166,117 +87,69 @@ var AgentBusinessPlans = agent.NewAgent(template.Must(template.New("AgentBusines
 - 它是一个非常便利的载具平台。可以提供各种机器人的投送和收回服务
 - 由于极高的滑翔比。它的物流成本只有汽车的1/10和船运的1/2. 可以在全球内完成有中继的长途运输
 - 它可以借助地形和动态风向变化，实现能量的节约。
-- 联合多机器人和多飞机。送外卖，入户医疗检查。在户外部署就餐，住宿，岗哨体验，它能做很多。
-- 在未来的世界中，这些商业应用是最底层的，最重要的基础设施。
+- 联合多机器人和多飞机。送外卖，入户医疗检查。在户外部署就餐，住宿，岗哨，它能做很多。
+- 在未来的世界中，基于无人机平台的全球即时物流和资源分配系统，是最重要的基础设施。
+- AI 驱动的自主机器人团队，能够高效协作完成复杂任务。
 
 ## 已明确的全局技术路线:
-- 采用上市的高放电的电池
+- 采用上市的高放电的电池. 不考虑无线充电。
 - 超低成本模块化无人机。机身(包裹)可拆卸，可以动态装配到固定翼和多旋翼无人机上
 - 分布式的高塔式无人机中继站。提供机身维护和电池充电，包裹路由服务。
 - 低速、低空、超高滑翔比的飞机。
 - 不采用操作系统。不采用软件。只采用硬件运行大型神经网络模型，只有Wifi,GPS，摄像头和姿控等最少的输入信号。
-- 不考虑载人机。不考虑大型机，仅考虑PayLoad < 100kg的机。
+- 仅考虑 PayLoad < 100kg 的无人机，不考虑载人或大型机。
 
 ## 本系统迭代解决方案的原理：
-- 解决方案被视为顶点和边的图。节点如果没有出于引用关系当中，是孤立节点。它将会被删除。
+- 解决方案被建模为顶点和边的图。
 - 现有的方案由两类节点构成:
-	1) 约束节点
-		约束节点是指解决方案的必要约束条件，包括反馈、技术路径、规范、意图，资源限制等用来影响模块节点生成和调整的节点。约束节点被构建用以驱动系统的变化。
-		约束节点是解决方案中的超边；作为传统的图结构处理技巧。把超边当做节点处理。
-		约束节点Constraints为空,也不应该填写；意图是让约束节点给抽象信息约束，这种需求不受具体实现的约束。
+	1) 超边节点
+		超边节点是指解决方案的必要约束条件，包括反馈、技术路径、规范、意图，资源限制、层次化聚类等用来影响模块节点生成和调整的节点。超边节点被构建用以驱动系统的变化。
+		我们把解决方案看做图。超边是连接多个顶点的边；作为传统的图结构处理技巧。把超边当做节点处理。
+		超边应该被显示设置SuperEdge=true。
 	2) 模块节点
 		模块节点是直接给出解决方案的节点
-		模块只能通过约束节点和其它的模块节点完成耦合。也就是通过实现其它的约束节点实现实现自身定义
-		模块节点 Constraints必须填写，不能为空，也就是它必须服务于约束,或服务于其它模块节点作为它的联合构建，或子组件。
-- 解决方案通过Louvain 算法, 被拆分成为多个Community组合。每次迭代只处理一个Community。
+		模块只能通过超边和其它的模块节点完成耦合。也就是通过实现超边节点约束来自身定义
+- 解决方案被拆分成为多个超边相关的Community。每次迭代处理若干(2-5)Community。
 
-## 这是现有的方案中的1个Community ：
-{{.Community1}}
+## 这是当前迭代的SuperEdgeCommunities:
+{{.Communities}}
 
-## 这是现有的方案中的另1个Community ：
-{{.Community2}}
+TopicToDiscuss:
+{{.TopicToDiscuss}}
 
-## 这是现有的所有CommunityCore：
-{{.KoreNodes}}
+## 这是现有的所有SuperEdges：
+{{.SuperEdges}}
 
- ## ToDo:
-- 你需要深入讨论本次迭代中的Community，并最终一次或多次调用 FunctionCall:SolutionItemRefine 来保存讨论的结果。
-- 调优解决方案形式包括: 1)创建新节点; 2)修改条目:指定Id,并修改字段(可忽略不修改字段若，若修改的字段需确保完整性); 3)通过指定Id,修改Importance = -1 来删除无效节点: 
-
-{{if eq .task "remover"}}
-- 本次迭代核心目标: 对回溯或检测到的以下错误进行显式删除( Importance = -1)；
-	- 删除:条目是否是基于错误的假设,它的前提是否不成立；
-	- 删除:条目是否不具有可行性；
-	- 删除:描述不清，边界不清的条目。模块含义不明，无法面向确切的需求或有效的改进。
-	- 删除:从第一性原理出发，可以被绕过或者被替代；
-	- 删除:从第一性原理出发，没有潜力成为高质量方案；如空中无线充电效率太低，费时太长
-	- 删除:愚蠢的需求；比如开发加密算法、区块链等边际效用趋零的，和项目实质需求关联弱
-	- 删除:多年后(比如5年后)才有可能实现的需求，比如量子计算，量子纠缠这种。
-	- 删除:格式，内容异常；
-	- 删除:有其它理由应该删除条目
-{{else if eq .task "improver"}}
-本次迭代重点围绕：验证或系统地检查中间结果,并进行改进；
- 	- 改进:从第一性原理出发，将当前条目用简单的实现方式替代
-	- 改进:修正Importance值 ∈[-1,10];Priority ∈[0,10]值；
-	- 改进:修正Constraints使之适当；
-	- 改进:如果存在良好第三方的方案，要直给出第三方案，不要尝试自己实现。像是Climate Modeling, 3D 打印，直接给出条目：使用***的** 服务完成**。
-	- 改进:如果技术路线已经被明确化，那么放弃过时的技术路线。
-	- 改进:设定子目标，即将复杂问题分解为可管理的步骤；或是补充细分条目指向复杂条目；
-{{else if eq .task "modularization"}}
-本次迭代重点围绕：模块化建构 (Modularization Construction)
-
-核心目标：优化当前社区 (Community) 的结构，提升其内部的“高内聚”特性，并减少其与其它社区之间的“低耦合”依赖，使得整个系统像精心设计的模块一样清晰、可维护、易扩展。将社区视为一个潜在的“模块”。
-
-具体行动项：
-
-1.  **强化社区内聚性 (Enhance Cohesion):**
-    * **审视社区核心功能:** 确认本社区所有节点是否围绕一个清晰、单一的子目标或功能？
-    * **拆分社区:** 确认本社区所有节点有多个主题而无法移到已有社区的，尝试修改节点以拆分社区？
-    * **清理无关节点:** 识别并处理与社区核心功能关联度低的节点：将其移动到更合适的社区，或若无归属/低价值则标记删除 (Importance = -1)。
-    * **加强内部联系:** 检查社区内节点间的 "Constraints" 是否逻辑合理且足够支持其功能？必要时补充或修正内部依赖关系。
-    * *确保存在CommunityCore** 确保社区指定1+个节点作为社区的核心节点，确保不同的主题都有相应的Community。 设置IsCommunityCor=true,以便其它社区的节点可以快速指向该节点并移动到该社区。
-
-2.  **降低社区间耦合性 (Reduce Coupling):**
-    * **分析外部依赖:** 识别当前社区与外部社区之间的所有依赖关系（双向）。
-    * **最小化直接依赖:** 寻求减少社区间模块节点直接通过 "Constraints" 互相引用的情况。
-    * **定义/使用接口 (约束节点):**
-        * 对于必要的跨社区交互，优先通过共享的“约束节点”（代表接口、协议、标准或共享需求）进行。
-        * 鼓励创建新的“约束节点”来抽象和稳定化跨社区的依赖。
-        * 调整模块节点的 "Constraints"，使其依赖这些接口（约束节点），而非直接依赖其他社区的模块节点。
-
-3.  **优化社区边界与结构 (Optimize Boundaries & Structure):**
-    * **跨社区冲突最小化:** 检查条目跨社区节点之间是否存在冲突和缺乏必要的可行性细节？必要时补充或修正社区内部项目的实现。
-    * **评估节点归属:** 如果一个节点与外部社区的联系远强于其内部联系，考虑将其指向个更合适的社区 CommunityCore， 以便在后续迭代中重构。
-    * **处理冗余:** 查找功能重复或高度相似的节点。保留最优的一个（可基于"Importance", "Priority", 或内容质量判断，若无明确标准则按现有规则如ID排序），删除其余，并更新相关依赖。
-    * **维护层次关系:** 如果存在设计上的层级关系（如子模块），确保 "Constraints" 正确反映这一点。
-
-通过上述调整，旨在使每个社区成为一个功能内聚、接口清晰的模块，从而让整个解决方案的图结构更加模块化和健壮。
-{{else if eq .task "creator"}}
-本次迭代重点围绕：创新与拓展 (Innovation & Expansion)
-
-核心目标：基于现有社区的背景和全局技术路线，生成全新的、有潜力的模块节点或约束节点，或者显著扩展现有节点的功能/范围。
-
-具体行动项：
-1.  **识别机会:** 分析当前社区和核心节点 ("KoreNodes")，寻找未被满足的需求、技术空白点、或可以组合现有元素创造新价值的地方。
-2.  **生成新模块:**
-    * 提出全新的、符合全局愿景和技术路线的模块节点 ("BusinessPlans" item)。
-    * 确保新模块有明确的价值主张 ("Item" description)。
-    * 为其设定初始的 "Importance" (e.g., 5) 和 "Priority"。
-    * *关键:* 为新模块节点添加至少一个明确的 "Constraints"，将其连接到现有系统（可以是约束节点或其他模块）。
-3.  **生成新约束:**
-    * 提出新的约束节点，代表新的技术标准、市场需求、合作协议、或需要解决的关键挑战。
-    * 这些约束节点应能驱动未来模块的开发或现有模块的改进。"Constraints" 字段应为空。
-4.  **扩展现有节点:**
-    * 选择一个有潜力的现有节点，通过修改其 "Item" 描述来增加细节、扩展功能范围或明确子任务。
-    * 如果扩展显著改变了节点的功能，考虑是否需要调整其 "Constraints" 或 "Importance"。
-5.  **建立连接:** 寻找可以合理连接的、当前未连接或弱连接的节点（尤其是在不同社区之间），通过添加 "Constraints" 来加强它们之间的联系，促进整合。
-
-*目标是注入新的活力和想法，扩展解决方案的可能性。*
-
-
+首先，请深度分析并改进当前的解决方案。
+通过多次调用 FunctionCall:SolutionItemRefine 来保存你的想法和改进。
+{{if false}}
+## ToDo: 深入分析本次迭代中的 SuperEdgeCommunities，思考如何通过以下方式进一步提升整体解决方案的价值：
+- **跨社区连接与融合：** 识别不同超边社区之间潜在的协同机会，探索如何通过新的超边或模块节点将它们连接起来，创造新的功能或价值。
+- **技术创新与突破：** 基于核心创新理念和全局技术路线，思考在现有模块或超边的基础上，如何引入新的技术或方法实现性能提升、成本降低或新的应用场景。
+- **用户价值拓展：** 思考当前的解决方案如何更好地满足潜在用户需求，或者如何创造新的用户价值。
+- 最终通过多次调用 FunctionCall:SolutionItemRefine 来保存你的想法和改进。
+### todo:remove
+- **核心目标:** 识别并删除 (Importance = -1) 那些阻碍跨超边社区协同、限制技术创新或无法有效提升用户价值的低价值或过时条目。
+- **评估标准:** 该条目是否与其他模块或超边社区存在冲突？是否使用了过时的技术？是否无法有效满足用户需求或创造新的价值？
+- **反思:** 上一次迭代中删除的条目对整体协同和创新有何影响？本次迭代应重点关注哪些阻碍长期价值创造的条目？
+### todo:improve
+- **核心目标:** 改进现有模块或超边，以增强跨超边社区的协同效应、引入新的技术创新或更好地满足用户价值。
+- **改进方向:** 优化接口、标准化协议、提升性能、降低成本、探索新的应用场景等。
+- **反思:** 上一次迭代中进行的改进对协同和创新产生了哪些积极影响？本次迭代应重点关注哪些方面的改进能够带来最大的长期价值？
+### todo:modularization
+- **核心目标:** 重新审视和优化超边社区结构，确保不同的超边社区以MECE的方式完成目标意图分解。
+- **关注点:** 超边社区边界是否清晰且有利于协作？是否存在可以合并或拆分的超边社区以提高协同效率？是否可以引入新的超边来促进跨超边社区的标准化和互操作性？
+- **行动指南:** 重点关注超边的定义和 SuperEdgeNodes 的选择，确保它们能够促进模块之间的有效连接和信息共享。积极探索提出新的、能够连接不同超边社区的“桥梁”超边。
 {{end}}
-`))).WithToolCallLocked().WithTools(tool.NewTool("SolutionItemRefine", "Propose/edit/delete solution item to improve solution.", func(newItem *BusinessPlans) {
+
+最后请为下一轮的迭代进行规划。讨论下一轮需要重点完善的关注方向，围绕这个方向选择现有的超边集合，并且调用 FunctionCall:SuperEdgePlannedForNextLoop 进行保存。
+
+`))
+
+var AgentBusinessPlans = agent.NewAgent(tp1).WithToolCallLocked().WithTools(tool.NewTool("SolutionItemRefine", "Propose/edit/delete solution item to improve solution.", func(newItem *BusinessPlans) {
 	newItem.Item = strings.TrimSpace(newItem.Item)
+	newItem.Importance = min(10, max(-1, newItem.Importance))
+	newItem.Priority = min(10, max(0, newItem.Priority))
 	var oItem *BusinessPlans = nil
 	if newItem.Id != "" {
 		oItem, _ = keyBusinessDronebot.HGet(newItem.Id)
@@ -285,106 +158,184 @@ var AgentBusinessPlans = agent.NewAgent(template.Must(template.New("AgentBusines
 		newItem.Id = oItem.Id
 		oItem.Importance = newItem.Importance
 		oItem.Priority = newItem.Priority
-		oItem.Item, _ = lo.Coalesce(newItem.Item, oItem.Item)
-		oItem.Constraints = lo.Ternary(len(newItem.Constraints) > 0, newItem.Constraints, oItem.Constraints)
-		oItem.IsCommunityCore = newItem.IsCommunityCore
+		if newItem.Item != "" && oItem.Item != newItem.Item {
+			oItem.Item = newItem.Item
+			if embed, err := utils.GetEmbedding(oItem.Item); err == nil {
+				oItem.Embed(embed)
+				milvusCollection.Upsert(oItem)
+			}
+		}
+		oItem.SuperEdge = newItem.SuperEdge
+		oItem.SuperEdgeNodes = lo.Ternary(len(newItem.SuperEdgeNodes) > 0, newItem.SuperEdgeNodes, oItem.SuperEdgeNodes)
 
 	}
 	if isNewModel := oItem == nil; isNewModel {
-		if len(newItem.Item) > 0 && !utils.HasForbiddenWords(newItem.Item, ForbiddenWords) {
+		if len(newItem.Item) > 0 && !utils.HasForbiddenWords(strings.ToLower(newItem.Item), ForbiddenWords) {
 			keyBusinessDronebot.HSet(newItem.Id, newItem)
 		}
 		return
 	}
 	keyBusinessDronebot.HSet(oItem.Id, oItem)
+})).WithTools(tool.NewTool("SuperEdgePlannedForNextLoop", "Propose super edge items in the next iter loop", func(edgeIds *SuperEdgePlannedForNextLoop) {
+	if len(edgeIds.SuperEdgeIds) > 0 {
+		keyIterPlannedDrone.RPush(edgeIds)
+	}
 }))
-var businessPlans BusinessPlansSlice
+var businessPlans map[string]*BusinessPlans
+
+func EdgeCommunitiesWithExploration(allNodes map[string]*BusinessPlans, centerEdge *BusinessPlans, c []*BusinessPlans, RandomExplorationNum int) (ret []*BusinessPlans) {
+	centerEdge = allNodes[centerEdge.Id]
+	//from milvus to redis data
+	c = lo.Map(c, func(v *BusinessPlans, _ int) *BusinessPlans {
+		return allNodes[v.Id]
+	})
+	//shouble be valid
+	c = lo.Filter(c, func(v *BusinessPlans, _ int) bool {
+		return v != nil && v.Importance > 0 && !v.SuperEdge
+	})
+
+	//上一轮的EdgeNodes
+	SuperEdgeNodes := lo.Filter(centerEdge.SuperEdgeNodes, func(v string, _ int) bool { return allNodes[v] != nil })
+	ret = append([]*BusinessPlans{centerEdge}, lo.Map(SuperEdgeNodes, func(id string, i int) *BusinessPlans { return allNodes[id] })...)
+	left1, _ := lo.Difference(c, ret)
+	return append(ret, left1[:min(RandomExplorationNum, len(left1))]...)
+
+}
+func NodeListToString(nodes []*BusinessPlans, uniq bool) string {
+	//nodes = lo.Uniq(nodes)
+	var sb strings.Builder
+	for _, node := range nodes {
+		sb.WriteString("\n" + node.String())
+	}
+	return sb.String()
+}
 
 func BusinessPlansDronebotExploration() {
 	// Create a new weighted chooser
-	const MaxThreads = 24
+	const MaxThreads = 16
 	MaxThreadsSemaphore := make(chan struct{}, MaxThreads)
 	for i, TotalTasks := 0, 2000; i < TotalTasks; i++ {
 		businessPlans, _ = keyBusinessDronebot.HGetAll()
 		//commit remove where remove >= 5
 		for _, key := range lo.Keys(businessPlans) {
 			item := businessPlans[key]
-			if utils.HasForbiddenWords(item.Item, ForbiddenWords) || item.Importance < 0 {
+
+			if utils.HasForbiddenWords(strings.ToLower(item.Item), ForbiddenWords) || item.Importance < 0 {
 				keyBusinessDronebot.ConcatKey("Archive").HSet(item.Id, item)
 				keyBusinessDronebot.HDel(item.Id)
 				delete(businessPlans, item.Id)
-			}
-		}
-
-		//remove invalid constraints
-		for _, v := range businessPlans {
-			Constraints := lo.Filter(v.Constraints, func(id string, _ int) bool {
-				_, ok := businessPlans[id]
-				return ok && v.Id != id
-			})
-			if len(Constraints) != len(v.Constraints) {
-				v.Constraints = Constraints
-				keyBusinessDronebot.HSet(v.Id, v)
-			}
-		}
-
-		SolutionList := lo.Values(businessPlans)
-		slices.SortFunc(SolutionList, func(a, b *BusinessPlans) int {
-			if a.Importance > b.Importance {
-				return -1
-			} else if a.Importance < b.Importance {
-				return 1
-			}
-			return 0
-		})
-
-		Communities := businessPlans.AnalyzeLouvainContext()
-		//save solution to file to visualize
-		outputfile, _ := os.Create("BusinessPlans.md")
-		childrenStr := strings.Builder{}
-		childrenStr.WriteString(fmt.Sprint("条目数量为：", len(SolutionList), "\n"))
-		lo.ForEach(Communities, func(Communitie []graph.Node, i int) {
-			childrenStr.WriteString(fmt.Sprint("\n#### Community", i+1, "\n"))
-			for _, item := range Communitie {
-				childrenStr.WriteString("\n" + item.(*BusinessPlans).String())
-			}
-		})
-		_, _ = io.WriteString(outputfile, childrenStr.String())
-		outputfile.Close()
-
-		mutable.Shuffle(Communities)
-		KoreNodes := lo.Filter(lo.Flatten(Communities), func(item graph.Node, _ int) bool {
-			return item.(*BusinessPlans).IsCommunityCore
-		})
-
-		for l := 0; l < len(Communities); l += 2 {
-			Communitie1, Communitie2 := Communities[l], Communities[(l+1)%len(Communities)]
-			Communitie1Str, Communitie2Str, KoreNodesStr := strings.Builder{}, strings.Builder{}, strings.Builder{}
-			for _, item := range Communitie1 {
-				Communitie1Str.WriteString("\n" + item.(*BusinessPlans).String())
-			}
-			for _, item := range Communitie2 {
-				Communitie2Str.WriteString("\n" + item.(*BusinessPlans).String())
-			}
-			for _, item := range KoreNodes {
-				KoreNodesStr.WriteString("\n" + item.(*BusinessPlans).String())
-			}
-
-			MaxThreadsSemaphore <- struct{}{} // Acquire a spot in the semaphore
-			go func(Community1, Community2, KoreNodes string) {
-				defer func() { <-MaxThreadsSemaphore }()
-				//models.Qwq32B, models.Gemma3, models.DeepSeekV3, models.DeepSeekV3TB
-				err := AgentBusinessPlans.WithModels(models.Qwq32B, models.Gemma3).Call(context.Background(), map[string]any{
-					"Community1": Community1,
-					"Community2": Community2,
-					"KoreNodes":  KoreNodes,
-					"task":       taskChooser.Pick().(string),
-				})
-				if err != nil {
-					fmt.Printf("Agent call failed: %v\n", err)
+				if err := milvusCollection.Remove(item); err != nil {
+					fmt.Println("Error removing item from Milvus:", err)
 				}
-			}(Communitie1Str.String(), Communitie2Str.String(), KoreNodesStr.String())
+			}
+			// 非超边不能有超边节点
+			if !item.SuperEdge && len(item.SuperEdgeNodes) > 0 {
+				item.SuperEdgeNodes = []string{}
+				keyBusinessDronebot.HSet(item.Id, item)
+			}
+			// 超边节点仅连接到普通节点
+			if item.SuperEdge && len(item.SuperEdgeNodes) > 0 {
+				SuperEdgeNodesFiltered := lo.Filter(item.SuperEdgeNodes, func(v string, _ int) bool {
+					if node, ok := businessPlans[v]; ok {
+						return !node.SuperEdge
+					}
+					return false
+				})
+				if len(SuperEdgeNodesFiltered) != len(item.SuperEdgeNodes) {
+					item.SuperEdgeNodes = SuperEdgeNodesFiltered
+					keyBusinessDronebot.HSet(item.Id, item)
+				}
+			}
+
 		}
+		//Upsert to milvus
+		var milvusInserts []*BusinessPlans
+		for _, item := range lo.Values(businessPlans) {
+			if item.Item != "" && len(item.Embed()) != 1024 {
+				embed, err := utils.GetEmbedding(item.Item)
+				if err == nil {
+					item.Embed(embed)
+					milvusInserts = append(milvusInserts, item)
+				}
+			}
+		}
+		if len(milvusInserts) > 0 {
+			milvusCollection.Upsert(lo.Uniq(milvusInserts)...)
+		}
+		constraints := lo.Filter(lo.Values(businessPlans), func(v *BusinessPlans, _ int) bool {
+			return v.SuperEdge
+		})
+
+		//save solution to file to visualize
+		if i%10 == 0 {
+			Communities, _, _ := milvusCollection.SearchVectors(lo.Map(constraints, func(v *BusinessPlans, _ int) []float32 { return v.Embed() }), qmilvus.SearchParamsDefault)
+			AllValidCommunitie := lo.Map(Communities, func(community []*BusinessPlans, i int) []*BusinessPlans {
+				return EdgeCommunitiesWithExploration(businessPlans, constraints[i], community, 0)
+			})
+			//with left nodes as a community
+			left, _ := lo.Difference(lo.Values(businessPlans), lo.Flatten(AllValidCommunitie))
+			AllValidCommunitie = append(AllValidCommunitie, left)
+
+			outputfile, _ := os.Create("BusinessPlans.md")
+			childrenStr := strings.Builder{}
+			childrenStr.WriteString(fmt.Sprint("条目数量为：", len(businessPlans), "\n"))
+			itemReapeated := map[string]int{}
+			for i, community := range AllValidCommunitie {
+				childrenStr.WriteString(fmt.Sprint("\n#### Community", i+1, " size:", len(community), "\n"))
+				for _, item := range community {
+					if v, ok := itemReapeated[item.Id]; ok {
+						childrenStr.WriteString("*R" + strconv.Itoa(v) + "* ")
+					}
+					childrenStr.WriteString(item.String())
+					itemReapeated[item.Id]++
+				}
+			}
+			_, _ = io.WriteString(outputfile, childrenStr.String())
+			outputfile.Close()
+		}
+
+		// 选择一个用来显示的社区
+		var SuperEdgeSelected []*BusinessPlans
+		var IterPlan *SuperEdgePlannedForNextLoop
+		llen, _ := keyIterPlannedDrone.LLen()
+		if llen < 10 && llen > 0 {
+			IterPlan, _ = keyIterPlannedDrone.LIndex(rand.Int64N(llen))
+		} else if llen >= 10 {
+			IterPlan, _ = keyIterPlannedDrone.LPop()
+		}
+		if IterPlan != nil {
+			for _, v := range IterPlan.SuperEdgeIds {
+				if p, ok := businessPlans[v]; ok {
+					SuperEdgeSelected = append(SuperEdgeSelected, p)
+				}
+			}
+		}
+		TopicToDiscuss := lo.Ternary(IterPlan != nil, IterPlan.TopicToDiscuss, "本次迭代的主题是: 通过多次调用 FunctionCall:SolutionItemRefine 来保存对解决方案的改进。")
+		// 自主规划没有足够的覆盖度。需要随机选择来保证覆盖度
+		if len(SuperEdgeSelected) == 0 || rand.IntN(100) < 50 {
+			edges := append([]*BusinessPlans{}, constraints...)
+			mutable.Shuffle(edges)
+			SuperEdgeSelected = edges[:min(3, len(edges))]
+		}
+
+		Communities, _, _ := milvusCollection.SearchVectors(lo.Map(SuperEdgeSelected, func(v *BusinessPlans, _ int) []float32 { return v.Embed() }), qmilvus.SearchParamsDefault.WithTopK(50))
+		CommunityNodes := lo.Map(Communities, func(community []*BusinessPlans, i int) []*BusinessPlans {
+			return EdgeCommunitiesWithExploration(businessPlans, SuperEdgeSelected[i], community, 10)
+		})
+
+		MaxThreadsSemaphore <- struct{}{} // Acquire a spot in the semaphore
+		go func(Communities, SuperEdges, TopicToDiscuss string) {
+			defer func() { <-MaxThreadsSemaphore }()
+			//models.Qwq32B, models.Gemma3, models.DeepSeekV3, models.DeepSeekV3TB,models.Qwen32B
+			err := AgentBusinessPlans.WithModels(models.Gemma3, models.Qwen32B).Call(context.Background(), map[string]any{
+				"Communities":    Communities,
+				"SuperEdges":     SuperEdges,
+				"TopicToDiscuss": TopicToDiscuss,
+			})
+			if err != nil {
+				fmt.Printf("Agent call failed: %v\n", err)
+			}
+		}(NodeListToString(lo.Flatten(CommunityNodes), true), NodeListToString(constraints, true), TopicToDiscuss)
 	}
 	// Wait for all the goroutines to finish)
 	for i := 0; i < MaxThreads; i++ {

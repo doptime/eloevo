@@ -130,13 +130,17 @@ var (
 	DeepSeekV3         = NewModel("https://api.deepseek.com/", os.Getenv("DSAPIKEY"), "deepseek-chat").WithTopP(0.6).WithToolInPrompt()
 	//https://tbnx.plus7.plus/token
 	DeepSeekV3TB = NewModel("https://tbnx.plus7.plus/v1", os.Getenv("DSTB"), "deepseek-chat").WithTopP(0.6)
+	GeminiTB     = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gemini-2.0-flash-exp").WithTopP(0.8)
+	GPT41Mini    = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gpt-4.1-mini").WithTopP(0.8)
 
 	DolphinR1Mistral24B = NewModel("http://gpu.lan:4733/v1", ApiKey, "Dolphin3.0-R1-Mistral-24B-AWQ").WithToolInPrompt()
 	FuseO1              = NewModel("http://gpu.lan:4732/v1", ApiKey, "FuseO1").WithTopP(0.92).WithTemperature(0.6).WithTopK(40)
 	Qwq32B              = NewModel("http://gpu.lan:1232/v1", ApiKey, "QwQ-32B").WithTopP(0.92).WithTemperature(0.6) //.WithTopK(40)
-	Gemma3              = NewModel("http://gpu.lan:5527/v1", ApiKey, "gemma3").WithTopP(0.92).WithTemperature(0.9).WithToolInPrompt()
-	Reka3               = NewModel("http://gpu.lan:43813/v1", ApiKey, "reka3").WithTopP(0.92).WithTemperature(0.9).WithToolInPrompt()
-	Phi4                = NewModel("http://gpu.lan:7214/v1", ApiKey, "phi4").WithToolInPrompt()
+	Qwen32B             = NewModel("http://gpu.lan:1232/v1", ApiKey, "Qwen25B32")
+
+	Gemma3 = NewModel("http://gpu.lan:5527/v1", ApiKey, "gemma3").WithTopP(0.92).WithTemperature(0.9).WithToolInPrompt()
+	Reka3  = NewModel("http://gpu.lan:43813/v1", ApiKey, "reka3").WithTopP(0.92).WithTemperature(0.9).WithToolInPrompt()
+	Phi4   = NewModel("http://gpu.lan:7214/v1", ApiKey, "phi4").WithToolInPrompt()
 
 	//ModelDefault        = ModelQwen32BCoderLocal
 	ModelDefault = ModelQwen72BLocal

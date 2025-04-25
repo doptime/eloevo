@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"text/template"
 	"time"
@@ -14,6 +15,8 @@ import (
 	"github.com/doptime/eloevo/tool"
 	"github.com/doptime/eloevo/tools"
 	"github.com/doptime/eloevo/utils"
+	"github.com/doptime/redisdb"
+	"github.com/samber/lo"
 	openai "github.com/sashabaranov/go-openai"
 	"golang.design/x/clipboard"
 )
@@ -169,6 +172,13 @@ For each function call, return a json object with function name and arguments wi
 	}
 }
 
+type QAPaire struct {
+	Question string `json:"question"`
+	Answer   string `json:"answer"`
+}
+
+var keyQA = redisdb.NewHashKey[string, *QAPaire](redisdb.WithRds("Catalogs"))
+
 // ProposeGoals generates goals based on the provided file contents.
 // It renders the prompt, sends a request to the OpenAI model, and processes the response.
 func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error) {
@@ -245,7 +255,13 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 	if err == nil {
 		model.ResponseTime(time.Since(timestart))
 	}
-
+	timeNowString := time.Now().Format("2006-01-02 15:04:05") + model.Name
+	keyQA.HSet(timeNowString, &QAPaire{
+		Question: strings.Join(lo.Map(req.Messages, func(m openai.ChatCompletionMessage, _ int) string {
+			return m.Content
+		}), "\n\n"),
+		Answer: resp.Choices[0].Message.Content,
+	})
 	fmt.Println("resp:", resp)
 	if err != nil {
 		fmt.Println("Error creating chat completion:", err)

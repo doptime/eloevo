@@ -1,0 +1,390 @@
+package projects
+
+// import (
+// 	"context"
+// 	"fmt"
+// 	"io"
+// 	"math/rand/v2"
+// 	"os"
+// 	"strconv"
+// 	"strings"
+// 	"sync"
+// 	"text/template"
+
+// 	// "github.com/yourbasic/graph"
+
+// 	"github.com/doptime/qmilvus"
+
+// 	"github.com/doptime/eloevo/agent"
+// 	"github.com/doptime/eloevo/models"
+// 	"github.com/doptime/eloevo/tool"
+// 	"github.com/doptime/eloevo/utils"
+// 	"github.com/doptime/redisdb"
+// 	"github.com/mroth/weightedrand"
+// 	"github.com/samber/lo"
+// 	"github.com/samber/lo/mutable"
+// )
+
+// type BusinessPlans struct {
+// 	Id   string `description:"Required when update. Id, string, unique." milvus:"PK,in,out"`
+// 	Item string `description:"Required when create. item of the solution. Bullet Name of Module, Constraints, Guidelines, Architecturals, Nexus or Specifications."`
+
+// 	SuperEdge      bool     `description:"bool,true if the item is super edge of the solution graph. super edge 描述节点之间的协议,约定,约束,标准,规范,想法,技术路线,时间限制,资源限制,法律客户需求,反馈限制、层次化约束等 "`
+// 	SuperEdgeNodes []string `description:"array of Ids. Listing the super edge nodes. \nRequired when create; optional when update."`
+
+// 	Importance int64 `description:"int ∈[-1,10], Importance. \nRequired when create; optional when update. making Importance < 0  to Remove the item."`
+// 	Priority   int64 `description:"int ∈[0,10] . \n Required for module node. use in Gatt chart to determin the priority of the item. the lower the higher the priority."`
+
+// 	EmbedingVector []float32 `description:"-" milvus:"dim=1024,index" `
+// }
+
+// var milvusCollection = qmilvus.NewCollection[*BusinessPlans]("milvus.lan:19530").CreateCollection()
+
+// func (u *BusinessPlans) GetId() string {
+// 	return u.Id
+// }
+
+// func (u *BusinessPlans) Embed(embed ...[]float32) []float32 {
+// 	if len(embed) > 0 {
+// 		u.EmbedingVector = embed[0]
+// 		keyBusinessDronebot.HSet(u.Id, u)
+// 	}
+// 	return u.EmbedingVector
+// }
+
+// var Id2Index = func() func(id string) int {
+// 	var seqmap = map[string]int{}
+// 	var idSeqMtx sync.RWMutex
+// 	return func(id string) int {
+// 		idSeqMtx.RLock()
+// 		defer idSeqMtx.RUnlock()
+// 		_, ok := seqmap[id]
+// 		if !ok {
+// 			seqmap[id] = len(seqmap)
+// 		}
+// 		return seqmap[id]
+// 	}
+// }()
+
+// func (u *BusinessPlans) ID() int64 {
+// 	return int64(Id2Index(u.Id))
+// }
+// func (u *BusinessPlans) Seq() int {
+// 	return Id2Index(u.Id)
+// }
+// func (u *BusinessPlans) String(layer ...int) string {
+// 	numLayer := append(layer, 0)[0]
+// 	indence := strings.Repeat("\t", numLayer)
+// 	communityCore := lo.Ternary(u.SuperEdge, " SuperEdge:true", "")
+// 	return fmt.Sprint(indence, "Id:", u.Id, " Importance:", u.Importance, communityCore, " Priority:", u.Priority, "\n", u.Item, "\n\n")
+// }
+
+// // var keyBusinessDronebotbak = redisdb.NewHashKey[string, *BusinessPlans](redisdb.WithRds("Catalogs"), redisdb.WithKey("BusinessDronebot250412"))
+// var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.WithRds("Catalogs"))
+// var taskChooser, _ = weightedrand.NewChooser(
+// 	weightedrand.Choice{Item: "remover", Weight: 10},
+// 	weightedrand.Choice{Item: "improver", Weight: 25},
+// 	weightedrand.Choice{Item: "modularization", Weight: 35},
+// )
+
+// var ForbiddenWords = []string{"区块链", "量子", "氢燃料", "纠缠", "Quantum", "Blockchain", "Hydrogen", "Entanglement", "CO2", "Carbon Sequestration"}
+
+// type SuperEdgePlannedForNextLoop struct {
+// 	TopicToDiscuss string   `description:"Topic to discuss, string"`
+// 	SuperEdgeIds   []string `description:"Super edge Ids, []string"`
+// }
+
+// var keyIterPlannedDrone = redisdb.NewListKey[*SuperEdgePlannedForNextLoop](redisdb.WithRds("Catalogs"))
+
+// var AgentBusinessPlans = agent.NewAgent(template.Must(template.New("AgentBusinessPlansDrone").Parse(`
+// 你是 “创业生态架构师”、“技术趋势预言家”、“商业模式创新专家”、“连续创业家”。
+// 通过 “寻找未被满足的市场需求”、“发现技术创新带来的机会”、“预测未来趋势”和其它的动态认知框架，深入分析商业领域。
+// 最终目标是获得在该商业领域创业需要的高价值、前瞻性的，既有战略深度又具备创新活力的创业项目矩阵。
+// 预期这些创业项目在接下来的世界中，能够产生最大化的联合商业效用，以产生强大的社会效用。
+
+// ## 涉及的目标行业包括：
+// - AI-Driven Bobotic Development
+// - AI-Driven Business Model Innovation
+// - Robotic As a Service
+// - Robotic Ecosystem
+// - Autonomous Vehicle Solution
+// - Drone Technology & Solution
+// - Suppy Chain & Drone & Logistics Technology
+// - Sustainable Packaging Technology
+// - Sustainable Transportation Infrastructure
+
+// ## 小部分愿景想象:
+// - 一个可以借助外接电源或超高速放电电池，垂直起飞的固定翼无人机
+// - 它是一个非常便利的载具平台。可以提供各种机器人的投送和收回服务
+// - 由于极高的滑翔比。它的物流成本只有汽车的1/10和船运的1/2. 可以在全球内完成有中继的长途运输
+// - 它可以借助地形和动态风向变化，实现能量的节约。
+// - 联合多机器人和多飞机。送外卖，入户医疗检查。在户外部署就餐，住宿，岗哨体验，它能做很多。
+// - 在未来的世界中，这些商业应用是最底层的，最重要的基础设施。
+
+// ## 已明确的全局技术路线:
+// - 采用上市的高放电的电池. 不考虑无线充电。
+// - 超低成本模块化无人机。机身(包裹)可拆卸，可以动态装配到固定翼和多旋翼无人机上
+// - 分布式的高塔式无人机中继站。提供机身维护和电池充电，包裹路由服务。
+// - 低速、低空、超高滑翔比的飞机。
+// - 不采用操作系统。不采用软件。只采用硬件运行大型神经网络模型，只有Wifi,GPS，摄像头和姿控等最少的输入信号。
+// - 不考虑载人机。不考虑大型机，仅考虑PayLoad < 100kg的机。
+
+// ## 本系统迭代解决方案的原理：
+// - 解决方案被建模为顶点和边的图。
+// - 现有的方案由两类节点构成:
+// 	1)	超边节点
+// 		超边节点是指解决方案的必要约束条件，包括反馈、技术路径、规范、意图，资源限制、层次化聚类等用来影响模块节点生成和调整的节点。超边节点被构建用以驱动系统的变化。
+// 		我们把解决方案看做图。超边是连接多个顶点的边；作为传统的图结构处理技巧。把超边当做节点处理。
+// 		超边应该被显示设置SuperEdge=true。
+// 	2)	模块节点
+// 		模块节点是直接给出解决方案的节点
+// 		模块只能通过超边和其它的模块节点完成耦合。也就是通过实现超边节点约束来自身定义
+// - 解决方案被拆分成为多个超边相关的Community。每次迭代处理若干(2-5)Community。
+
+// ## 这是当前迭代的SuperEdgeCommunities:
+// {{.Communities}}
+
+// ## 这是现有的所有SuperEdges：
+// {{.SuperEdges}}
+
+//  ## ToDo:
+// - 你需要深入讨论本次迭代中的SuperEdgeCommunities，并最终一次或多次调用 FunctionCall:SolutionItemRefine 来保存讨论的结果。
+// - 调优解决方案形式包括: 1)创建新节点; 2)修改条目:指定Id,并修改字段(可忽略不修改字段若，若修改的字段需确保完整性); 3)通过指定Id,修改Importance = -1 来删除无效节点:
+
+// {{if eq .task "remover"}}
+// - 本次迭代核心目标: 对回溯或检测到的以下错误进行显式删除( Importance = -1)；
+// 	- 删除:条目是否是基于错误的假设,它的前提是否不成立；
+// 	- 删除:条目是否不具有可行性；
+// 	- 删除:描述不清，边界不清的条目。模块含义不明，无法面向确切的需求或有效的改进。
+// 	- 删除:从第一性原理出发，可以被绕过或者被替代；
+// 	- 删除:从第一性原理出发，没有潜力成为高质量方案；如空中无线充电效率太低，费时太长
+// 	- 删除:愚蠢的需求；比如开发加密算法、区块链等边际效用趋零的，和项目实质需求关联弱
+// 	- 删除:多年后(比如5年后)才有可能实现的需求，比如量子计算，量子纠缠这种。
+// 	- 删除:格式，内容异常；
+// 	- 删除:有其它理由应该删除条目
+// {{else if eq .task "improver"}}
+// 本次迭代重点围绕：验证或系统地检查中间结果,并进行改进；
+//  	- 改进:从第一性原理出发，将当前条目用简单的实现方式替代
+// 	- 改进:修正Importance值 ∈[-1,10];Priority ∈[0,10]值；
+// 	- 改进:如果存在良好第三方的方案，要直给出第三方案，不要尝试自己实现。像是Climate Modeling, 3D 打印，直接给出条目：使用***的** 服务完成**。
+// 	- 改进:如果技术路线已经被明确化，那么放弃过时的技术路线。
+// 	- 改进:设定子目标，即将复杂问题分解为可管理的步骤；或是补充细分条目指向复杂条目；
+// {{else if eq .task "modularization"}}
+// 本次迭代重点围绕：模块化建构 (Modularization Construction)
+
+// 核心目标：优化当前SuperEdgeCommunities的结构，提升其内部的“高内聚”特性，并减少其与其它社区之间的“低耦合”依赖，使得整个系统像精心设计的模块一样清晰、可维护、易扩展。
+
+// 然后通过以下方面审视现有方案的合理性：
+// 1.  **强化社区内聚性 (Enhance Cohesion):**
+//     * **审视核心功能:** 超边的约束是否清晰？条目实现是否合理而清晰？
+//     * **拆分超边:** 是否有必要拆分出新超边？
+//     * **清理无关节点:** 或节点无归属/低价值则标记删除 (Importance = -1)。
+//     * **处理冗余:** 查找功能重复或高度相似的节点。保留最优的一个（可基于"Importance", "Priority", 或内容质量判断，若无明确标准则按现有规则如ID排序），删除其余，并更新相关依赖。
+//     * **加强内部联系、增加细节、扩展功能:** 必要时补充或修正描述以加强内部依赖关系。识别不必要的外部依赖关系，尽可能以紧耦合方式实现，降低社区间耦合性 (Reduce Coupling)。
+
+// 2.  **优化社区边界与结构 (Optimize Boundaries & Structure):**
+//     * **跨社区冲突最小化:** 检查条目跨社区节点之间是否存在冲突和缺乏必要的可行性细节？必要时补充或修正社区条目的实现方式。
+
+// 3. **模块化实现清单:**
+// 	评估现有超边的SuperEdgeNodes是已经采用MECE原则选择了相应的普通节点作为完备的实现。如果不合理，请更新SuperEdgeNodes的Id列表。请注意SuperEdgeNodes不能包含超边节点，因为超边节点实际上是图的边而不是图的节点，超边包含超边会破坏图结构。
+// 	通过上述调整，旨在使SuperEdgeCommunities成为一个功能内聚、接口清晰的模块，从而让整个解决方案的图结构更加模块化和健壮。
+
+// 4.  **识别机会，提出新超边:** 从第一性原理的视角。讨论未被满足的需求、技术空白点、或可以组合现有元素创造新价值的地方。如果可能，提出全新的、符合全局愿景和技术路线的超边节点。并添加初步的实现条目。*目标是注入新的活力和想法，扩展解决方案的可能性。
+// {{end}}
+
+// 最后请为下一轮的迭代进行规划。讨论下一轮需要重点完善的关注方向，围绕这个方向选择现有的超边集合，并且调用 FunctionCall:SuperEdgePlannedForNextLoop 进行保存。
+
+// `))).WithToolCallLocked().WithTools(tool.NewTool("SolutionItemRefine", "Propose/edit/delete solution item to improve solution.", func(newItem *BusinessPlans) {
+// 	newItem.Item = strings.TrimSpace(newItem.Item)
+// 	var oItem *BusinessPlans = nil
+// 	if newItem.Id != "" {
+// 		oItem, _ = keyBusinessDronebot.HGet(newItem.Id)
+// 	}
+// 	if newItem.Id = utils.ID(newItem.Item, 4); oItem != nil {
+// 		newItem.Id = oItem.Id
+// 		oItem.Importance = newItem.Importance
+// 		oItem.Priority = newItem.Priority
+// 		if newItem.Item != "" && oItem.Item != newItem.Item {
+// 			oItem.Item = newItem.Item
+// 			if embed, err := utils.GetEmbedding(oItem.Item); err == nil {
+// 				oItem.Embed(embed)
+// 				milvusCollection.Upsert(oItem)
+// 			}
+// 		}
+// 		oItem.SuperEdge = newItem.SuperEdge
+// 		oItem.SuperEdgeNodes = lo.Ternary(len(newItem.SuperEdgeNodes) > 0, newItem.SuperEdgeNodes, oItem.SuperEdgeNodes)
+
+// 	}
+// 	if isNewModel := oItem == nil; isNewModel {
+// 		if len(newItem.Item) > 0 && !utils.HasForbiddenWords(newItem.Item, ForbiddenWords) {
+// 			keyBusinessDronebot.HSet(newItem.Id, newItem)
+// 		}
+// 		return
+// 	}
+// 	keyBusinessDronebot.HSet(oItem.Id, oItem)
+// })).WithTools(tool.NewTool("SuperEdgePlannedForNextLoop", "Propose super edge items in the next iter loop", func(edgeIds *SuperEdgePlannedForNextLoop) {
+// 	if len(edgeIds.SuperEdgeIds) > 0 {
+// 		keyIterPlannedDrone.RPush(edgeIds)
+// 	}
+// }))
+// var businessPlans map[string]*BusinessPlans
+
+// func EdgeCommunitiesWithExploration(allNodes map[string]*BusinessPlans, centerEdge *BusinessPlans, c []*BusinessPlans, RandomExplorationNum int) (ret []*BusinessPlans) {
+// 	centerEdge = allNodes[centerEdge.Id]
+// 	//from milvus to redis data
+// 	c = lo.Map(c, func(v *BusinessPlans, _ int) *BusinessPlans {
+// 		return allNodes[v.Id]
+// 	})
+// 	//shouble be valid
+// 	c = lo.Filter(c, func(v *BusinessPlans, _ int) bool {
+// 		return v != nil && v.Importance > 0 && !v.SuperEdge
+// 	})
+
+// 	//上一轮的EdgeNodes
+// 	SuperEdgeNodes := lo.Filter(centerEdge.SuperEdgeNodes, func(v string, _ int) bool { return allNodes[v] != nil })
+// 	ret = append([]*BusinessPlans{centerEdge}, lo.Map(SuperEdgeNodes, func(id string, i int) *BusinessPlans { return allNodes[id] })...)
+// 	left1, _ := lo.Difference(c, ret)
+// 	return append(ret, left1[:min(RandomExplorationNum, len(left1))]...)
+
+// }
+// func NodeListToString(nodes []*BusinessPlans, uniq bool) string {
+// 	//nodes = lo.Uniq(nodes)
+// 	var sb strings.Builder
+// 	for _, node := range nodes {
+// 		sb.WriteString("\n" + node.String())
+// 	}
+// 	return sb.String()
+// }
+
+// func BusinessPlansDronebotExploration() {
+// 	// Create a new weighted chooser
+// 	const MaxThreads = 12
+// 	MaxThreadsSemaphore := make(chan struct{}, MaxThreads)
+// 	for i, TotalTasks := 0, 2000; i < TotalTasks; i++ {
+// 		businessPlans, _ = keyBusinessDronebot.HGetAll()
+// 		//commit remove where remove >= 5
+// 		for _, key := range lo.Keys(businessPlans) {
+// 			item := businessPlans[key]
+
+// 			if utils.HasForbiddenWords(item.Item, ForbiddenWords) || item.Importance < 0 {
+// 				keyBusinessDronebot.ConcatKey("Archive").HSet(item.Id, item)
+// 				keyBusinessDronebot.HDel(item.Id)
+// 				delete(businessPlans, item.Id)
+// 				if err := milvusCollection.Remove(item); err != nil {
+// 					fmt.Println("Error removing item from Milvus:", err)
+// 				}
+// 			}
+// 			// 非超边不能有超边节点
+// 			if !item.SuperEdge && len(item.SuperEdgeNodes) > 0 {
+// 				item.SuperEdgeNodes = []string{}
+// 				keyBusinessDronebot.HSet(item.Id, item)
+// 			}
+// 			// 超边节点仅连接到普通节点
+// 			if item.SuperEdge && len(item.SuperEdgeNodes) > 0 {
+// 				SuperEdgeNodesFiltered := lo.Filter(item.SuperEdgeNodes, func(v string, _ int) bool {
+// 					if node, ok := businessPlans[v]; ok {
+// 						return !node.SuperEdge
+// 					}
+// 					return false
+// 				})
+// 				if len(SuperEdgeNodesFiltered) != len(item.SuperEdgeNodes) {
+// 					item.SuperEdgeNodes = SuperEdgeNodesFiltered
+// 					keyBusinessDronebot.HSet(item.Id, item)
+// 				}
+// 			}
+
+// 		}
+// 		//Upsert to milvus
+// 		var milvusInserts []*BusinessPlans
+// 		for _, item := range lo.Values(businessPlans) {
+// 			if item.Item != "" && len(item.Embed()) != 1024 {
+// 				embed, err := utils.GetEmbedding(item.Item)
+// 				if err == nil {
+// 					item.Embed(embed)
+// 					milvusInserts = append(milvusInserts, item)
+// 				}
+// 			}
+// 		}
+// 		if len(milvusInserts) > 0 {
+// 			milvusCollection.Upsert(lo.Uniq(milvusInserts)...)
+// 		}
+// 		constraints := lo.Filter(lo.Values(businessPlans), func(v *BusinessPlans, _ int) bool {
+// 			return v.SuperEdge
+// 		})
+
+// 		//save solution to file to visualize
+// 		if i%10 == 0 {
+// 			Communities, _, _ := milvusCollection.SearchVectors(lo.Map(constraints, func(v *BusinessPlans, _ int) []float32 { return v.Embed() }), qmilvus.SearchParamsDefault)
+// 			AllValidCommunitie := lo.Map(Communities, func(community []*BusinessPlans, i int) []*BusinessPlans {
+// 				return EdgeCommunitiesWithExploration(businessPlans, constraints[i], community, 0)
+// 			})
+// 			//with left nodes as a community
+// 			left, _ := lo.Difference(lo.Values(businessPlans), lo.Flatten(AllValidCommunitie))
+// 			AllValidCommunitie = append(AllValidCommunitie, left)
+
+// 			outputfile, _ := os.Create("BusinessPlans.md")
+// 			childrenStr := strings.Builder{}
+// 			childrenStr.WriteString(fmt.Sprint("条目数量为：", len(businessPlans), "\n"))
+// 			itemReapeated := map[string]int{}
+// 			for i, community := range AllValidCommunitie {
+// 				childrenStr.WriteString(fmt.Sprint("\n#### Community", i+1, " size:", len(community), "\n"))
+// 				for _, item := range community {
+// 					if v, ok := itemReapeated[item.Id]; ok {
+// 						childrenStr.WriteString("*R" + strconv.Itoa(v) + "* ")
+// 					}
+// 					childrenStr.WriteString(item.String())
+// 					itemReapeated[item.Id]++
+// 				}
+// 			}
+// 			_, _ = io.WriteString(outputfile, childrenStr.String())
+// 			outputfile.Close()
+// 		}
+
+// 		// 选择一个用来显示的社区
+// 		var SuperEdgeSelected []*BusinessPlans
+// 		var IterPlan *SuperEdgePlannedForNextLoop
+// 		llen, _ := keyIterPlannedDrone.LLen()
+// 		if llen < 10 && llen > 0 {
+// 			IterPlan, _ = keyIterPlannedDrone.LIndex(rand.Int64N(llen))
+// 		} else if llen >= 10 {
+// 			IterPlan, _ = keyIterPlannedDrone.LPop()
+// 		}
+// 		if IterPlan != nil {
+// 			for _, v := range IterPlan.SuperEdgeIds {
+// 				if p, ok := businessPlans[v]; ok {
+// 					SuperEdgeSelected = append(SuperEdgeSelected, p)
+// 				}
+// 			}
+// 		}
+// 		// 自主规划没有足够的覆盖度。需要随机选择来保证覆盖度
+// 		if len(SuperEdgeSelected) == 0 || rand.IntN(100) < 50 {
+// 			edges := append([]*BusinessPlans{}, constraints...)
+// 			mutable.Shuffle(edges)
+// 			SuperEdgeSelected = edges[:min(3, len(edges))]
+// 		}
+
+// 		Communities, _, _ := milvusCollection.SearchVectors(lo.Map(SuperEdgeSelected, func(v *BusinessPlans, _ int) []float32 { return v.Embed() }), qmilvus.SearchParamsDefault.WithTopK(50))
+// 		CommunityNodes := lo.Map(Communities, func(community []*BusinessPlans, i int) []*BusinessPlans {
+// 			return EdgeCommunitiesWithExploration(businessPlans, SuperEdgeSelected[i], community, 10)
+// 		})
+
+// 		MaxThreadsSemaphore <- struct{}{} // Acquire a spot in the semaphore
+// 		go func(Communities, SuperEdges string) {
+// 			defer func() { <-MaxThreadsSemaphore }()
+// 			//models.Qwq32B, models.Gemma3, models.DeepSeekV3, models.DeepSeekV3TB
+// 			err := AgentBusinessPlans.WithModels(models.Gemma3, models.DeepSeekV3TB).Call(context.Background(), map[string]any{
+// 				"Communities": Communities,
+// 				"SuperEdges":  SuperEdges,
+// 				"task":        taskChooser.Pick().(string),
+// 			})
+// 			if err != nil {
+// 				fmt.Printf("Agent call failed: %v\n", err)
+// 			}
+// 		}(NodeListToString(lo.Flatten(CommunityNodes), true), NodeListToString(constraints, true))
+// 	}
+// 	// Wait for all the goroutines to finish)
+// 	for i := 0; i < MaxThreads; i++ {
+// 		MaxThreadsSemaphore <- struct{}{}
+// 	}
+
+// }

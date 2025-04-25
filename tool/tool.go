@@ -119,7 +119,7 @@ func NewTool[v any](name string, description string, fs ...func(param v)) *Tool[
 				"type":        mapKindToDataType(field.Type.Kind()),
 				"description": field.Tag.Get("description"),
 			}
-			if def["description"] == "-" {
+			if def["description"] == "-" || def["description"] == "" {
 				continue
 			}
 			params[field.Name] = def
