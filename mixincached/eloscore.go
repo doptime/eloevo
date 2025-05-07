@@ -19,7 +19,7 @@ func WithElo(redisDBName string, key string, DefaultEloScore ...int64) (ret *Elo
 		return v
 	}
 	ret = &EloScore{Key: key + ":eloscore", cache: map[string]int64{}, DefaultElo: append(DefaultEloScore, 1000)[0]}
-	ret.RedisKey = redisdb.NewHashKey[string, int64](redisdb.Opt.Rds(redisDBName), redisdb.Opt.Key(ret.Key))
+	ret.RedisKey = redisdb.NewHashKey[string, int64](redisdb.Opt.Rds(redisDBName).Key(ret.Key))
 	ret.cache, _ = ret.RedisKey.HGetAll()
 	EloScoreMap.Set(key, ret)
 	return ret

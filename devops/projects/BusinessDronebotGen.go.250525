@@ -57,7 +57,7 @@ package projects
 // 	return fmt.Sprint(indence, "Id:", u.Id, " Importance:", u.Importance, communityCore, " Priority:", u.Priority, "\n", u.Item, "\n\n")
 // }
 
-// // var keyBusinessDronebotbak = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"), redisdb.Opt.Key("BusinessDronebot250412"))
+// // var keyBusinessDronebotbak = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs").Key("BusinessDronebot250412"))
 // var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"))
 // var ForbiddenWords = []string{"区块链", "量子", "氢燃料", "纠缠", "quantum", "blockchain", "hydrogen", "entanglement", "co2", "carbon sequestration"}
 

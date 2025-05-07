@@ -51,7 +51,7 @@ func (u *BusinessPlansPWA) String(layer ...int) string {
 	return fmt.Sprint(indence, "Id:", u.Id, " Votes:", u.Votes, " Item:", u.Item, childrenStr.String())
 }
 
-var keyBusinessPWA = redisdb.NewHashKey[string, *BusinessPlansPWA](redisdb.Opt.Rds("Catalogs"), redisdb.Opt.Key("BusinessPWA"))
+var keyBusinessPWA = redisdb.NewHashKey[string, *BusinessPlansPWA](redisdb.Opt.Rds("Catalogs").Key("BusinessPWA"))
 var BusinessListPWA = []*BusinessPlansPWA{}
 var AgentBusinessPlansPWAEd = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
 你是集 “创业生态架构师”、“技术趋势预言家”、“商业模式创新专家” 三位一体的连续创业家。
@@ -93,7 +93,7 @@ ToDo:
 	- 在讨论的基础上，投票以修改解决方案选项的权重（排序），请优先考虑删除劣质条目以优化方案，形成ProConsToItems。
 	- 按照讨论。如果存在改进解决方案的可能，请提出新的Items. 请直接补充描述0条或者多条Items，形成NewProposedItems。
 最后调用FunctionCall:SolutionRefine 保存排序结果。
-`))).WithToolCallLocked().WithTools(tool.NewTool("SolutionRefine", "Vote on items to refine solution; Propose new solution item to parent Item if needed.", func(model *prototype.SolutionRefine) {
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("SolutionRefine", "Vote on items to refine solution; Propose new solution item to parent Item if needed.", func(model *prototype.SolutionRefine) {
 	all, _ := keyBusinessPWA.HGetAll()
 	for k, v := range model.ProConsToItems {
 		if item, ok := all[k]; ok && v >= -5 && v <= 5 {

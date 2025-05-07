@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand/v2"
+	"slices"
 	"time"
 
 	"github.com/mroth/weightedrand"
@@ -37,15 +38,23 @@ type ModelList struct {
 var EloModels = ModelList{
 	Name: "EloModels",
 	Models: []*Model{
-		//NewModel(EndPoint8007, ApiKey, NamePhi4),
-		//NewModel(EndPoint8008, ApiKey, NamePhi4),
-		DeepSeekR132B,
-		//NewModel(EndPoint8009, ApiKey, NameQwQ32BLocal),
-		//NewModel(EndPoint8010, ApiKey, NameQwQ32BLocal),
-		//NewModel(EndPoint8008, ApiKey, "/home/deaf/UwU-7B-Instruct-Q8_0.gguf"),
-		//NewModel(EndPoint8009, ApiKey, "/home/deaf/UwU-7B-Instruct-Q8_0.gguf"),
+		Qwen3B14,
+		Qwen30BA3,
 	},
 }
+
+func (list *ModelList) SequentialPick(firstToStart ...*Model) (ret *Model) {
+	if len(list.Models) == 0 {
+		panic("no models defined for list")
+	}
+	if list.SelectCursor == 0 && len(firstToStart) > 0 {
+		list.SelectCursor = slices.Index(list.Models, firstToStart[0]) + len(list.Models)
+	}
+	ret = list.Models[list.SelectCursor%len(list.Models)]
+	list.SelectCursor++
+	return ret
+}
+
 var lastPrintAverageResponseTime time.Time = time.Now()
 
 func PrintAverageResponseTime() {

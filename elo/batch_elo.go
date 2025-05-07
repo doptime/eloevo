@@ -59,6 +59,8 @@ func BatchUpdateWinnings(winners []Elo, players []Elo, matchId string) {
 	}
 }
 
+const DefaultEloScore = 1000
+
 // BatchUpdateRanking 更新 Elo 评分，playersRanked 按排名顺序排列，前面的玩家胜出
 func BatchUpdateRanking(playersRanked ...Elo) {
 	// 获取玩家数量
@@ -68,6 +70,11 @@ func BatchUpdateRanking(playersRanked ...Elo) {
 	if numPlayers < 2 {
 		return
 	}
+	lo.ForEach(playersRanked, func(player Elo, _ int) {
+		if player.ScoreAccessor() == 0 {
+			player.ScoreAccessor(DefaultEloScore)
+		}
+	})
 
 	// 计算每个玩家的预期得分和实际得分
 	expectedScores := make(map[string]float64, numPlayers)

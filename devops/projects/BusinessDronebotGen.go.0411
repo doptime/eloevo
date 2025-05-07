@@ -135,7 +135,7 @@
 // 	return
 // }
 
-// var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"), redisdb.Opt.Key("BusinessDronebot250402Constraints"))
+// var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs").Key("BusinessDronebot250402Constraints"))
 // var taskChooser, _ = weightedrand.NewChooser(
 // 	weightedrand.Choice{Item: "error_fixing", Weight: 10},
 // 	weightedrand.Choice{Item: "validate_middle_result", Weight: 30},

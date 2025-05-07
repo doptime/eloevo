@@ -47,3 +47,15 @@ func FileToResponse(filename string) (resp openai.ChatCompletionResponse, err er
 	}
 	return resp, json.Unmarshal(data, &resp)
 }
+
+func StringToResponse(content string) (resp openai.ChatCompletionResponse, err error) {
+	var msg openai.ChatCompletionMessage
+	msg.Role = "assistant"
+	msg.Content = content
+	resp.Choices = []openai.ChatCompletionChoice{
+		{
+			Message: msg,
+		},
+	}
+	return resp, nil
+}

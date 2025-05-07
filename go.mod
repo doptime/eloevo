@@ -7,8 +7,9 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/doptime/config v0.0.0-20250322030901-0115e7134058
 	github.com/doptime/qmilvus v1.6.13-0.20250422080042-d2329ffbc633
-	github.com/doptime/redisdb v0.0.0-20250425062105-2c0836354d24
+	github.com/doptime/redisdb v0.0.0-20250502140507-51d1997ca8b5
 	github.com/faiface/beep v1.1.0
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mroth/weightedrand v1.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/samber/lo v1.49.1
@@ -43,7 +44,7 @@ require (
 	github.com/milvus-io/milvus-proto/go-api/v2 v2.5.10 // indirect
 	github.com/milvus-io/milvus-sdk-go/v2 v2.4.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/redis/go-redis/v9 v9.7.3 // indirect
+	github.com/redis/go-redis/v9 v9.8.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect

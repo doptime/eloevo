@@ -6,6 +6,8 @@ import (
 	"io"
 	"math/rand/v2"
 	"os"
+	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"text/template"
@@ -16,7 +18,6 @@ import (
 
 	"github.com/doptime/eloevo/agent"
 	"github.com/doptime/eloevo/models"
-	"github.com/doptime/eloevo/tool"
 	"github.com/doptime/eloevo/utils"
 	"github.com/doptime/redisdb"
 	"github.com/samber/lo"
@@ -30,13 +31,14 @@ type BusinessPlans struct {
 	SuperEdge      bool     `description:"bool,true if the item is super edge of the solution graph. super edge 描述节点之间的协议,约定,约束,标准,规范,想法,技术路线,时间限制,资源限制,法律客户需求,反馈限制、层次化约束等 "`
 	SuperEdgeNodes []string `description:"array of Ids. If this node is super edge. here lists the child nodes that belongs to this SuperEdge. SuperEdgeNodes不能包含超边节点，因为超边节点实际上是图的边而不是图的节点，超边包含超边会破坏图结构. \nRequired by SuperEdge item. update each time super edge revised. "`
 
-	Importance int64 `description:"int , -1 <= value <= 10, Importance. \nRequired when create; optional when update. making Importance < 0  to Remove the item."`
-	Priority   int64 `description:"int ,0 <= value <= 10 . \n Required for module node. use in Gatt chart to determin the priority of the item. the lower the higher the priority."`
+	Importance int64 `description:"int, value >=- 1 and value<= 10, Importance. \nRequired when create; optional when update. making Importance < 0  to Remove the item."`
+	Priority   int64 `description:"int, value >= 0 and value <= 10 . \n Required for module node. use in Gatt chart to determin the priority of the item. the lower the higher the priority."`
 
 	EmbedingVector []float32 `description:"-" milvus:"dim=1024,index" `
 
 	//初始添加的时候得分为0，Elo 后产生Elo分数
-	Elo float64 `description:"-"`
+	Elo      float64                   `description:"-"`
+	AllItems map[string]*BusinessPlans `description:"-" msgpack:"-"` //所有的条目
 	//被人类专家标记为锁定的条目。Locked = true. 不能被删除和修改
 	Locked bool `description:"-"`
 }
@@ -44,7 +46,9 @@ type BusinessPlans struct {
 func (u *BusinessPlans) ScoreAccessor(delta ...int) int {
 	if len(delta) > 0 {
 		u.Elo += float64(delta[0])
+		keyBusinessDronebot.HSet(u.Id, u)
 	}
+
 	return int(u.Elo)
 }
 func (u *BusinessPlans) GetId() string {
@@ -64,12 +68,16 @@ func (u *BusinessPlans) Embed(embed ...[]float32) []float32 {
 func (u *BusinessPlans) String(layer ...int) string {
 	numLayer := append(layer, 0)[0]
 	indence := strings.Repeat("\t", numLayer)
-	communityCore := lo.Ternary(u.SuperEdge, " SuperEdge:true", "")
-	return fmt.Sprint(indence, "Id:", u.Id, " Importance:", u.Importance, communityCore, " Priority:", u.Priority, "\n", u.Item, "\n\n")
+	var elo = ""
+	if u.Elo > 0 && !u.Locked {
+		elo = fmt.Sprintf(" Elo:%.2f", u.Elo)
+	}
+	return fmt.Sprint(indence, u.Item, " [Id:", u.Id, lo.Ternary(u.SuperEdge, " SuperEdge", ""), " importance:", strconv.Itoa(int(u.Importance)), " priority:", strconv.Itoa(int(u.Priority)), elo, "]\n")
+	//return fmt.Sprint(indence, "Id:", u.Id, " Importance:", u.Importance, communityCore, " Priority:", u.Priority, "\n", u.Item, "\n\n")
 }
 
-// var keyBusinessDronebotbak = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"), redisdb.Opt.Key("BusinessDronebot250412"))
-var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"))
+// var keyBusinessDronebotbak = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs").Key("BusinessDronebot250412"))
+var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs").Key("BusinessDronebotExploration"))
 var ForbiddenWords = []string{"区块链", "量子", "氢燃料", "纠缠", "quantum", "blockchain", "hydrogen", "entanglement", "co2", "carbon sequestration"}
 
 type SuperEdgePlannedForNextLoop struct {
@@ -78,23 +86,30 @@ type SuperEdgePlannedForNextLoop struct {
 }
 
 var keyIterPlannedDrone = redisdb.NewListKey[*SuperEdgePlannedForNextLoop](redisdb.Opt.Rds("Catalogs"))
-var tp1 = template.Must(template.New("AgentBusinessPlansDrone").Parse(`
-你的核心目标是基于第一性原理的工程学实现，构建一个在无人机平台和机器人应用领域具有高价值、高可行性的项目模块矩阵，这些项目应能在未来的世界中产生最大的联合商业效用和社会效用。
 
+// ## 已明确的全局技术路线:
+// - 采用上市的高放电的电池. 不考虑无线充电。
+// - 超低成本模块化无人机。机身(包裹)可拆卸，可以动态装配到固定翼和多旋翼无人机上
+// - 分布式的高塔式无人机中继站。提供机身维护和电池充电，包裹路由服务。
+// - 低速、低空、超高滑翔比的飞机。
+// - 不采用操作系统。不采用软件。只采用硬件运行大型神经网络模型，只有Wifi,GPS，摄像头和姿控等最少的输入信号。
+// - 仅考虑 PayLoad < 100kg 的无人机，不考虑载人或大型机。
+
+var AgentBusinessPlans = agent.NewAgent(template.Must(template.New("AgentBusinessPlansDrone").Parse(`
+系统愿景:实现AI时代，无人机作为基础物流平台。确保方案和应用的极致的简单、可靠、低成本、高效用。
+你的核心目标是基于第一性原理的工程学实现，构建一个在无人机平台和机器人应用领域具有高价值、高可行性的项目模块矩阵，这些项目应能在未来的世界中产生最大的联合商业效用和社会效用。
 
 ## 涉及的目标行业包括：
 - AI-Driven Bobotic Development
-- AI-Driven Business Model Innovation
 - Robotic As a Service
-- Robotic Ecosystem
-- Autonomous Vehicle Solution
 - Drone Technology & Solution
 - Suppy Chain & Drone & Logistics Technology
+    -如从农业产地直供最终零售点
 - Sustainable Packaging Technology
 - Sustainable Transportation Infrastructure
 
-## 小部分愿景想象:
-- 一个可以借助外接电源或超高速放电电池，垂直起飞的固定翼无人机
+## 部分愿景:
+- 借助外接电源或超高速放电电池，垂直起飞的固定翼无人机
 - 它是一个非常便利的载具平台。可以提供各种机器人的投送和收回服务
 - 由于极高的滑翔比。它的物流成本只有汽车的1/10和船运的1/2. 可以在全球内完成有中继的长途运输
 - 它可以借助地形和动态风向变化，实现能量的节约。
@@ -102,96 +117,47 @@ var tp1 = template.Must(template.New("AgentBusinessPlansDrone").Parse(`
 - 在未来的世界中，基于无人机平台的全球即时物流和资源分配系统，是最重要的基础设施。
 - AI 驱动的自主机器人团队，能够高效协作完成复杂任务。
 
-## 已明确的全局技术路线:
-- 采用上市的高放电的电池. 不考虑无线充电。
-- 超低成本模块化无人机。机身(包裹)可拆卸，可以动态装配到固定翼和多旋翼无人机上
-- 分布式的高塔式无人机中继站。提供机身维护和电池充电，包裹路由服务。
-- 低速、低空、超高滑翔比的飞机。
-- 不采用操作系统。不采用软件。只采用硬件运行大型神经网络模型，只有Wifi,GPS，摄像头和姿控等最少的输入信号。
-- 仅考虑 PayLoad < 100kg 的无人机，不考虑载人或大型机。
-
-## 本系统迭代解决方案的原理：
-- 解决方案被建模为顶点和边的图。
-- 现有的方案由两类节点构成:
+## 本系统采用迭代方式来渐进得完成愿景，当前的迭代会持续数十万次，直至最终目标实现。每一轮的迭代中，请通过一系列的Funtioncall 调用，来完善或改进方案的实现。
+	整个解决方案被建模为顶点和边的图。其中的边为超边(超边是连接多个顶点的边)可以连接两个或两个以上的模块节点。 现有的方案由两类节点构成:
 	1) 超边节点
-		超边节点是指解决方案的必要约束条件，包括反馈、技术路径、规范、意图，资源限制、层次化聚类等用来影响模块节点生成和调整的节点。超边节点被构建用以驱动系统的变化。
-		我们把解决方案看做图。超边是连接多个顶点的边；作为传统的图结构处理技巧。把超边当做节点处理。
-		超边应该被显示设置SuperEdge=true。
+		超边节点就是图的边。但由于可以连接多个顶点，所以是超边。作为一种图结构处理技巧，我们把超边看做是非普通节点也叫超边节点。
+		超边节点用以处理解决方案的必要约束条件，包括反馈、技术路径、规范、意图，资源限制、层次化聚类等用来影响模块节点生成和调整的节点。超边节点被构建用以驱动系统的变化。
+		超边应显式设置SuperEdge=true。
 	2) 模块节点
 		模块节点是直接给出解决方案的节点
 		模块只能通过超边和其它的模块节点完成耦合。也就是通过实现超边节点约束来自身定义
 - 解决方案被拆分成为多个超边相关的Community。每次迭代处理若干(2-5)Community。
 
-## 这是当前迭代的SuperEdgeCommunities:
-{{.Communities}}
-
-TopicToDiscuss:
-{{.TopicToDiscuss}}
+{{if eq .task "gen"}}
+首先，请深度分析,并提出解决方案的改进方案。以使得最终的愿景能够以非常可行的方式落地。
+通过多次调用 FunctionCall:SolutionItemRefine 来保存方案改进。改进形式包括: 1)创建新节点; 2)修改条目:指定Id,并修改字段(可忽略不修改字段若，若修改的字段需确保完整性); 3)通过指定Id,修改Importance = -1 来删除无效节点:
 
 ## 这是现有的所有SuperEdges：
 {{.SuperEdges}}
 
-首先，请深度分析并改进当前的解决方案。
-通过多次调用 FunctionCall:SolutionItemRefine 来保存你的想法和改进。
-{{if false}}
-## ToDo: 深入分析本次迭代中的 SuperEdgeCommunities，思考如何通过以下方式进一步提升整体解决方案的价值：
-- **跨社区连接与融合：** 识别不同超边社区之间潜在的协同机会，探索如何通过新的超边或模块节点将它们连接起来，创造新的功能或价值。
-- **技术创新与突破：** 基于核心创新理念和全局技术路线，思考在现有模块或超边的基础上，如何引入新的技术或方法实现性能提升、成本降低或新的应用场景。
-- **用户价值拓展：** 思考当前的解决方案如何更好地满足潜在用户需求，或者如何创造新的用户价值。
-- 最终通过多次调用 FunctionCall:SolutionItemRefine 来保存你的想法和改进。
-### todo:remove
-- **核心目标:** 识别并删除 (Importance = -1) 那些阻碍跨超边社区协同、限制技术创新或无法有效提升用户价值的低价值或过时条目。
-- **评估标准:** 该条目是否与其他模块或超边社区存在冲突？是否使用了过时的技术？是否无法有效满足用户需求或创造新的价值？
-- **反思:** 上一次迭代中删除的条目对整体协同和创新有何影响？本次迭代应重点关注哪些阻碍长期价值创造的条目？
-### todo:improve
-- **核心目标:** 改进现有模块或超边，以增强跨超边社区的协同效应、引入新的技术创新或更好地满足用户价值。
-- **改进方向:** 优化接口、标准化协议、提升性能、降低成本、探索新的应用场景等。
-- **反思:** 上一次迭代中进行的改进对协同和创新产生了哪些积极影响？本次迭代应重点关注哪些方面的改进能够带来最大的长期价值？
-### todo:modularization
-- **核心目标:** 重新审视和优化超边社区结构，确保不同的超边社区以MECE的方式完成目标意图分解。
-- **关注点:** 超边社区边界是否清晰且有利于协作？是否存在可以合并或拆分的超边社区以提高协同效率？是否可以引入新的超边来促进跨超边社区的标准化和互操作性？
-- **行动指南:** 重点关注超边的定义和 SuperEdgeNodes 的选择，确保它们能够促进模块之间的有效连接和信息共享。积极探索提出新的、能够连接不同超边社区的“桥梁”超边。
-{{end}}
+## 这是当前解决方案(SuperEdgeCommunities):
+{{.Communities}}
+
+TopicToDiscuss:
+{{.TopicToDiscuss}} 
 
 最后请为下一轮的迭代进行规划。讨论下一轮需要重点完善的关注方向，围绕这个方向选择现有的超边集合，并且调用 FunctionCall:SuperEdgePlannedForNextLoop 进行保存。
 
-`))
+{{else if eq .task "batchElo"}}
 
-var AgentBusinessPlans = agent.NewAgent(tp1).WithToolCallLocked().WithTools(tool.NewTool("SolutionItemRefine", "Propose/edit/delete solution item to improve solution.", func(newItem *BusinessPlans) {
-	newItem.Item = strings.TrimSpace(newItem.Item)
-	newItem.Importance = min(10, max(-1, newItem.Importance))
-	newItem.Priority = min(10, max(0, newItem.Priority))
-	var oItem *BusinessPlans = nil
-	if newItem.Id != "" {
-		oItem, _ = keyBusinessDronebot.HGet(newItem.Id)
-	}
-	if newItem.Id = utils.ID(newItem.Item, 4); oItem != nil {
-		newItem.Id = oItem.Id
-		oItem.Importance = newItem.Importance
-		oItem.Priority = newItem.Priority
-		if newItem.Item != "" && oItem.Item != newItem.Item {
-			oItem.Item = newItem.Item
-			if embed, err := utils.GetEmbedding(oItem.Item); err == nil {
-				oItem.Embed(embed)
-				milvusCollection.Upsert(oItem)
-			}
-		}
-		oItem.SuperEdge = newItem.SuperEdge
-		oItem.SuperEdgeNodes = lo.Ternary(len(newItem.SuperEdgeNodes) > 0, newItem.SuperEdgeNodes, oItem.SuperEdgeNodes)
+## 这是当前解决方案(SuperEdgeCommunities):
+{{.CommunitiesAll}}
 
-	}
-	if isNewModel := oItem == nil; isNewModel {
-		if len(newItem.Item) > 0 && !utils.HasForbiddenWords(strings.ToLower(newItem.Item), ForbiddenWords) {
-			keyBusinessDronebot.HSet(newItem.Id, newItem)
-		}
-		return
-	}
-	keyBusinessDronebot.HSet(oItem.Id, oItem)
-})).WithTools(tool.NewTool("SuperEdgePlannedForNextLoop", "Propose super edge items in the next iter loop", func(edgeIds *SuperEdgePlannedForNextLoop) {
-	if len(edgeIds.SuperEdgeIds) > 0 {
-		keyIterPlannedDrone.RPush(edgeIds)
-	}
-}))
+这是新增的超边和节点的集合:
+{{.NewNodes}}
+
+现在要使得**现有解决方案**以 **最优的方式** 向 **期望的终态目标系统** 演化。
+为此现采用dijkstra算法来实现这个目标。为此，1)我们采用Batch Elo算法来挑选出最优的节点,作为动作（添加、修改或删除）; 2)以一次一个动作的方式，提交最优的动作（设置Locked）来逼近期望的终态目标系统。
+请讨论现有的新增节点,以便将它们从好到坏，完成排序。并使用BatchEloResults保存排序结果。
+{{end}}
+
+
+`))).WithToolCallMutextRun()
 var businessPlans map[string]*BusinessPlans
 
 func EdgeCommunitiesWithExploration(allNodes map[string]*BusinessPlans, centerEdge *BusinessPlans, c []*BusinessPlans, RandomExplorationNum int) (ret []*BusinessPlans) {
@@ -212,17 +178,44 @@ func EdgeCommunitiesWithExploration(allNodes map[string]*BusinessPlans, centerEd
 	return append(ret, left1[:min(RandomExplorationNum, len(left1))]...)
 
 }
-func NodeListToString(nodes []*BusinessPlans, uniq bool) (list string) {
+func NodeListToString(nodes []*BusinessPlans, uniq, LockedOnly bool) (list string) {
 	nodes = lo.Ternary(uniq, lo.Uniq(nodes), nodes)
+	if LockedOnly {
+		nodes = lo.Filter(nodes, func(v *BusinessPlans, _ int) bool { return v.Locked })
+	}
 	return strings.Join(lo.Map(nodes, func(v *BusinessPlans, _ int) string { return v.String() }), "\n")
+}
+func LoadResultsToRedis() {
+	//read all files in /Users/yang/Desktop/projects/doptime/evolab/main that starts with asw* and ends with .md
+	files, err := filepath.Glob("/Users/yang/Desktop/projects/doptime/evolab/main/asw*.md")
+	if err != nil {
+		fmt.Println("Error reading files:", err)
+		return
+	}
+	contents := lo.Map(files, func(v string, _ int) string {
+		content, _ := os.ReadFile(v)
+		return string(content)
+	})
+
+	AgentBusinessPlans.WithModels(models.GeminiTB).CallWithResponseString(strings.Join(contents, "\n\n"))
+
 }
 
 func BusinessPlansDronebotExploration() {
+	// var Items = []string{"飞机采用上市的先进电池. 不考虑无线充电。燃油引擎。", "超低成本模块化无人机。", "机身(包裹)可拆卸，可以动态装配到固定翼和多旋翼无人机上。",
+	// 	"分布式的无人机中继站。提供机身维护和电池换电，包裹路由服务。", "低速、低空、超高滑翔比的飞机。", "仅采用手机主板完成整个控制系统。", "采用迷你神经网络作为核心控制系统。",
+	// 	"仅考虑 PayLoad < 25kg 的无人机，不考虑载人或大型机。"}
+	// for _, item := range Items {
+	// 	id := utils.ID(item, 3)
+	// 	_item := &BusinessPlans{Id: id, Item: item, SuperEdge: true, Importance: 9, Locked: true}
+	// 	keyBusinessDronebot.HSet(_item.Id, _item)
+	// }
 	// Create a new weighted chooser
-	const MaxThreads = 16
+	const MaxThreads = 1
 	MaxThreadsSemaphore := make(chan struct{}, MaxThreads)
 	for i, TotalTasks := 0, 2000; i < TotalTasks; i++ {
 		businessPlans, _ = keyBusinessDronebot.HGetAll()
+		AgentBusinessPlans.ShareMemoryUpdate("AllItems", businessPlans)
 		//commit remove where remove >= 5
 		for _, key := range lo.Keys(businessPlans) {
 			item := businessPlans[key]
@@ -274,20 +267,20 @@ func BusinessPlansDronebotExploration() {
 		})
 
 		//save solution to file to visualize
+		CommunitiesAllSearched, _, _ := milvusCollection.SearchVectors(lo.Map(constraints, func(v *BusinessPlans, _ int) []float32 { return v.Embed() }), qmilvus.SearchParamsDefault)
+		CommunitiesAll := lo.Map(CommunitiesAllSearched, func(community []*BusinessPlans, i int) []*BusinessPlans {
+			return EdgeCommunitiesWithExploration(businessPlans, constraints[i], community, 0)
+		})
 		if i%10 == 0 {
-			Communities, _, _ := milvusCollection.SearchVectors(lo.Map(constraints, func(v *BusinessPlans, _ int) []float32 { return v.Embed() }), qmilvus.SearchParamsDefault)
-			AllValidCommunitie := lo.Map(Communities, func(community []*BusinessPlans, i int) []*BusinessPlans {
-				return EdgeCommunitiesWithExploration(businessPlans, constraints[i], community, 0)
-			})
 			//with left nodes as a community
-			left, _ := lo.Difference(lo.Values(businessPlans), lo.Flatten(AllValidCommunitie))
-			AllValidCommunitie = append(AllValidCommunitie, left)
+			left, _ := lo.Difference(lo.Values(businessPlans), lo.Flatten(CommunitiesAll))
+			CommunitiesAll = append(CommunitiesAll, left)
 
 			outputfile, _ := os.Create("BusinessPlans.md")
 			childrenStr := strings.Builder{}
 			childrenStr.WriteString(fmt.Sprint("条目数量为：", len(businessPlans), "\n"))
 			itemReapeated := map[string]int{}
-			for i, community := range AllValidCommunitie {
+			for i, community := range CommunitiesAll {
 				childrenStr.WriteString(fmt.Sprint("\n#### Community", i+1, " size:", len(community), "\n"))
 				for _, item := range community {
 					if v, ok := itemReapeated[item.Id]; ok {
@@ -317,7 +310,10 @@ func BusinessPlansDronebotExploration() {
 				}
 			}
 		}
-		TopicToDiscuss := lo.Ternary(IterPlan != nil, IterPlan.TopicToDiscuss, "本次迭代的主题是: 通过多次调用 FunctionCall:SolutionItemRefine 来保存对解决方案的改进。")
+		TopicToDiscuss := "本次迭代的主题是: 通过多次调用 FunctionCall:SolutionItemRefine 来保存对解决方案的改进。"
+		if IterPlan != nil && len(IterPlan.TopicToDiscuss) > 0 {
+			TopicToDiscuss = IterPlan.TopicToDiscuss
+		}
 		// 自主规划没有足够的覆盖度。需要随机选择来保证覆盖度
 		if len(SuperEdgeSelected) == 0 || rand.IntN(100) < 50 {
 			edges := append([]*BusinessPlans{}, constraints...)
@@ -331,18 +327,34 @@ func BusinessPlansDronebotExploration() {
 		})
 
 		MaxThreadsSemaphore <- struct{}{} // Acquire a spot in the semaphore
-		go func(Communities, SuperEdges, TopicToDiscuss string) {
+		newNodes := lo.Filter(lo.Values(businessPlans), func(v *BusinessPlans, _ int) bool { return !v.Locked })
+		newNodesSorted := slices.Clone(newNodes)
+		slices.SortFunc(newNodesSorted, func(i, j *BusinessPlans) int {
+			return -int(i.Elo - j.Elo)
+		})
+		fmt.Printf("NewNodes Best: %v\n", newNodesSorted[len(newNodesSorted)-1].String())
+
+		go func(Communities, SuperEdges, TopicToDiscuss, CommunitiesAll string, AllItems map[string]*BusinessPlans, newNodes []*BusinessPlans) {
 			defer func() { <-MaxThreadsSemaphore }()
-			//models.Qwq32B, models.Gemma3, models.DeepSeekV3, models.DeepSeekV3TB,models.Qwen32B
-			err := AgentBusinessPlans.WithModels(models.Gemma3, models.Qwen32B).Call(context.Background(), map[string]any{
+			//models.Qwq32B, models.Gemma3, models.DeepSeekV3, models.DeepSeekV3TB,models.Qwen32B,models.GeminiTB,models.Qwen30BA3,models.GLM32B
+			// err := AgentBusinessPlans.WithTools(ToolDroneBotIterPlan, ToolDroneBotSolutionItemRefine).WithModels(models.Qwen32B).CopyPromptOnly().Call(context.Background(), map[string]any{
+			// 	"Communities":    Communities,
+			// 	"SuperEdges":     SuperEdges,
+			// 	"TopicToDiscuss": TopicToDiscuss,
+			// 	"task":           "batchElo",
+			// })
+			err := AgentBusinessPlans.WithTools(ToolDroneBatchEloResults).WithModels(models.EloModels.SequentialPick(models.Qwen3B14)).CopyPromptOnly().Call(context.Background(), map[string]any{
 				"Communities":    Communities,
+				"CommunitiesAll": CommunitiesAll,
 				"SuperEdges":     SuperEdges,
 				"TopicToDiscuss": TopicToDiscuss,
+				"task":           "batchElo",
+				"NewNodes":       NodeListToString(newNodes, true, false),
 			})
 			if err != nil {
 				fmt.Printf("Agent call failed: %v\n", err)
 			}
-		}(NodeListToString(lo.Flatten(CommunityNodes), true), NodeListToString(constraints, true), TopicToDiscuss)
+		}(NodeListToString(lo.Flatten(CommunityNodes), true, false), NodeListToString(constraints, true, true), TopicToDiscuss, NodeListToString(lo.Flatten(CommunitiesAll), true, true), businessPlans, newNodesSorted)
 	}
 	// Wait for all the goroutines to finish)
 	for i := 0; i < MaxThreads; i++ {

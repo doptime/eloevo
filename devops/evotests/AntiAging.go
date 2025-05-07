@@ -77,7 +77,7 @@ TaskToDo2:
 新的方案同样不能遗漏Background, ElementsAnalysis, TheoraticalFirstPrincipleAnalysis, UtilityFunction, AgendaForSolutions等参数。
 最后调用FunctionCall:SaveAntiAgingExploration 保存新的方案。
 
-`))).WithToolCallLocked().WithTools(tool.NewTool("SaveItemsSorted", "Save sorted Items, Items represented as Id list.", func(model *prototype.ItemsSorted) {
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("SaveItemsSorted", "Save sorted Items, Items represented as Id list.", func(model *prototype.ItemsSorted) {
 	if model == nil || len(model.ItemsRefById) == 0 {
 		return
 	}

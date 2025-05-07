@@ -41,7 +41,7 @@ func (u *BusinessClusterItem) ScoreAccessor(delta ...int) int {
 	return int(u.Votes)
 }
 
-var keyBusinessClustering = redisdb.NewHashKey[string, *BusinessClusterItem](redisdb.Opt.Rds("projects"), redisdb.Opt.Key("BusinessClusteringRdit"))
+var keyBusinessClustering = redisdb.NewHashKey[string, *BusinessClusterItem](redisdb.Opt.Rds("projects").Key("BusinessClusteringRdit"))
 
 // 为什么Qwen能自我改进推理，Llama却不行 https://mp.weixin.qq.com/s/OvS61OrDp6rB-R5ELg48Aw
 // 并且每次就一个确切的改进方向进行深度分析，反代的深度分析第一性原理之上的需求，深度创新以做出实质的改进。要痛恨泛泛而谈的内容，重复空洞的内容，因为现在是在开发世界级的工具。
@@ -72,7 +72,7 @@ ToDo:
 	- 按照讨论。如果存在改进解决方案的可能，请提出新的Items. 请直接补充描述0条或者多条Items，形成NewProposedItems。
 最后调用FunctionCall:SolutionRefine 保存排序结果。
 
-`))).WithToolCallLocked().WithTools(tool.NewTool("SolutionRefine", "Save sorted Items, Items represented as Id list.", func(model *prototype.SolutionRefinement) {
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("SolutionRefine", "Save sorted Items, Items represented as Id list.", func(model *prototype.SolutionRefinement) {
 	if model == nil {
 		return
 	}

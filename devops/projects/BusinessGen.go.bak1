@@ -21,7 +21,6 @@ type BusinessPlansGen struct {
 	Id               string         `description:"Id, string, unique"`
 	BusinessPlans    []string       `description:"BusinessPlans, array, with 16 string elements, each element is a business plan"`
 	KeyConsideration string         `description:"KeyConsideration, string, key consideration for this business utility function"`
-	Extra            map[string]any `msgpack:"-" json:"-" description:"Extra, call parameter of Agent"`
 }
 
 func (u *BusinessPlansGen) GetId() string {

@@ -5,7 +5,7 @@ import (
 	"log"
 	"reflect"
 
-	"github.com/doptime/eloevo/memory"
+	"github.com/mitchellh/mapstructure"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -18,8 +18,7 @@ type ToolInterface interface {
 // Tool 是FuctionCall的逻辑实现。FunctionCall 是Tool的接口定义
 type Tool[v any] struct {
 	openai.Tool
-	MemoryCacheKey string
-	Functions      []func(param v)
+	Functions []func(param v)
 }
 
 func (t *Tool[v]) OaiTool() *openai.Tool {
@@ -34,10 +33,6 @@ func (t *Tool[v]) WithFunction(f func(param v)) *Tool[v] {
 	return t
 }
 
-func (t *Tool[v]) WithMemoryCacheKey(key string) *Tool[v] {
-	t.MemoryCacheKey = key
-	return t
-}
 func (t *Tool[v]) HandleCallback(Param interface{}, CallMemory map[string]any) (err error) {
 	var parambytes []byte
 	if str, ok := Param.(string); ok {
@@ -50,48 +45,14 @@ func (t *Tool[v]) HandleCallback(Param interface{}, CallMemory map[string]any) (
 	}
 
 	var val v
-	vType := reflect.TypeOf(val) // Decode escaped Unicode in Param
-	if vType.Kind() == reflect.Ptr {
-		// Create a new instance of the pointed type
-		valPtr := reflect.New(vType.Elem()).Interface()
-		err = json.Unmarshal(parambytes, valPtr)
-		if err != nil {
-			log.Printf("Error parsing arguments for tool %s: %v", t.Tool.Function.Name, err)
-			return err
-		}
-		memory.SaveToShareMemory(t.MemoryCacheKey, reflect.ValueOf(valPtr).Interface())
-		// Assign the dereferenced pointer to val
-		val = reflect.ValueOf(valPtr).Interface().(v)
-		//set val field named Extra to CallMemory
-		if CallMemory != nil {
-			valType := reflect.TypeOf(val).Elem()
-			valValue := reflect.ValueOf(val).Elem()
-			for i := 0; i < valType.NumField(); i++ {
-				field := valType.Field(i)
-				if field.Name == "Extra" {
-					valValue.Field(i).Set(reflect.ValueOf(CallMemory))
-				}
-			}
-		}
-	} else {
-		// Unmarshal directly into val
-		err = json.Unmarshal(parambytes, &val)
-		if err != nil {
-			log.Printf("Error parsing arguments for tool %s: %v", t.Tool.Function.Name, err)
-			return err
-		}
-		memory.SaveToShareMemory(t.MemoryCacheKey, val)
-		//set val field named Extra to CallMemory
-		if CallMemory != nil {
-			valType := reflect.TypeOf(val)
-			valValue := reflect.ValueOf(val)
-			for i := 0; i < valType.NumField(); i++ {
-				field := valType.Field(i)
-				if field.Name == "Extra" {
-					valValue.Field(i).Set(reflect.ValueOf(CallMemory))
-				}
-			}
-		}
+	err = json.Unmarshal(parambytes, &val) // 直接反序列化到 v 的地址
+	if err != nil {
+		log.Printf("Error parsing arguments for tool %s: %v。make sure type of v is a ponter to struct", t.Tool.Function.Name, err)
+		return err
+	}
+	//Extract the memory cached key to destination struct
+	if CallMemory != nil {
+		mapstructure.Decode(CallMemory, val)
 	}
 
 	for _, f := range t.Functions {

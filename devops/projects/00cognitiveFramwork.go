@@ -84,7 +84,7 @@ ToDoList:
 2. 根据上面的讨论，识别出现有的几个方案的优势和缺陷. 将他们从最好到最坏排序(用Id列表表示)。
 3. 调用FunctionCall:SaveItemsSorted 保存排序结果。
 4. 调用FunctionCall:RationalCognitiveFramework 保存新的方案。
-`))).WithToolCallLocked().WithTools(tool.NewTool("SaveItemsSorted", "Save sorted Items, Items represented as Id list.", func(model *ItemsSorted) {
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("SaveItemsSorted", "Save sorted Items, Items represented as Id list.", func(model *ItemsSorted) {
 	if model == nil || len(model.ItemsRefById) == 0 {
 		return
 	}

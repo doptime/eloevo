@@ -84,7 +84,7 @@ func (u *EvaluationSchema) ScoreAccessor(delta ...int) int {
 var activeSchemaKey = redisdb.NewHashKey[string, *EvaluationSchema](redisdb.Opt.Rds("projects"))
 
 // expiredSchemaKey 是用于存储过期 EvaluationSchema 的 Redis Hash Key。
-var expiredSchemaKey = redisdb.NewHashKey[string, *EvaluationSchema](redisdb.Opt.Rds("projects"), redisdb.Opt.Key("UtilityFunctionSchemaExpired"))
+var expiredSchemaKey = redisdb.NewHashKey[string, *EvaluationSchema](redisdb.Opt.Rds("projects").Key("UtilityFunctionSchemaExpired"))
 
 // evaluationSchemaMutex 用于保护 evaluationSchemas 的并发访问。
 var evaluationSchemaMutex sync.Mutex = sync.Mutex{}

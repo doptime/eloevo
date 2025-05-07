@@ -64,7 +64,7 @@ ToDo:
 {{if lt .TotoalNodes 10}}
 步骤3. 在讨论的基础上，进一步提出一个更好的，新的方案草稿。对草稿同样按步骤1改进后，调用FunctionCall:BusinessUtilityEvaluation 保存新的方案。
 {{end}}
-`))).WithToolCallLocked().WithTools(tool.NewTool("SaveItemsSorted", "Save sorted Items, Items represented as Id list.", func(model *prototype.ItemsSorted) {
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("SaveItemsSorted", "Save sorted Items, Items represented as Id list.", func(model *prototype.ItemsSorted) {
 	if model == nil || len(model.ItemsRefById) == 0 {
 		return
 	}

@@ -70,7 +70,7 @@ ToDoList:
 2. 尝试提出一个更好的，新的评估方案的数据结构和评估函数的具体表达式。
 
 在完成讨论和提出新的评估方案后，请将ToDoList中的两项工作（方案排序和新方案）， 通过 Toolcall: UtilityFunctionExplorationFinal 保存。
-`))).WithToolCallLocked().WithTools(tool.NewTool("UtilityFunctionExplorationFinal", "Extract UtilityFunctionExploration struct from previous response", func(model *UtilityFunctionExploration) {
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("UtilityFunctionExplorationFinal", "Extract UtilityFunctionExploration struct from previous response", func(model *UtilityFunctionExploration) {
 	if len(model.ProjectDescription) == 0 || len(model.UtilityFunction) == 0 {
 		return
 	}

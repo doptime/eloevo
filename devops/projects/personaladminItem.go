@@ -15,10 +15,9 @@ import (
 )
 
 type PersonalAdmin struct {
-	Id       string         `description:"Id, string, unique"`
-	Question string         `description:"Question,string"`
-	Score    int            `msgpack:"Elo"`
-	Extra    map[string]any `msgpack:"-" description:"Extra, call parameter of Agent"`
+	Id       string `description:"Id, string, unique"`
+	Question string `description:"Question,string"`
+	Score    int    `msgpack:"Elo"`
 }
 
 func (u *PersonalAdmin) GetId() string {
@@ -33,7 +32,7 @@ func (u *PersonalAdmin) ScoreAccessor(delta ...int) int {
 	return u.Score
 }
 
-var keyPersonalAdmin = redisdb.NewHashKey[string, *PersonalAdmin](redisdb.Opt.Rds("projects"), redisdb.Opt.Key("PersonalAdminByItem"))
+var keyPersonalAdmin = redisdb.NewHashKey[string, *PersonalAdmin](redisdb.Opt.Rds("projects").Key("PersonalAdminByItem"))
 
 // 为什么Qwen能自我改进推理，Llama却不行 https://mp.weixin.qq.com/s/OvS61OrDp6rB-R5ELg48Aw
 // 并且每次就一个确切的改进方向进行深度分析，反代的深度分析第一性原理之上的需求，深度创新以做出实质的改进。要痛恨泛泛而谈的内容，重复空洞的内容，因为现在是在开发世界级的工具。
@@ -63,7 +62,7 @@ ToDo:
 步骤2. 在讨论的基础上，进一步给方案补充一个新的方案中的条目。对条目同样按步骤1改进后，调用FunctionCall:NewPersonalAdmin 保存新的方案。
 {{end}}
 
-`))).WithToolCallLocked().WithTools(tool.NewTool("SaveItemsSorted", "Save sorted Items, Items represented as Id list.", func(model *prototype.SolutionRefine) {
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("SaveItemsSorted", "Save sorted Items, Items represented as Id list.", func(model *prototype.SolutionRefine) {
 	if model == nil {
 		return
 	}

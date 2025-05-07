@@ -79,7 +79,7 @@ package projects
 // 	return fmt.Sprint(indence, "Id:", u.Id, " Importance:", u.Importance, communityCore, " Priority:", u.Priority, "\n", u.Item, "\n\n")
 // }
 
-// // var keyBusinessDronebotbak = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"), redisdb.Opt.Key("BusinessDronebot250412"))
+// // var keyBusinessDronebotbak = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs").Key("BusinessDronebot250412"))
 // var keyBusinessDronebot = redisdb.NewHashKey[string, *BusinessPlans](redisdb.Opt.Rds("Catalogs"))
 // var taskChooser, _ = weightedrand.NewChooser(
 // 	weightedrand.Choice{Item: "remover", Weight: 10},

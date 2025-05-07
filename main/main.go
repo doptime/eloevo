@@ -13,6 +13,9 @@ type TestStruct struct {
 }
 
 func main() {
+	// agents.AgentFunctioncallTest.Call(context.Background(), map[string]any{})
+	// agents.AgentResponseTest()
+	//projects.LoadResultsToRedis()
 	projects.BusinessPlansDronebotExploration()
 	go projects.BusinessPlansEdTechExploration()
 	time.Sleep(1000000 * time.Second)
