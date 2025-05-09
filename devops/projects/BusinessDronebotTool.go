@@ -9,13 +9,13 @@ import (
 	"github.com/samber/lo"
 )
 
-var ToolDroneBotSolutionItemRefine = tool.NewTool("SolutionItemRefine", "Propose/edit/delete solution item to improve solution.", func(newItem *BusinessPlans) {
+var ToolDroneBotSolutionItemRefine = tool.NewTool("SolutionItemRefine", "Propose/edit/delete solution item to improve solution.", func(newItem *SolutionGraphNode) {
 	newItem.Item = strings.TrimSpace(newItem.Item)
 	newItem.Importance = min(10, max(-1, newItem.Importance))
 	newItem.Priority = min(10, max(0, newItem.Priority))
-	var oItem *BusinessPlans = nil
+	var oItem *SolutionGraphNode = nil
 	if newItem.Id != "" {
-		oItem, _ = keyBusinessDronebot.HGet(newItem.Id)
+		oItem, _ = KeyBusinessDronebot.HGet(newItem.Id)
 	}
 	if newItem.Id = utils.ID(newItem.Item, 4); oItem != nil {
 		newItem.Id = oItem.Id
@@ -34,11 +34,11 @@ var ToolDroneBotSolutionItemRefine = tool.NewTool("SolutionItemRefine", "Propose
 	}
 	if isNewModel := oItem == nil; isNewModel {
 		if len(newItem.Item) > 0 && !utils.HasForbiddenWords(strings.ToLower(newItem.Item), ForbiddenWords) {
-			keyBusinessDronebot.HSet(newItem.Id, newItem)
+			KeyBusinessDronebot.HSet(newItem.Id, newItem)
 		}
 		return
 	}
-	keyBusinessDronebot.HSet(oItem.Id, oItem)
+	KeyBusinessDronebot.HSet(oItem.Id, oItem)
 })
 var ToolDroneBotIterPlan = tool.NewTool("SuperEdgePlannedForNextLoop", "Propose super edge items in the next iter loop", func(edgeIds *SuperEdgePlannedForNextLoop) {
 	if len(edgeIds.SuperEdgeIds) > 0 {
@@ -47,8 +47,8 @@ var ToolDroneBotIterPlan = tool.NewTool("SuperEdgePlannedForNextLoop", "Propose 
 })
 
 type BatchEloResults struct {
-	SortedItemIds []string                  `description:"Sorted item ids"`
-	AllItems      map[string]*BusinessPlans `description:"-"`
+	SortedItemIds []string                      `description:"Sorted item ids"`
+	AllItems      map[string]*SolutionGraphNode `description:"-"`
 }
 
 var ToolDroneBatchEloResults = tool.NewTool("BatchEloResults", "Batch Elo Results. Represented By Item Ids. The better the item, the lower the index ", func(results *BatchEloResults) {

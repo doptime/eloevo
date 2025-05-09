@@ -5,6 +5,7 @@ import (
 
 	"github.com/doptime/eloevo/devops"
 	"github.com/doptime/eloevo/devops/projects"
+	"github.com/doptime/eloevo/scrum"
 )
 
 type TestStruct struct {
@@ -17,6 +18,7 @@ func main() {
 	// agents.AgentResponseTest()
 	//projects.LoadResultsToRedis()
 	projects.BusinessPlansDronebotExploration()
+	scrum.AgentSessionArrangementCall()
 	go projects.BusinessPlansEdTechExploration()
 	time.Sleep(1000000 * time.Second)
 	go projects.BusinessPlansPWAExploration()
