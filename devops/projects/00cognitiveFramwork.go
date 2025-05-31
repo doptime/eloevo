@@ -64,7 +64,7 @@ var AgentUtilityFrameGen = agent.NewAgent(template.Must(template.New("utilifyFun
 第{{$index}}个认知范式：
 	Id:{{$item.Id}}
 	Items:
-	{{range $key, $value := $item.Items}}
+	{{range $key, $value := $item.BulletNames}}
 		{{$key}}:{{$value}}
 	{{end}}
 

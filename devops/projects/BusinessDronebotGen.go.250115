@@ -274,22 +274,22 @@
 
 // {{end}}
 // `))).WithToolCallLocked().WithTools(tool.NewTool("SolutionItemRefine", "Propose/edit/delete solution item to improve solution.", func(newItem *BusinessPlans) {
-// 	newItem.Item = strings.TrimSpace(newItem.Item)
+// 	newitem.BulletDescription= strings.TrimSpace(newitem.BulletName)
 // 	var oItem *BusinessPlans = nil
 // 	if newItem.Id != "" {
 // 		oItem, _ = keyBusinessDronebot.HGet(newItem.Id)
 // 	}
-// 	if newItem.Id = utils.ID(newItem.Item, 4); oItem != nil {
+// 	if newItem.Id = utils.ID(newitem.BulletName, 4); oItem != nil {
 // 		newItem.Id = oItem.Id
 // 		oItem.Importance = newItem.Importance
 // 		oItem.Priority = newItem.Priority
-// 		oItem.Item, _ = lo.Coalesce(newItem.Item, oItem.Item)
+// 		oitem.BulletName, _ = lo.Coalesce(newitem.BulletName, oitem.BulletName)
 // 		oItem.Constraints = lo.Ternary(len(newItem.Constraints) > 0, newItem.Constraints, oItem.Constraints)
 // 		oItem.IsCommunityCore = newItem.IsCommunityCore
 
 // 	}
 // 	if isNewModel := oItem == nil; isNewModel {
-// 		if len(newItem.Item) > 0 && !utils.HasForbiddenWords(newItem.Item, ForbiddenWords) {
+// 		if len(newitem.BulletName) > 0 && !utils.HasForbiddenWords(newitem.BulletName, ForbiddenWords) {
 // 			keyBusinessDronebot.HSet(newItem.Id, newItem)
 // 		}
 // 		return
@@ -307,7 +307,7 @@
 // 		//commit remove where remove >= 5
 // 		for _, key := range lo.Keys(businessPlans) {
 // 			item := businessPlans[key]
-// 			if utils.HasForbiddenWords(item.Item, ForbiddenWords) || item.Importance < 0 {
+// 			if utils.HasForbiddenWords(item.BulletName, ForbiddenWords) || item.Importance < 0 {
 // 				keyBusinessDronebot.ConcatKey("Archive").HSet(item.Id, item)
 // 				keyBusinessDronebot.HDel(item.Id)
 // 				delete(businessPlans, item.Id)

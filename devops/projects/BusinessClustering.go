@@ -55,7 +55,7 @@ var AgentBusinessClustering = agent.NewAgent(template.Must(template.New("utilify
 这是现有的商业活分类方案 ：
 {{range  $index, $item := .ItemList}}
 Id:"{{$item.Id}}" Votes:{{$item.Votes}} 
-{{$item.Item}}
+{{$item.BulletName}}
 {{end}}
 
 ToDo:

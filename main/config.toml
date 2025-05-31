@@ -16,7 +16,7 @@ UrlBase = "https://api.doptime.com"
 
 [[Redis]]
 DB = 0
-Host = "air.lan"
+Host = "projects.lan"
 Name = "default"
 Password = "XWkHqup04Gcm7Plieh5x"
 Port = 6379

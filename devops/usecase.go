@@ -62,7 +62,7 @@ var AgentUseCaseGen = agent.NewAgent(template.Must(template.New("utilifyFunction
 这是现有的用例方案/(用例列表)：
 {{range  $index, $item := .ItemList}}
 "Id":"{{$item.Id}}"
-"Item":"{{$item.Item}}"
+"Item":"{{$item.BulletName}}"
 {{end}}
 
 ToDo:

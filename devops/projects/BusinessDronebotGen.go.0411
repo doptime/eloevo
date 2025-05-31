@@ -229,20 +229,20 @@
 // 	冗余条目/模块，只能保留Id排序靠前的第一个，确保层次化，模块化的组织关系。
 // {{end}}
 // `))).WithToolCallLocked().WithTools(tool.NewTool("BusinessPlanItemRefine", "Propose/edit/delete solution item to improve solution.", func(newItem *BusinessPlans) {
-// 	newItem.Item = strings.TrimSpace(newItem.Item)
+// 	newitem.BulletDescription= strings.TrimSpace(newitem.BulletName)
 // 	var oItem *BusinessPlans = nil
 // 	if newItem.Id != "" {
 // 		oItem, _ = keyBusinessDronebot.HGet(newItem.Id)
 // 	}
-// 	if newItem.Id = utils.ID(newItem.Item, 4); oItem != nil {
+// 	if newItem.Id = utils.ID(newitem.BulletName, 4); oItem != nil {
 // 		newItem.Id = oItem.Id
 // 		oItem.Importance = newItem.Importance
 // 		oItem.Remove = newItem.Remove
-// 		oItem.Item, _ = lo.Coalesce(newItem.Item, oItem.Item)
+// 		oitem.BulletName, _ = lo.Coalesce(newitem.BulletName, oitem.BulletName)
 
 // 	}
 // 	if isNewModel := oItem == nil; isNewModel {
-// 		if len(newItem.Item) > 0 && !utils.HasForbiddenWords(newItem.Item, ForbiddenWords) {
+// 		if len(newitem.BulletName) > 0 && !utils.HasForbiddenWords(newitem.BulletName, ForbiddenWords) {
 // 			keyBusinessDronebot.HSet(newItem.Id, newItem)
 // 		}
 // 		return
@@ -262,7 +262,7 @@
 // 		//commit remove where remove >= 5
 // 		for _, key := range lo.Keys(businessPlans) {
 // 			item := businessPlans[key]
-// 			if item.Remove >= 5 || utils.HasForbiddenWords(item.Item, ForbiddenWords) {
+// 			if item.Remove >= 5 || utils.HasForbiddenWords(item.BulletName, ForbiddenWords) {
 // 				keyBusinessDronebot.ConcatKey("Archive", item.Id).HSet(item.Id, item)
 // 				keyBusinessDronebot.HDel(item.Id)
 // 				delete(businessPlans, item.Id)

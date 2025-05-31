@@ -1,15 +1,25 @@
 
-给我写一个reaact +taiwindcss +js 页面，以便我可以用在我的next.js 页面中
+给我写一个reaact + taiwindcss+ DaisyUI +js 页面，以便我可以用在我的next.js 页面中.
+尽可能用DaisyUI Components 来简化代码
+不需要服务端渲染，要启用"use client";   
+图标库仅考虑lucide-react,Font Awesome, Material Icons, Hero Icons,Ant Design Icons, Remix Icon, Feather Icons,  Ionicons,Eva Icons,Boxicons,Tabler Icons,
+请直接引用这些Icon 而不依赖于其他的或自建的 图标库
 
 功能：
 页面布局分为2栏目（总体来说，借鉴vscode 的解密布局）：
     - 左侧面板 40vw
-        左侧顶部按钮栏 10vh, 提供上下文相关的操作按钮
-            - 按钮: + 创建一个新的 Backlog 节点
-            - 按钮: BackLog 可以对选中中节点 标记 Expired 或 !Expired
-            - 按钮: BackLog 可以对选中中节点 标记 Accomplished 或 !Accomplished            
+        左侧顶部工具栏 10vh, 提供上下文相关的操作按钮
+            - 按钮: + 创建一个新的 Backlog 节点     
+            - CheckBox:Show Expired .是否显示过期的Backlog 
+            - CheckBox:Show Done .是否显示Done的Backlog
             - 按钮: 删除选择的Backlog
-            - CheckBox: Expired .是否显示过期的Backlog
+            - 配色和布局，要给人愉快的美感
+            补充新的需求：
+            - Create Backlog 按钮应该有颜色，方便知道按钮的存在
+            - 删除需求（现在的删除按钮离创建按钮太近了，容易误操作。）：按钮: 删除选择的Backlog
+            - 在顶部按钮居右，添加一个OnHover ToolTpip, 提示选中后按dd键删除Backlog。
+            - 顶部工具栏目高度调整 5vh
+            - 按钮: + 创建一个新的 Backlog 节点    : Icon 和文字不要换行。
         scrum.Backlog列表. 提供创建和编辑Backlog的功能
             - 说明：所有的Backlog节点都按照编辑时间排序
             - 不考虑批量选择
@@ -19,8 +29,19 @@
             - 按Esc 键可以取消编辑
             - 选中状态的节点可以按dd 键删除
             - BacklogList 按照EditAt时间排序，降序显示。
-            - 颜色指示，对Accomplished、Expired,选中的节点，编辑中的节点。分别使用合理的指示背景颜色
+            - 颜色指示，对Done、Expired,选中的节点，编辑中的节点。分别使用合理的指示背景颜色
             - BackLog 修改，可以通过一个函数，自动同步到数据库。
+            - 单击可以选中节点。同时结束对其它节点的选中状态，或退出其它节点的编辑状态。
+            - 单击选中的节点，应该有比较显眼的暖背景色作为温和的提示。
+            - 优化配色和布局，给人愉快的美感
+            - Expired、Done 这两个状态 都用浅背景色的文本来表示
+
+            补充新的需求：
+            - Expired、Done 这两个状态的前面面，分别添加一个 圆形打钩Icon Button /圆形未打钩Icon Button, 用来执行 Toggle Expired / Toggle Done
+        左侧面板的数据结构：
+            补充新的需求：
+            - 把数据相关的操作提取到一个新的文件中/components/BacklogDataOpt.jsx，以便于后续的维护和扩展
+
 
     - 右侧面板 60vw, 提供创建和编辑SolutionGraphNode的功能
         - 右侧顶部工具栏 10vh, 提供上下文相关的操作按钮 
@@ -43,10 +64,10 @@
             - Checkbox: NonSuperEdge .是否显示NonSuperEdge
             - Incremental 节点有显著的颜色提醒。Locked 节点有显著的锁定颜色提醒
             - 排序:应用于整个列表.默认节点列表按照章节编号升序显示。
-                - 1. radio,按照创建时间排序
-                - 2. radio,按章节编号
-                - 2. radio,按PathName编号
-                - 3. 升序，降序
+                - Dropdown Item,按照创建时间排序
+                - Dropdown Item,按章节编号排序 （default）
+                - Dropdown Item,按PathName编号排序
+                - Button 升序，降序
 
         - 右侧节点列表可以:
             - 从后台查询节点列表 SolutionGraphNode[]
@@ -65,13 +86,14 @@
 
 左边是scrum.Backlog列表,40vw. 
 type Backlog struct {
+    Id        string
 	Info      string
 	Reference string
 	Sponsor   string
 	CreateAt  time.Time
     EditAt  time.Time
 	Expired   bool
-    Accomplished bool
+    Done bool
     
 }
 右侧是节点列表 60vw
@@ -97,6 +119,8 @@ type SolutionGraphNode struct {
 	Locked bool `description:"-"`
 	//属于是系统新产生调整增量
 	Incremental bool `description:"-"`
+	CreateAt  time.Time `description:"-"`
+    EditAt  time.Time `description:"-"`
 }
 右侧节点列表：
 节点列表按节点章节排序并且显示,并按ChapterSession分组,并且依据ChapterSession 层级缩进

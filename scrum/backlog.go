@@ -1,19 +1,26 @@
 package scrum
 
 import (
+	"fmt"
 	"time"
 )
 
 type Backlog struct {
+	Id        string
 	Info      string
 	Reference string
 	Sponsor   string
-	CreateAt  time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
 	Expired   bool
+	Done      bool
 }
-type ProductGoal struct {
-	Title string
+
+func (b *Backlog) String() string {
+	return fmt.Sprintf("Backlog[Id: %s, Info: %s, Reference: %s, Sponsor: %s, CreatedAt: %s, UpdatedAt: %s, Expired: %t, Done: %t]",
+		b.Id, b.Info, b.Reference, b.Sponsor, b.CreatedAt.Format(time.RFC3339), b.UpdatedAt.Format(time.RFC3339), b.Expired, b.Done)
 }
+
 type Increment struct {
 	Id string
 }

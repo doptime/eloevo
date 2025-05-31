@@ -167,13 +167,13 @@
 // 	if newItem.Id != "" {
 // 		oItem, _ = keyBusinessDronebot.HGet(newItem.Id)
 // 	}
-// 	if newItem.Id = utils.ID(newItem.Item, 4); oItem != nil {
+// 	if newItem.Id = utils.ID(newitem.BulletName, 4); oItem != nil {
 // 		newItem.Id = oItem.Id
 // 	}
 // 	newItem.UtilityVoted = min(max(newItem.UtilityVoted, -5), 5)
 // 	newItem.CostVoted = min(max(newItem.CostVoted, -5), 5)
 // 	newItem.RemoveVoted = min(max(newItem.RemoveVoted, -1), 5)
-// 	newItem.Item = strings.TrimSpace(newItem.Item)
+// 	newitem.BulletDescription= strings.TrimSpace(newitem.BulletName)
 
 // 	// remove invalid ConstrainsImpletations
 // 	for _, v := range newItem.ConstraintedTo {
@@ -182,7 +182,7 @@
 // 		}
 // 	}
 // 	if isNewModel := oItem == nil; isNewModel {
-// 		if len(newItem.Item) > 0 && len(newItem.Constraints) > 0 {
+// 		if len(newitem.BulletName) > 0 && len(newItem.Constraints) > 0 {
 // 			keyBusinessDronebot.HSet(newItem.Id, newItem)
 // 		}
 // 		return

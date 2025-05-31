@@ -195,18 +195,18 @@ package projects
 // 最后请为下一轮的迭代进行规划。讨论下一轮需要重点完善的关注方向，围绕这个方向选择现有的超边集合，并且调用 FunctionCall:SuperEdgePlannedForNextLoop 进行保存。
 
 // `))).WithToolCallLocked().WithTools(tool.NewTool("SolutionItemRefine", "Propose/edit/delete solution item to improve solution.", func(newItem *BusinessPlans) {
-// 	newItem.Item = strings.TrimSpace(newItem.Item)
+// 	newitem.BulletDescription= strings.TrimSpace(newitem.BulletName)
 // 	var oItem *BusinessPlans = nil
 // 	if newItem.Id != "" {
 // 		oItem, _ = keyBusinessDronebot.HGet(newItem.Id)
 // 	}
-// 	if newItem.Id = utils.ID(newItem.Item, 4); oItem != nil {
+// 	if newItem.Id = utils.ID(newitem.BulletName, 4); oItem != nil {
 // 		newItem.Id = oItem.Id
 // 		oItem.Importance = newItem.Importance
 // 		oItem.Priority = newItem.Priority
-// 		if newItem.Item != "" && oItem.Item != newItem.Item {
-// 			oItem.Item = newItem.Item
-// 			if embed, err := utils.GetEmbedding(oItem.Item); err == nil {
+// 		if newitem.BulletDescription!= "" && oitem.BulletDescription!= newitem.BulletDescription{
+// 			oitem.BulletDescription= newitem.BulletName
+// 			if embed, err := utils.GetEmbedding(oitem.BulletName); err == nil {
 // 				oItem.Embed(embed)
 // 				milvusCollection.Upsert(oItem)
 // 			}
@@ -216,7 +216,7 @@ package projects
 
 // 	}
 // 	if isNewModel := oItem == nil; isNewModel {
-// 		if len(newItem.Item) > 0 && !utils.HasForbiddenWords(newItem.Item, ForbiddenWords) {
+// 		if len(newitem.BulletName) > 0 && !utils.HasForbiddenWords(newitem.BulletName, ForbiddenWords) {
 // 			keyBusinessDronebot.HSet(newItem.Id, newItem)
 // 		}
 // 		return
@@ -266,7 +266,7 @@ package projects
 // 		for _, key := range lo.Keys(businessPlans) {
 // 			item := businessPlans[key]
 
-// 			if utils.HasForbiddenWords(item.Item, ForbiddenWords) || item.Importance < 0 {
+// 			if utils.HasForbiddenWords(item.BulletName, ForbiddenWords) || item.Importance < 0 {
 // 				keyBusinessDronebot.ConcatKey("Archive").HSet(item.Id, item)
 // 				keyBusinessDronebot.HDel(item.Id)
 // 				delete(businessPlans, item.Id)
@@ -297,8 +297,8 @@ package projects
 // 		//Upsert to milvus
 // 		var milvusInserts []*BusinessPlans
 // 		for _, item := range lo.Values(businessPlans) {
-// 			if item.Item != "" && len(item.Embed()) != 1024 {
-// 				embed, err := utils.GetEmbedding(item.Item)
+// 			if item.BulletDescription!= "" && len(item.Embed()) != 1024 {
+// 				embed, err := utils.GetEmbedding(item.BulletName)
 // 				if err == nil {
 // 					item.Embed(embed)
 // 					milvusInserts = append(milvusInserts, item)

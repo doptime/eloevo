@@ -144,10 +144,12 @@ var (
 
 	GLM32B = NewModel("http://gpu.lan:19732/v1", ApiKey, "glmz132b").WithTemperature(0.6).WithTopP(0.95) //.WithTopK(40) .WithToolInPrompt(true)
 
-	Gemma3B27 = NewModel("http://gpu.lan:5527/v1", ApiKey, "gemma3").WithTopP(0.92).WithTemperature(0.9).WithToolsInUserPrompt()
-	Gemma3B12 = NewModel("http://gpu.lan:5527/v1", ApiKey, "gemma3b12").WithTopP(0.95).WithTemperature(1.0).WithToolsInSystemPrompt()
-	Qwen30BA3 = NewModel("http://gpu.lan:12303/v1", ApiKey, "qwen30ba3").WithTemperature(0.7).WithTopP(0.8)
-	Qwen3B14  = NewModel("http://gpu.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.7).WithTopP(0.8)
+	Gemma3B27           = NewModel("http://gpu.lan:5527/v1", ApiKey, "gemma3").WithTopP(0.92).WithTemperature(0.9).WithToolsInUserPrompt()
+	Gemma3B12           = NewModel("http://gpu.lan:5527/v1", ApiKey, "gemma3b12").WithTopP(0.95).WithTemperature(1.0).WithToolsInSystemPrompt()
+	Qwen30BA3           = NewModel("http://gpu.lan:12303/v1", ApiKey, "qwen30ba3").WithTemperature(0.7).WithTopP(0.8)
+	Qwen3B14            = NewModel("http://gpu.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.7).WithTopP(0.8)
+	Qwen3B32Nonthinking = NewModel("http://gpu.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.7).WithTopP(0.8)
+	Qwen3B32Thinking    = NewModel("http://gpu.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.6).WithTopP(0.95)
 
 	Reka3 = NewModel("http://gpu.lan:43813/v1", ApiKey, "reka3").WithTopP(0.92).WithTemperature(0.9).WithToolsInSystemPrompt()
 	Phi4  = NewModel("http://gpu.lan:7214/v1", ApiKey, "phi4").WithToolsInSystemPrompt()
