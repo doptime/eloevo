@@ -23,7 +23,10 @@ func GetEmbedding(text string) ([]float32, error) {
 		openai.EmbeddingRequest{
 			//Model: "gte-qwen2-7b-instruct",
 			//Model: "BillSYZhang/gte-qwen2-7b-instruct-mlx",
-			Model: "text-embedding-multilingual-e5-large-instruct",
+			//Model: "text-embedding-multilingual-e5-large-instruct",
+			//Model: "qwen3-embedding-8b",
+			Model: "Qwen/Qwen3-Embedding-4B-GGUF",
+			//Model: "Qwen/Qwen3-Embedding-0.6B-GGUF",
 			Input: text,
 		},
 	)

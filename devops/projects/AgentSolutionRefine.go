@@ -44,7 +44,7 @@ var AgentGenSuperEdge = agent.NewAgent(template.Must(template.New("AgentGenSuper
 {{.ProductGoal}}
 
 这是本次迭代的目标:
-{{.WhatIsTheExpectedOutputInFollowingStep}}
+{{.WhatTodoInFollowingIter}}
 
 这是来自上一次迭代的反馈:
 {{.MemoToTheNextIter}}
@@ -52,9 +52,9 @@ var AgentGenSuperEdge = agent.NewAgent(template.Must(template.New("AgentGenSuper
 这是系统的当前的超边节点:
 {{.SuperEdges}}
 
-{{if lt (len .PartOfSolutionNodes) 0 }}
+{{if lt (len .RelativeSolutionNodes) 0 }}
 这是当前重点关注的部分解决方案节点:
-{{.PartOfSolutionNodes}}
+{{.RelativeSolutionNodes}}
 {{end}}
 
 这是当前的Scrum.Backlog:

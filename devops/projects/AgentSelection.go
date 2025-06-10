@@ -18,15 +18,14 @@ import (
 )
 
 type ApplySelectedAgent struct {
-	AgentName                              string                                      `description:"Name of the agent to call, string"`
-	WhatIsTheExpectedOutputInFollowingStep string                                      `description:"What is the expected output in following step, string"`
-	MemoToTheNextIter                      string                                      `description:"memo should pass to next iteration, string"`
-	SolutionNodesIdsToNextIter             []string                                    `description:"solution nodes should pass to next iteration, array of string"`
-	SuperEdges                             string                                      `description:"-"`
-	AllItems                               map[string]*SolutionGraphNode               `description:"-"`
-	Backlogs                               []*scrum.Backlog                            `description:"-"`
-	ProductGoal                            string                                      `description:"-"`
-	HashKey                                redisdb.HashKey[string, *SolutionGraphNode] `description:"-"`
+	WhatTodoInFollowingIter string                                      `description:"What is key focus to do in following iter, string"`
+	MemoToTheNextIter       string                                      `description:"memo should pass to next iteration, string"`
+	BackgroundNodesToPass   []string                                    `description:"background solution nodes (Id) should pass to next iteration, array of string"`
+	SuperEdges              string                                      `description:"-"`
+	AllItems                map[string]*SolutionGraphNode               `description:"-"`
+	Backlogs                []*scrum.Backlog                            `description:"-"`
+	ProductGoal             string                                      `description:"-"`
+	HashKey                 redisdb.HashKey[string, *SolutionGraphNode] `description:"-"`
 }
 
 var AgentApplySelectedAgent = agent.NewAgent(template.Must(template.New("AgentAutoSelect").Parse(`
@@ -178,29 +177,23 @@ var AgentApplySelectedAgent = agent.NewAgent(template.Must(template.New("AgentAu
 
 
 `))).WithToolCallMutextRun().WithTools(tool.NewTool("ApplySelectedAgent", "choose a proper agent for the next step", func(param *ApplySelectedAgent) {
-	// 这里可以根据 param.AgentName 来选择不同的 Agent
-	// 例如，假设有一个 Agent 名为 "BusinessPlansAgent"，可以这样调用：
-	if param.AgentName == "" {
-		return
-	}
 	solution := ""
-	if len(param.SolutionNodesIdsToNextIter) > 0 {
+	if len(param.BackgroundNodesToPass) > 0 {
 		nodes := lo.Filter(lo.Values(param.AllItems), func(v *SolutionGraphNode, _ int) bool {
-			return lo.Contains(param.SolutionNodesIdsToNextIter, v.Id)
+			return lo.Contains(param.BackgroundNodesToPass, v.Id)
 		})
 		solution = SolutionGraphNodeList(nodes).Solution().PathnameSorted().FullView()
 	}
 
 	err := AgentGenSuperEdge.Call(context.Background(), map[string]interface{}{
-		"Task":                                   param.AgentName,
-		"WhatIsTheExpectedOutputInFollowingStep": param.WhatIsTheExpectedOutputInFollowingStep,
-		"MemoToTheNextIter":                      param.MemoToTheNextIter,
-		"PartOfSolutionNodes":                    solution,
-		"ProductGoal":                            param.ProductGoal,
-		"AllItems":                               param.AllItems,
-		"Backlogs":                               param.Backlogs,
-		"SuperEdges":                             param.SuperEdges,
-		"HashKey":                                param.HashKey,
+		"WhatTodoInFollowingIter": param.WhatTodoInFollowingIter,
+		"MemoToTheNextIter":       param.MemoToTheNextIter,
+		"RelativeSolutionNodes":   solution,
+		"ProductGoal":             param.ProductGoal,
+		"AllItems":                param.AllItems,
+		"Backlogs":                param.Backlogs,
+		"SuperEdges":              param.SuperEdges,
+		"HashKey":                 param.HashKey,
 	})
 	if err != nil {
 		fmt.Printf("Error calling AgentGenSuperEdge: %v\n", err)

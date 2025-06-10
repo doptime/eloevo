@@ -5,6 +5,7 @@ import (
 
 	"github.com/doptime/doptime/httpserve"
 	"github.com/doptime/eloevo/devops/projects"
+	"github.com/doptime/eloevo/utils"
 	//_ "github.com/doptime/doptime/httpserve"
 )
 
@@ -14,6 +15,9 @@ type TestStruct struct {
 }
 
 func main() {
+	projects.EvoLearning()
+	a, e := utils.GetEmbedding("hello world")
+	println("embedding result", a, e.Error())
 	httpserve.Debug()
 	time.Sleep(1000000 * time.Second)
 	projects.AgentSelectAndExecute()

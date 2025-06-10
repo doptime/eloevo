@@ -19,7 +19,7 @@ package projects
 
 // type ApplySelectedAgent struct {
 // 	AgentName                              string                                      `description:"Name of the agent to call, string"`
-// 	WhatIsTheExpectedOutputInFollowingStep string                                      `description:"What is the expected output in following step, string"`
+// 	WhatTodoInFollowingIter string                                      `description:"What is the expected output in following step, string"`
 // 	MemoToTheNextIter                      string                                      `description:"memo should pass to next iteration, string"`
 // 	SolutionNodesIdsToNextIter             []string                                    `description:"solution nodes should pass to next iteration, array of string"`
 // 	SuperEdges                             string                                      `description:"-"`
@@ -173,9 +173,9 @@ package projects
 
 // 	err := AgentGenSuperEdge.Call(context.Background(), map[string]interface{}{
 // 		"Task":                                   param.AgentName,
-// 		"WhatIsTheExpectedOutputInFollowingStep": param.WhatIsTheExpectedOutputInFollowingStep,
+// 		"WhatTodoInFollowingIter": param.WhatTodoInFollowingIter,
 // 		"MemoToTheNextIter":                      param.MemoToTheNextIter,
-// 		"PartOfSolutionNodes":                    solution,
+// 		"RelativeSolutionNodes":                    solution,
 // 		"ProductGoal":                            param.ProductGoal,
 // 		"AllItems":                               param.AllItems,
 // 		"Backlogs":                               param.Backlogs,
