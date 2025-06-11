@@ -26,6 +26,7 @@ type ApplySelectedAgent struct {
 	Backlogs                []*scrum.Backlog                            `description:"-"`
 	ProductGoal             string                                      `description:"-"`
 	HashKey                 redisdb.HashKey[string, *SolutionGraphNode] `description:"-"`
+	ThisAgent               *agent.Agent                                `description:"-"`
 }
 
 var AgentApplySelectedAgent = agent.NewAgent(template.Must(template.New("AgentAutoSelect").Parse(`
@@ -185,7 +186,7 @@ var AgentApplySelectedAgent = agent.NewAgent(template.Must(template.New("AgentAu
 		solution = SolutionGraphNodeList(nodes).Solution().PathnameSorted().FullView()
 	}
 
-	err := AgentGenSuperEdge.Call(context.Background(), map[string]interface{}{
+	err := param.ThisAgent.Call(context.Background(), map[string]interface{}{
 		"WhatTodoInFollowingIter": param.WhatTodoInFollowingIter,
 		"MemoToTheNextIter":       param.MemoToTheNextIter,
 		"RelativeSolutionNodes":   solution,

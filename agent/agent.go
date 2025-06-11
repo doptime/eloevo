@@ -202,6 +202,7 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 			params[k] = v
 		}
 	}
+	params["ThisAgent"] = a // add self reference to memory
 	if a.memDeCliboardKey != "" {
 		textbytes := clipboard.Read(clipboard.FmtText)
 		if len(textbytes) == 0 {

@@ -11,6 +11,7 @@ import (
 
 type SolutionGraphNode struct {
 	Id                string `description:"Required when update. Id, string, unique." milvus:"PK,in,out"`
+	Pathname          string `description:"Ascii pathname of current node。pathname is multi-level, using bullet name to denodes node's modualized intention. extension name such as .md ... is needed"`
 	BulletDescription string `msgpack:"alias:BulletName" description:"Required when create. item of the solution. Bullet Description of Module, Constraints, Guidelines, Architecturals, Nexus or Specifications."`
 	Content           string `msgpack:"alias:Detail" description:"Complete description or implementation details of the solution item. Content be stored in file. For SuperEdge nodes, this includes architectural principles, constraints, or guidelines. For Module nodes, this includes the specific solution implementation, algorithms, or technical specifications."`
 
@@ -22,7 +23,6 @@ type SolutionGraphNode struct {
 	Priority   int64 `description:"int, value >= 0 and value <= 10 . \n Required for module node. use in Gatt chart to determin the priority of the item. the lower the higher the priority."`
 
 	EmbedingVector []float32 `description:"-" milvus:"dim=1024,index" `
-	Pathname       string    `description:"Ascii pathname of current node。pathname is multi-level, using bullet name to denodes node's modualized intention. extension name such as .md ... is needed"`
 
 	SelfMemo string `description:"Self memo information. Such as missing elements, constrains collision, or what to do in further iterations."`
 

@@ -15,7 +15,7 @@ type TestStruct struct {
 }
 
 func main() {
-	projects.EvoLearning()
+	projects.EvoLearningSolution()
 	a, e := utils.GetEmbedding("hello world")
 	println("embedding result", a, e.Error())
 	httpserve.Debug()

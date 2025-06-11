@@ -37,7 +37,7 @@ var ProductGoalUniLearning ProductGoal = `
 # 系统愿景: 
 ## 实现一个学习、面试、培训一体化的平台；
 ### 对任何特定的知识，先要构建一个非常具象化的场景；
-    - 该场景使用背景色作为背景。
+    - 该场景使用Aero（玻璃效果）色作为背景。
     - 所有的场景中的元素使用svg或其它方式，每个元素分别定义。
     - 有可交互的情境。
     - 有适当的环节可以展示知识。
@@ -64,3 +64,24 @@ gesture:transformend: 任意手离开；缩放/旋转结束，物体/场景固�
 ## 其它重要约束:
   - 前端用tsx,tailwindcss、Zustand、 Framer Motion 来实现。
 `
+
+// ## step1
+// 当前的主题是 直观感受比较1-20数字的大小
+// 请为这个主题生成一个好玩，体验顺畅的游戏方案
+
+// ## step2
+// 很好。以这个方案为基准。请进一步提出解决方案文件的元数据列表，作为下一步高质量实现解决方案的预备。
+
+// 解决方案的每个文件对应有一个元数据：
+
+// type SolutionGraphNode struct {
+
+//     Pathname          string `description:"Ascii pathname of current node。pathname is multi-level, using bullet name to denodes node's modualized intention. extension name such as .md ... is needed"`
+
+//     BulletDescription string `msgpack:"alias:BulletDescription" description:"BulletDescription  是文件内容的摘要。描述和文件的模块化的意图。实现的细节"`
+
+//     FileContent           string `msgpack:"alias:Detail" description:"file stored in disk. compile and running by npm"`
+
+// }
+
+// 解决方案将以文件的方式构建。具体的建构将通过另外的Agent 进行。这些文件内容将根据文件的元描述来创建并完善。请深度分析，创建符合目标数据结构的文件元数据（但请不要填写FileContent）。请确保提出的元数据可以 制导后续文件内容 以模块化、高度洗练、粒度适当的方式 完成对解决方案的建构。

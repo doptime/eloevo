@@ -113,9 +113,6 @@ var AgentEvoLearning = agent.NewAgent(template.Must(template.New("AgentEvoLearni
 这是系统的product goal:
 {{.ProductGoal}}
 
-这是系统的当前的超边节点:
-{{.SuperEdges}}
-
 这是当前的Scrum.Backlog:
 {{range $i, $backlog := .Backlogs}}
 {{$backlog}} 
