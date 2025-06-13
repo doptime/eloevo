@@ -15,7 +15,7 @@ var PlanForTopic = `核心构想：神谕天平 (The Oracle's Scale)
 托盘上方有一个实时更新的、醒目的计数器。
 操作面板 (The Modifiers):
 位于解答端托盘的下方，或用户手部最容易触及的区域。
-包含四个玻璃质感的交互按钮：+1, -1, +3, -3。它们是用户调整数量的唯一工具。
+包含四个玻璃质感的交互按钮：+1, -1, +3, -3。它们是用户调整数量的唯一工具。	
 审判按钮 (The Judgment Button):
 位于天平正下方，一个醒目的圆形按钮，初始文字为“开始审判”。当玩家认为两侧平衡时，将由它来触发最终的验证动画。
 完整交互流程 (A Tighter Loop)
@@ -76,88 +76,69 @@ Framer Motion (动画):
 
 var FileItems = `
 [
-    {
-        "Pathname": "package.json",
-        "BulletDescription": "项目核心依赖与脚本定义。声明React, Vite, TypeScript基础环境，并明确集成 Zustand, Framer Motion, Tailwind CSS。特别指出需要集成 @mediapipe/tasks-vision 用于手势识别。"
-    },
-    {
-        "Pathname": "vite.config.ts",
-        "BulletDescription": "Vite构建工具的配置文件。配置React插件(@vitejs/plugin-react)，确保支持TSX语法和快速热更新。"
-    },
-    {
-        "Pathname": "tailwind.config.js",
-        "BulletDescription": "Tailwind CSS配置文件。定义项目的主题颜色、字体，并配置 ‘backdrop-blur‘ 等工具类以支持Aero玻璃效果。"
-    },
-    {
-        "Pathname": "src/main.tsx",
-        "BulletDescription": "应用程序的入口文件。负责在DOM中渲染根组件 ‘App‘，并引入全局样式表 ‘index.css‘。"
-    },
-    {
-        "Pathname": "src/index.css",
-        "BulletDescription": "全局CSS样式文件。包含Tailwind CSS的‘@tailwind‘指令，并可定义全局背景、字体等基础样式。"
-    },
-    {
-        "Pathname": "src/App.tsx",
-        "BulletDescription": "应用的根组件。负责初始化全局服务（如手势识别），并渲染主游戏场景 ‘OracleScaleScene‘。作为整个应用的顶层容器。"
-    },
-    {
-        "Pathname": "src/core/store/gameStore.ts",
-        "BulletDescription": "Zustand全局状态管理。定义并导出‘useGameStore‘ hook。Store需包含状态(State)：‘gameState‘ ('prologue'|'challenging'|'judging'|'result'), ‘challenge‘ ({type, value}), ‘workspaceValue‘。以及操作(Actions)：‘startNewChallenge‘, ‘adjustWorkspaceValue‘, ‘judge‘, ‘reset‘。"
-    },
-    {
-        "Pathname": "src/core/gestures/useGestureControls.ts",
-        "BulletDescription": "封装手势识别逻辑的React Custom Hook。该Hook负责初始化MediaPipe HandLandmarker，启动摄像头，处理视频流，并将识别到的手势（捏合、移动等）转换为自定义DOM事件（如‘gesture:click‘），同时返回屏幕指针的实时坐标 ‘{x, y}‘。"
-    },
-    {
-        "Pathname": "src/core/gestures/GestureEventDispatcher.ts",
-        "BulletDescription": "手势事件分发器模块。被 ‘useGestureControls‘ 调用，负责将原始的手部关键点数据，解析为具体的、语义化的自定义事件（如‘gesture:click‘, ‘gesture:point‘等），并将其分发到 window 或指定的目标元素上。"
-    },
-    {
-        "Pathname": "src/components/scene/OracleScaleScene.tsx",
-        "BulletDescription": "核心游戏场景的主组件。调用‘useGestureControls‘启动手势识别，渲染‘GesturePointer‘视觉指针。订阅‘gameStore‘的状态，根据‘gameState‘来动态编排和渲染‘BalanceAltar‘、‘GameMessage‘等场景元素，是所有游戏组件的“导演”。"
-    },
-    {
-        "Pathname": "src/components/scene/BalanceAltar.tsx",
-        "BulletDescription": "神谕天平的3D视觉组件。接收props如‘leftValue‘, ‘rightValue‘, ‘isJudging‘。内部包含左右两个‘AltarPan‘。核心功能是使用Framer Motion，根据‘isJudging‘状态和左右重量差，执行精准、富有物理感的倾斜动画。"
-    },
-    {
-        "Pathname": "src/components/scene/AltarPan.tsx",
-        "BulletDescription": "天平托盘组件。可复用于左右两侧。接收‘count‘或‘challenge‘作为prop。负责渲染指定数量的‘EnergyOrb‘能量球，并使用Framer Motion的‘AnimatePresence‘来处理球的动态增减动画。同时可能显示托盘上方的数字标签。"
-    },
-    {
-        "Pathname": "src/components/scene/EnergyOrb.tsx",
-        "BulletDescription": "能量球的基础组件。使用SVG或带有样式的div实现，确保视觉效果精致。利用Framer Motion实现独立的入场（如弹性掉落）和出场（如溶解消失）动画。它的动画效果是提升游戏体验的关键。"
-    },
-    {
-        "Pathname": "src/components/ui/GesturePointer.tsx",
-        "BulletDescription": "屏幕上的手势视觉指针。一个简单的组件，其屏幕位置(x, y)由‘useGestureControls‘ hook的返回值驱动，为用户提供关于其手势指向位置的即时视觉反馈。"
-    },
-    {
-        "Pathname": "src/components/ui/ModifierButton.tsx",
-        "BulletDescription": "可复用的操作按钮（+1, -1, +3, -3）。接收‘value‘ (number) 和 ‘onClick‘ 回调作为props。按钮的样式会响应手势悬停(‘gesture:enter‘)而高亮，并响应‘gesture:click‘事件来触发‘onClick‘回调。"
-    },
-    {
-        "Pathname": "src/components/ui/JudgmentButton.tsx",
-        "BulletDescription": "“开始审判”按钮。其显示文本和视觉状态（如呼吸灯闪烁效果）由‘gameStore‘驱动。例如，当左右平衡时，按钮变为激活状态并开始发光，吸引用户点击。"
-    },
-    {
-        "Pathname": "src/components/ui/GameMessage.tsx",
-        "BulletDescription": "游戏信息展示组件。用于显示开场的序白、胜利的祝贺（“完美均衡”）或失败提示。使用Framer Motion实现优雅的淡入淡出或打字机动画效果。"
-    },
-    {
-        "Pathname": "src/assets/sounds/addOrb.mp3",
-        "BulletDescription": "增加能量球时的音效文件。应为清脆、积极的声效。"
-    },
-    {
-        "Pathname": "src/assets/sounds/removeOrb.mp3",
-        "BulletDescription": "减少能量球时的音效文件。应为收缩、魔幻的声效。"
-    },
-    {
-        "Pathname": "src/assets/sounds/judgmentSuccess.mp3",
-        "BulletDescription": "审判成功、天平平衡时的音效。应为和谐、胜利的圣歌或钟声。"
-    },
-    {
-        "Pathname": "src/assets/sounds/judgmentFail.mp3",
-        "BulletDescription": "审判失败、天平失衡时的音效。应为沉重、略带滑稽的失衡声。"
-    }
-]`
+  {
+    "Filename": "App.tsx",
+    "BulletDescription": "Root component that sets up the game environment and orchestrates the main game flow. It will render the 'Oracle's Scale' scene and manage high-level game states like 'adjusting' or 'judging'. It will leverage Zustand for global state management and Framer Motion for scene transitions."
+  },
+  {
+    "Filename": "components-OracleScale.tsx",
+    "BulletDescription": "The central component representing the 'Oracle's Scale' itself. This component will handle the rendering of the left and right trays, the balance pointer, and the 'Judgment Button'. It will receive data from the global state and use Framer Motion for all its visual animations, such as tilting and glowing."
+  },
+  {
+    "Filename": "components-Tray.tsx",
+    "BulletDescription": "A reusable component for rendering the left and right trays of the scale. It will display either a numerical challenge or a collection of energy balls. It will manage the visual representation of energy balls entering, exiting, or accumulating within the tray, using SVG for elements and Framer Motion for their animations."
+  },
+  {
+    "Filename": "components-EnergyBall.tsx",
+    "BulletDescription": "A single energy ball component, likely an SVG, with its own animation properties defined by Framer Motion. This component will be responsible for rendering an individual energy ball and animating its movement (e.g., flying in, flying out, or settling in the tray)."
+  },
+  {
+    "Filename": "components-ModifierButton.tsx",
+    "BulletDescription": "A reusable component for the '+1, -1, +3, -3' interaction buttons. Each button will have visual feedback on hover/focus (using Tailwind CSS for styling) and will trigger state updates via the global Zustand store on 'gesture:click'. It will also incorporate Framer Motion for click animations."
+  },
+  {
+    "Filename": "components-JudgmentButton.tsx",
+    "BulletDescription": "The 'Start Judgment' button component. It will have a distinct visual style (glass-morphic, glowing). Its appearance will be controlled by the game state, and it will trigger the final judgment sequence when clicked via 'gesture:click'. Framer Motion will be used for its glowing and scaling animations."
+  },
+  {
+    "Filename": "components-NumberCounter.tsx",
+    "BulletDescription": "A component to display the real-time count of energy balls on the right tray. This component will receive its value from the Zustand store and use Framer Motion's 'animate' property to achieve smooth, visually appealing transitions (e.g., rolling or fading) when the number changes."
+  },
+  {
+    "Filename": "components-FeedbackOverlay.tsx",
+    "BulletDescription": "A component to display visual feedback such as 'Perfect Equilibrium' or 'Try Again' messages. It will appear as an overlay and use Framer Motion for its entrance and exit animations (e.g., fade-in/out, scale-up/down). The content will depend on the game's outcome."
+  },
+  {
+    "Filename": "components-StartChallengeButton.tsx",
+    "BulletDescription": "The initial 'Start Challenge' button that appears at the beginning of the game to initiate the first challenge. It will respond to 'gesture:click' to transition the game into the 'challenge set' state."
+  },
+  {
+    "Filename": "store-gestureStore.ts",
+    "BulletDescription": "Zustand store for managing global gesture state. This file will define the store and its actions to subscribe to and update gesture inputs (point, click, dragstart, drag, dragend, contextmenu, swipe, cancel, transformstart, transform, transformend) as per the provided specification. This is a critical component for integrating hand gestures."
+  },
+  {
+    "Filename": "store-gameStore.ts",
+    "BulletDescription": "Zustand store for managing the core game state. This will include challengeValue (the target number/quantity), currentValue (the user's current quantity on the right tray), and gameState (e.g., 'idle', 'adjusting', 'judging', 'correct', 'incorrect'). It will also define actions to modify these states, such as 'increase', 'decrease', 'setChallenge', and 'triggerJudgment'."
+  },
+  {
+    "Filename": "utils-audio.ts",
+    "BulletDescription": "Utility file for managing sound effects using TTS engine and Tone.js. It will contain functions to play specific sounds for actions like adding/removing energy balls, a 'ding' for adding, a 'swoosh' for removing, and distinct sounds for 'correct' and 'incorrect' judgments. This will avoid audio files and rely on programmatically generated sounds."
+  },
+  {
+    "Filename": "assets-svg-scale-icon.svg",
+    "BulletDescription": "SVG file for the main scale icon and its components (trays, pointer). This will be imported and used within the OracleScale component."
+  },
+  {
+    "Filename": "assets-svg-energy-ball.svg",
+    "BulletDescription": "SVG file for the energy ball visual element. This will be imported and used within the EnergyBall component."
+  },
+  {
+    "Filename": "styles-index.css",
+    "BulletDescription": "Main Tailwind CSS file for global styles and utility classes. This will include custom styles for glass-morphic effects, button states, and general layout."
+  },
+  {
+    "Filename": "hooks-useGestureHandler.ts",
+    "BulletDescription": "A custom React hook that integrates with the "useGestureStore" to translate raw gesture events into specific game actions. This hook will listen to changes in the gesture store and dispatch actions to the "gameStore" (e.g., on 'click' of a ModifierButton, update "currentValue")."
+  }
+]
+  `

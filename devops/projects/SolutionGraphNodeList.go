@@ -23,9 +23,9 @@ func (a SolutionGraphNodeList) SummaryView() string {
 	for _, v := range a {
 		numlayter := len(strings.Split(v.Pathname, "/")) - 1
 		indence := strings.Repeat("\t", numlayter)
-		SelfMemo := lo.Ternary(v.SelfMemo != "", " SelfMemo: "+v.SelfMemo, "")
+		NextIterFeedback := lo.Ternary(v.NextIterFeedback != "", " NextIterFeedback: "+v.NextIterFeedback, "")
 
-		s := fmt.Sprint(indence, "\nBulletDescription: ", v.BulletDescription, SelfMemo, " [Id:", v.Id, lo.Ternary(v.SuperEdge, " SuperEdge", ""), " importance:", strconv.Itoa(int(v.Importance)), " priority:", strconv.Itoa(int(v.Priority)), "]\n")
+		s := fmt.Sprint(indence, "\nBulletDescription: ", v.BulletDescription, NextIterFeedback, " [Id:", v.Id, lo.Ternary(v.SuperEdge, " SuperEdge", ""), " importance:", strconv.Itoa(int(v.Importance)), " priority:", strconv.Itoa(int(v.Priority)), "]\n")
 		sb.WriteString(s)
 	}
 	return sb.String()

@@ -24,7 +24,7 @@ type SolutionGraphNode struct {
 
 	EmbedingVector []float32 `description:"-" milvus:"dim=1024,index" `
 
-	SelfMemo string `description:"Self memo information. Such as missing elements, constrains collision, or what to do in further iterations."`
+	NextIterFeedback string `description:"Self memo information. Such as missing elements, constrains collision, or what to do in further iterations."`
 
 	//被人类专家标记为锁定的条目。Locked = true. 不能被删除和修改
 	Locked bool `description:"-"`
@@ -57,8 +57,8 @@ func (u *SolutionGraphNode) Embed(embed ...[]float32) []float32 {
 func (u *SolutionGraphNode) String(layer ...int) string {
 	numLayer := append(layer, 0)[0]
 	indence := strings.Repeat("\t", numLayer)
-	SelfMemo := lo.Ternary(u.SelfMemo != "", " SelfMemo: "+u.SelfMemo, "")
+	NextIterFeedback := lo.Ternary(u.NextIterFeedback != "", " NextIterFeedback: "+u.NextIterFeedback, "")
 	Detail := lo.Ternary(u.Content != "", " Detail: "+u.Content, "")
-	return fmt.Sprint(indence, "BulletDescription: ", u.BulletDescription, Detail, SelfMemo, " [Id:", u.Id, lo.Ternary(u.SuperEdge, " SuperEdge", ""), " importance:", strconv.Itoa(int(u.Importance)), " priority:", strconv.Itoa(int(u.Priority)), "]\n")
+	return fmt.Sprint(indence, "BulletDescription: ", u.BulletDescription, Detail, NextIterFeedback, " [Id:", u.Id, lo.Ternary(u.SuperEdge, " SuperEdge", ""), " importance:", strconv.Itoa(int(u.Importance)), " priority:", strconv.Itoa(int(u.Priority)), "]\n")
 	//return fmt.Sprint(indence, "Id:", u.Id, " Importance:", u.Importance, communityCore, " Priority:", u.Priority, "\n", u.Item, "\n\n")
 }

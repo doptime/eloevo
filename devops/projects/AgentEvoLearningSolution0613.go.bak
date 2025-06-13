@@ -18,6 +18,17 @@ import (
 	"github.com/samber/lo"
 )
 
+type AgentSelector struct {
+	WhatTodoInFollowingIter string                                 `description:"What is key focus to do in following iter, string"`
+	MemoToTheNextIter       string                                 `description:"memo should pass to next iteration, string"`
+	BackgroundNodesToPass   []string                               `description:"background solution nodes (Pathname) should pass to next iteration, array of string"`
+	AllItems                map[string]*SolutionNode               `description:"-"`
+	Backlogs                []*scrum.Backlog                       `description:"-"`
+	ProductGoal             string                                 `description:"-"`
+	HashKey                 redisdb.HashKey[string, *SolutionNode] `description:"-"`
+	ThisAgent               *agent.Agent                           `description:"-"`
+}
+
 var AgentEvoLearningSolution = agent.NewAgent(template.Must(template.New("AgentEvoLearningCallback").Parse(`
 ## 本系统采用迭代方式来渐进实现系统的自动化构建。每一轮的迭代中，请通过一系列的Funtioncall 调用，来完善或改进方案的实现。
 本系统采用敏捷开发的思路驱动。每一次的迭代是一次敏捷开发的Scrum。优先使用scrum.Backlog 来驱动开发。
@@ -45,14 +56,23 @@ var AgentEvoLearningSolution = agent.NewAgent(template.Must(template.New("AgentE
 
 
 
-## To Do : SolutionRefine
+## To Do :
+	1. EndGoalDrivenFileModifierPlanner
+	中文名: 逆向目标规划器
+	描述:
+	以产品最终目标 (ProductGoal) 和当前系统状态、Backlog为出发点，进行逆向分析和规划。
+	识别并定义出为达成最终目标，在当前需要完善或者是改进的下一个文件。
+	产出内容: 调用 FileModifierAgent 来调启动对文件的修改。
+
+	2. SolutionRefine
+	中文名: 方案改进器
 	请按给定的本次迭代的目标，行深度思考，并提出有效的Refine 方案。
 	最后通过一次或多次调用 FunctionCall:SolutionSuperEdgeRefine 来保存方案改进。改进形式包括: 1)创建新节点; 2)修改条目:指定Id,并修改字段(可忽略不修改字段若，若修改的字段需确保完整性); 3)删除无效节点
 
 
-`))).WithToolCallMutextRun().WithTools(tool.NewTool("SolutionSuperEdgeRefine", "create/modify/remove supernodes", func(newItem *SolutionFileNode) {
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("SolutionSuperEdgeRefine", "create/modify/remove supernodes", func(newItem *SolutionNode) {
 	newItem.BulletDescription = strings.TrimSpace(newItem.BulletDescription)
-	var oItem *SolutionFileNode = nil
+	var oItem *SolutionNode = nil
 	if newItem.Filename == "" {
 		return
 	}
@@ -71,11 +91,29 @@ var AgentEvoLearningSolution = agent.NewAgent(template.Must(template.New("AgentE
 	os.WriteFile(filepath.Join(RootPath, newItem.Filename), []byte(newItem.FileContent), 0644)
 	newItem.HashKey.HSet(newItem.Filename, newItem)
 
-}))
+})).WithToolCallMutextRun().WithTools(tool.NewTool("FileModifierAgent", "choose a file to modify for the next step", func(param *AgentSelector) {
+	solution := ""
+	if len(param.BackgroundNodesToPass) > 0 {
+		solution = SolutionNodeList(lo.Values(param.AllItems)).PathnameSorted().View(param.BackgroundNodesToPass)
+	}
+
+	err := param.ThisAgent.Call(context.Background(), map[string]interface{}{
+		"WhatTodoInFollowingIter": param.WhatTodoInFollowingIter,
+		"MemoToTheNextIter":       param.MemoToTheNextIter,
+		"Solution":                solution,
+		"ProductGoal":             string(scrum.ProductGoalUniLearning) + "\n\n这是当前规划的游戏场景:\n" + PlanForTopic + "\n\n" + FileItems,
+		"AllItems":                param.AllItems,
+		"Backlogs":                param.Backlogs,
+		"HashKey":                 param.HashKey,
+	})
+	if err != nil {
+		fmt.Printf("Error calling AgentGenSuperEdge: %v\n", err)
+	}
+})).WithModels(models.Qwen3B32Thinking)
 
 var KeyBacklogBase = redisdb.NewListKey[*scrum.Backlog](redisdb.Opt.HttpVisit())
 var ThisTopic = "直观感受1-20数字的大小"
-var SolutionBase = redisdb.NewHashKey[string, *SolutionFileNode](redisdb.Opt.HttpVisit())
+var SolutionBase = redisdb.NewHashKey[string, *SolutionNode](redisdb.Opt.HttpVisit())
 var RootPath = "/Users/yang/doptime/evolab/web/app/perceptual-understanding-numbers-1-to-20"
 
 func EvoLearningSolution() {
@@ -89,9 +127,9 @@ func EvoLearningSolution() {
 		allNodes, _ := keySolution.HGetAll()
 		MaxThreadsSemaphore <- struct{}{} // Acquire a spot in the semaphore
 
-		SolutionSummary := SolutionFileNodeList(lo.Values(allNodes)).PathnameSorted().View()
+		SolutionSummary := SolutionNodeList(lo.Values(allNodes)).PathnameSorted().SummaryView()
 
-		go func(backlogs []*scrum.Backlog, SolutionSummary string, AllItems map[string]*SolutionFileNode) {
+		go func(backlogs []*scrum.Backlog, SolutionSummary string, AllItems map[string]*SolutionNode) {
 			defer func() { <-MaxThreadsSemaphore }()
 			err := AgentEvoLearningSolution.WithModels(models.Qwen3B32Thinking).Call(context.Background(), map[string]any{
 				"WhatTodoInFollowingIter": "End Goal Driven Planner",
