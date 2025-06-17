@@ -37,19 +37,25 @@ var ProductGoalUniLearning ProductGoal = `
 # 系统愿景: 
 ## 实现一个学习、面试、培训一体化的平台；
 ### 对任何特定的知识，先要构建一个非常具象化的场景；
-    - 涉及的声音，尽量通过tts引擎，以及 Tone.js 来实现。避免使用音频文件。
-    - 该场景是一个单一的微场景 / 单一场景的游戏。
+    - 本主题对应的场景是一个单一的微场景 / 单一场景的游戏。
     - 所有的场景中的元素使用svg或其它方式，每个元素分别定义。
     - 有可交互的情境。
     - 有适当的环节可以展示知识。
     - 用户的交互操作非常直观、流畅的方式进行。 比如站队、选择、堆放等。
     - 交互要能够通过摄像头，用手势指向来完成。以便用户可以不需要在屏幕前操作，避免近视。
     - 用户不需要非常直接地了解该知识的背景和细节。用户只需要在交互当中，能部分感受到知识的内容。这样可以容纳更高的知识密度。要求该场景可以最有效体现知识的关键作用。
-    - 一个微小的主题对应一个确切的微场景。通过海量的场景覆盖所有的需求。
     - 全程在用户参与的情况下，全过程录像可以作为YTB的一个精彩的节目。通过节目推广平台是一个重要策略。要提高场景和互动的节目效果。
     - 现在的项目是更大的react next.js项目的一个子项目。 不需要关心总项目的配置。只需要关注该子项目的实现。
-    - 出于项目模块化的思路，当前项目保存在单一的目标目录下。 用前缀替代必要的目录层级，像是components-*.ts / store-*.ts / utils-audio.ts
-    - 手势支持相关文档
+    - 涉及的声音，尽量通过tts引擎，以及 Tone.js 、@tonejs/midi 来实现。避免使用音频文件。
+
+
+## 其它重要约束:
+  - 前端用tsx,tailwindcss、Zustand、 Framer Motion 来实现。
+  - 代码必须用全量的方式给出，不然会丢失现有的代码。不允响应当中使用 许其它的代码保持不变。
+  - 需要启用'use client';
+  - 全部的文件都保存在当前目录下。 用前缀替代必要的目录层级，SolutionFileNode的FileName 格式如 components-*.ts 或是 store-*.ts 或是 utils-audio.ts, 不包含目录名称；
+  - 除了gestureStore 采用import { useGestureStore } from '../components/guesture/gestureStore'; 其它组件要指向当前路径，也就是引用的时候同样应该使用 import { xx } from './yyy'; 的方式来引用。
+  - 手势支持相关文档
 核心机制:基于Zustand全局状态管理，通过useGestureStore订阅手势
 手势以及payload列表
 point {x,y}: 食指移动，触发光标跟踪
@@ -64,15 +70,17 @@ transformstart {distance,angle}: 双手捏合
 transform {scale,rotation}: 双手缩放/旋转
 transformend: 单手释放
 消费示例 / typescript
-import { useGestureStore } from '../components/guest/gestureStore';
+import { useGestureStore } from '../../components/guesture/gestureStore';
 const gesture = useGestureStore();
 if(gesture.type === 'click' && gesture.payload.targetId === 'my-btn'){
   // 处理点击
 }
 
-
-## 其它重要约束:
-  - 前端用tsx,tailwindcss、Zustand、 Framer Motion 来实现。
+  - 要使用手势:import { useGestureStore } from '../../components/guesture/gestureStore'; 其定义为：
+export const useGestureStore = create<GestureStore>((set) => ({
+gesture: { type: 'idle', payload: null, timestamp: Date.now() },
+setGesture: (newGesture) => set({ gesture: newGesture }),
+}));
 `
 
 // ## step1

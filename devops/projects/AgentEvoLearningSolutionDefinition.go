@@ -74,10 +74,9 @@ Framer Motion (动画):
 使用 AnimatePresence 来处理能量球的增减动画，可以非常轻松地实现它们飞入和飞出的效果。
 计数器的数字变化可以使用 motion.h1 并结合 animate 属性，实现平滑的滚动或淡入淡出效果，而不是生硬地跳变。`
 
-var FileItems = `
-[
+var FileItems = `[
   {
-    "Filename": "App.tsx",
+    "Filename": "page.tsx",
     "BulletDescription": "Root component that sets up the game environment and orchestrates the main game flow. It will render the 'Oracle's Scale' scene and manage high-level game states like 'adjusting' or 'judging'. It will leverage Zustand for global state management and Framer Motion for scene transitions."
   },
   {
@@ -138,7 +137,6 @@ var FileItems = `
   },
   {
     "Filename": "hooks-useGestureHandler.ts",
-    "BulletDescription": "A custom React hook that integrates with the "useGestureStore" to translate raw gesture events into specific game actions. This hook will listen to changes in the gesture store and dispatch actions to the "gameStore" (e.g., on 'click' of a ModifierButton, update "currentValue")."
+    "BulletDescription": "A custom React hook that integrates with the 'useGestureStore' to translate raw gesture events into specific game actions. This hook will listen to changes in the gesture store and dispatch actions to the 'gameStore' (e.g., on 'click' of a ModifierButton, update 'currentValue')."
   }
-]
-  `
+]`

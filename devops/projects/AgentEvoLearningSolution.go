@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 
 	// "github.com/yourbasic/graph"
 
@@ -14,64 +15,78 @@ import (
 	"github.com/doptime/eloevo/models"
 	"github.com/doptime/eloevo/scrum"
 	"github.com/doptime/eloevo/tool"
+	"github.com/doptime/eloevo/utils"
 	"github.com/doptime/redisdb"
 	"github.com/samber/lo"
 )
 
-var AgentEvoLearningSolution = agent.NewAgent(template.Must(template.New("AgentEvoLearningCallback").Parse(`
-## 本系统采用迭代方式来渐进实现系统的自动化构建。每一轮的迭代中，请通过一系列的Funtioncall 调用，来完善或改进方案的实现。
-本系统采用敏捷开发的思路驱动。每一次的迭代是一次敏捷开发的Scrum。优先使用scrum.Backlog 来驱动开发。
+var fileUpdating = map[string]time.Time{}
+var CanUpdateFile = func(filename string) bool {
+	if t, ok := fileUpdating[filename]; ok {
+		if time.Since(t) < 240*time.Second {
+			time.Sleep(100 * time.Millisecond)
+			return false
+		}
+	}
+	fileUpdating[filename] = time.Now()
+	return true
+}
 
-
-## 当前的系统状态:
-
-这是系统的product goal:
-{{.ProductGoal}}
-
-这是本次迭代的目标:
-{{.WhatTodoInFollowingIter}}
-
-这是来自上一次迭代的反馈:
-{{.MemoToTheNextIter}}
-
-
-这是当前的解决方案:
-{{.Solution}}
-
-这是当前的Scrum.Backlog:
-{{range $i, $backlog := .Backlogs}}
-{{$backlog}} 
-{{end}}
-
-
-
-## To Do : SolutionRefine
-	请按给定的本次迭代的目标，行深度思考，并提出有效的Refine 方案。
-	最后通过一次或多次调用 FunctionCall:SolutionSuperEdgeRefine 来保存方案改进。改进形式包括: 1)创建新节点; 2)修改条目:指定Id,并修改字段(可忽略不修改字段若，若修改的字段需确保完整性); 3)删除无效节点
-
-
-`))).WithToolCallMutextRun().WithTools(tool.NewTool("SolutionSuperEdgeRefine", "create/modify/remove supernodes", func(newItem *SolutionFileNode) {
+func nodeRefine(newItem *SolutionFileNode) {
 	newItem.BulletDescription = strings.TrimSpace(newItem.BulletDescription)
 	var oItem *SolutionFileNode = nil
 	if newItem.Filename == "" {
 		return
 	}
 	oItem, _ = newItem.HashKey.HGet(newItem.Filename)
-	if oItem != nil && oItem.Locked {
-		return
-	} else if newItem.Delete {
+	if newItem.Delete {
 		pathname := filepath.Join(RootPath, newItem.Filename)
+		newItem.HashKey.HDel(newItem.Filename)
 		os.Remove(pathname)
 		return
 	} else if oItem != nil {
 		newItem.BulletDescription, _ = lo.Coalesce(newItem.BulletDescription, oItem.BulletDescription)
 		newItem.FileContent, _ = lo.Coalesce(newItem.FileContent, oItem.FileContent)
 	}
-
-	os.WriteFile(filepath.Join(RootPath, newItem.Filename), []byte(newItem.FileContent), 0644)
+	filename := filepath.Join(RootPath, newItem.Filename)
+	err := os.WriteFile(filename, []byte(newItem.FileContent), 0644)
+	if err != nil {
+		fmt.Printf("Error writing file %s: %v\n", filename, err)
+		return
+	}
 	newItem.HashKey.HSet(newItem.Filename, newItem)
 
-}))
+}
+
+var AgentEvoLearningSolution = agent.NewAgent(template.Must(template.New("AgentEvoLearningCallback").Parse(`
+## 本系统采用迭代方式完成开发工作,以实现或改进方案的实现。
+请确保采用简单且Just-Enough的方式来实现或改进方案的实现。
+
+## 当前的系统状态:
+这是系统的product goal:
+{{.ProductGoal}}
+
+这是本次迭代的目标: 
+迭代一个或若干个文件，以使得项目场景得以简洁、尽可能完整地建构
+如果必要
+	- 对粒度过大，难以实施的文件，优先对粒度进行拆分，也就是创建多个更细粒度的文件实现，并且删除原有的文件。
+	- 如果有必要，提出或删除相关模块文件。维护解决方案的完整性和简洁性。
+	- 优先删除无效的引用、消除错误。尽可能使得项目处于可编译、可运行的状态。
+
+
+这是当前的解决方案:
+{{.Solution}}
+
+这是当前的编译信息:
+{{.runtimeError}}
+
+
+## To Do : SolutionFileRefine
+	请按给定的本次迭代的目标，行深度思考，并提出有效的Refine 方案，确保目标文件内容正确，并且确保在下一轮的迭代中可以被进一步改善。
+	最后通过一次或多次调用 FunctionCall:SolutionFileRefine 来保存方案改进。改进形式包括: 1)创建新节点; 2)修改条目:指定Id,并修改字段(可忽略不修改字段若，若修改的字段需确保完整性); 3)删除无效节点
+
+
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("SolutionFileRefine", "create/modify/remove solution file", nodeRefine))
 
 var KeyBacklogBase = redisdb.NewListKey[*scrum.Backlog](redisdb.Opt.HttpVisit())
 var ThisTopic = "直观感受1-20数字的大小"
@@ -79,32 +94,56 @@ var SolutionBase = redisdb.NewHashKey[string, *SolutionFileNode](redisdb.Opt.Htt
 var RootPath = "/Users/yang/doptime/evolab/web/app/perceptual-understanding-numbers-1-to-20"
 
 func EvoLearningSolution() {
-	var KeyBacklog = KeyBacklogBase.ConcatKey(ThisTopic)
+	//var KeyBacklog = KeyBacklogBase.ConcatKey(ThisTopic)
 	var keySolution = SolutionBase.ConcatKey(ThisTopic)
 
 	const MaxThreads = 1
 	MaxThreadsSemaphore := make(chan struct{}, MaxThreads)
+
+	// allNodes, _ := keySolution.HGetAll()
+	// for _, fileNode := range allNodes {
+	// 	if strings.HasPrefix(fileNode.Filename, "./") {
+	// 		keySolution.HDel(fileNode.Filename)
+	// 		fileNode.Filename = strings.TrimPrefix(fileNode.Filename, "./")
+	// 		keySolution.HSet(fileNode.Filename, fileNode)
+
+	// 		filename := filepath.Join(RootPath, fileNode.Filename)
+	// 		os.WriteFile(filename, []byte(fileNode.FileContent), 0644)
+	// 	}
+	// }
+
 	for i, TotalTasks := 0, 2000; i < TotalTasks; i++ {
-		backlogs, _ := KeyBacklog.LRange(0, -1)
+		//backlogs, _ := KeyBacklog.LRange(0, -1)
 		allNodes, _ := keySolution.HGetAll()
+
+		//load nodes from file
+		for _, node := range allNodes {
+			utils.TextFromFile(filepath.Join(RootPath, node.Filename), &node.FileContent)
+		}
+
+		SolutionSummary := SolutionFileNodeList(lo.Values(allNodes))
+		time.Sleep(300 * time.Millisecond)
+
 		MaxThreadsSemaphore <- struct{}{} // Acquire a spot in the semaphore
-
-		SolutionSummary := SolutionFileNodeList(lo.Values(allNodes)).PathnameSorted().View()
-
-		go func(backlogs []*scrum.Backlog, SolutionSummary string, AllItems map[string]*SolutionFileNode) {
+		go func(SolutionSummary string, AllItems map[string]*SolutionFileNode) {
 			defer func() { <-MaxThreadsSemaphore }()
-			err := AgentEvoLearningSolution.WithModels(models.Qwen3B32Thinking).Call(context.Background(), map[string]any{
-				"WhatTodoInFollowingIter": "End Goal Driven Planner",
-				"Backlogs":                backlogs,
-				"ProductGoal":             string(scrum.ProductGoalUniLearning) + "\n\n这是当前规划的游戏场景:\n" + PlanForTopic + "\n\n" + FileItems,
-				"HashKey":                 keySolution,
-				"AllItems":                allNodes,
-				"Solution":                SolutionSummary,
+			runtimeError, _ := utils.ExtractNextJSError("http://localhost:3000/perceptual-understanding-numbers-1-to-20/error.js")
+			runtimeError = `
+当前项目已经通过编译。摄像头也可以打开并且显示视频。但前端页面只有空白的页面和
+等待挑战开始 文字
+没有办法开始游戏。接下来应该怎么让游戏正常运行起来呢？请给出方案。
+`
+			err := AgentEvoLearningSolution.WithModels(models.DeepSeekV3).Call(context.Background(), map[string]any{
+				"runtimeError": string(runtimeError),
+				"ProductGoal":  string(scrum.ProductGoalUniLearning) + "\n\n这是当前规划的游戏场景:\n" + PlanForTopic + "\n\n",
+				"HashKey":      keySolution,
+				"AllItems":     allNodes,
+				"Solution":     SolutionSummary,
 			})
 			if err != nil {
 				fmt.Printf("Agent call failed: %v\n", err)
 			}
-		}(backlogs, SolutionSummary, allNodes)
+		}(SolutionSummary.FullView(), allNodes)
 	}
 	// Wait for all the goroutines to finish)
 	for i := 0; i < MaxThreads; i++ {

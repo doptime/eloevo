@@ -1,0 +1,136 @@
+package projects
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"text/template"
+	"time"
+
+	// "github.com/yourbasic/graph"
+
+	"github.com/doptime/eloevo/agent"
+	"github.com/doptime/eloevo/models"
+	"github.com/doptime/eloevo/scrum"
+	"github.com/doptime/eloevo/tool"
+	"github.com/doptime/redisdb"
+	"github.com/samber/lo"
+)
+
+var fileUpdating = map[string]time.Time{}
+var CanUpdateFile = func(filename string) bool {
+	if t, ok := fileUpdating[filename]; ok {
+		if time.Since(t) < 240*time.Second {
+			time.Sleep(100 * time.Millisecond)
+			return false
+		}
+	}
+	fileUpdating[filename] = time.Now()
+	return true
+}
+
+func nodeRefine(newItem *SolutionFileNode) {
+	newItem.BulletDescription = strings.TrimSpace(newItem.BulletDescription)
+	var oItem *SolutionFileNode = nil
+	if newItem.Filename == "" {
+		return
+	}
+	oItem, _ = newItem.HashKey.HGet(newItem.Filename)
+	if newItem.Delete {
+		pathname := filepath.Join(RootPath, newItem.Filename)
+		os.Remove(pathname)
+		return
+	} else if oItem != nil {
+		newItem.BulletDescription, _ = lo.Coalesce(newItem.BulletDescription, oItem.BulletDescription)
+		newItem.FileContent, _ = lo.Coalesce(newItem.FileContent, oItem.FileContent)
+	}
+	filename := filepath.Join(RootPath, newItem.Filename)
+	os.WriteFile(filename, []byte(newItem.FileContent), 0644)
+	newItem.HashKey.HSet(newItem.Filename, newItem)
+
+}
+
+var AgentEvoLearningSolution = agent.NewAgent(template.Must(template.New("AgentEvoLearningCallback").Parse(`
+## 本系统采用迭代方式完成开发工作。每一轮的迭代通过一次Funtioncall调用，来完善或改进方案的实现。
+
+## 当前的系统状态:
+
+这是系统的product goal:
+{{.ProductGoal}}
+
+这是本次迭代的目标:
+{{.WhatTodoInFollowingIter}}
+
+这是来自上一次迭代的反馈:
+{{.MemoToTheNextIter}}
+
+
+这是当前的解决方案:
+{{.Solution}}
+
+
+## To Do : SolutionRefine
+	请按给定的本次迭代的目标，行深度思考，并提出有效的Refine 方案，确保目标文件内容正确，并且确保在下一轮的迭代中可以被进一步改善。
+	最后通过一次或多次调用 FunctionCall:SolutionFileRefine 来保存方案改进。改进形式包括: 1)创建新节点; 2)修改条目:指定Id,并修改字段(可忽略不修改字段若，若修改的字段需确保完整性); 3)删除无效节点
+
+
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("SolutionFileRefine", "create/modify/remove solution file", nodeRefine))
+
+var KeyBacklogBase = redisdb.NewListKey[*scrum.Backlog](redisdb.Opt.HttpVisit())
+var ThisTopic = "直观感受1-20数字的大小"
+var SolutionBase = redisdb.NewHashKey[string, *SolutionFileNode](redisdb.Opt.HttpVisit())
+var RootPath = "/Users/yang/doptime/evolab/web/app/perceptual-understanding-numbers-1-to-20"
+
+func EvoLearningSolution() {
+	var KeyBacklog = KeyBacklogBase.ConcatKey(ThisTopic)
+	var keySolution = SolutionBase.ConcatKey(ThisTopic)
+
+	const MaxThreads = 8
+	MaxThreadsSemaphore := make(chan struct{}, MaxThreads)
+
+	allNodes, _ := keySolution.HGetAll()
+	var fileNodes []*SolutionFileNode
+	err := json.Unmarshal([]byte(FileItems), &fileNodes)
+	if err != nil {
+		fmt.Printf("Error unmarshalling FileItems: %v\n", err)
+	}
+	for _, fileNode := range fileNodes {
+		_, ok := allNodes[fileNode.Filename]
+		if !ok {
+			keySolution.HSet(fileNode.Filename, fileNode)
+		}
+	}
+
+	for i, TotalTasks := 0, 2000; i < TotalTasks; i++ {
+		backlogs, _ := KeyBacklog.LRange(0, -1)
+		allNodes, _ := keySolution.HGetAll()
+
+		SolutionSummary := SolutionFileNodeList(lo.Values(allNodes))
+
+		for _, item := range SolutionSummary {
+			MaxThreadsSemaphore <- struct{}{} // Acquire a spot in the semaphore
+			go func(backlogs []*scrum.Backlog, whatToDo, SolutionSummary string, AllItems map[string]*SolutionFileNode) {
+				defer func() { <-MaxThreadsSemaphore }()
+				err := AgentEvoLearningSolution.WithModels(models.Qwen3B32Thinking).Call(context.Background(), map[string]any{
+					"WhatTodoInFollowingIter": whatToDo,
+					"Backlogs":                backlogs,
+					"ProductGoal":             string(scrum.ProductGoalUniLearning) + "\n\n这是当前规划的游戏场景:\n" + PlanForTopic + "\n\n" + FileItems,
+					"HashKey":                 keySolution,
+					"AllItems":                allNodes,
+					"Solution":                SolutionSummary,
+				})
+				if err != nil {
+					fmt.Printf("Agent call failed: %v\n", err)
+				}
+			}(backlogs, "refactor file "+item.Filename+" it to improve the solution", SolutionSummary.View(item.Filename), allNodes)
+		}
+	}
+	// Wait for all the goroutines to finish)
+	for i := 0; i < MaxThreads; i++ {
+		MaxThreadsSemaphore <- struct{}{}
+	}
+
+}

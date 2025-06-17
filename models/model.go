@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/doptime/eloevo/utils"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -131,7 +132,7 @@ var (
 	DeepSeekR1_Qwen_14 = NewModel("http://gpu.lan:3214/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--casperhansen--deepseek-r1-distill-qwen-14b-awq/snapshots/1874537e80f451042f7993dfa2b21fd25b4e7223")
 	DeepSeekR132B      = NewModel("http://gpu.lan:4733/v1", ApiKey, "DeepSeek-R1-Distill-Qwen-32B-AWQ").WithTopP(0.6)
 	DSV3Baidu          = NewModel("https://qianfan.baidubce.com/v2", os.Getenv("BDAPIKEY"), "deepseek-v3").WithTopP(0.6)
-	DeepSeekV3         = NewModel("https://api.deepseek.com/", os.Getenv("DSAPIKEY"), "deepseek-chat").WithTopP(0.6).WithToolsInSystemPrompt()
+	DeepSeekV3         = NewModel("https://api.deepseek.com/", utils.TextFromFile("/Users/yang/eloevo/.vscode/DSAPIKEY.txt"), "deepseek-chat").WithTopP(0.6).WithToolsInSystemPrompt()
 	//https://tbnx.plus7.plus/token
 	DeepSeekV3TB = NewModel("https://tbnx.plus7.plus/v1", os.Getenv("DSTB"), "deepseek-chat").WithTopP(0.6)
 	GeminiTB     = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gemini-2.0-flash-exp").WithTopP(0.8).WithToolsInUserPrompt()

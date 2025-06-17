@@ -61,17 +61,6 @@ func ToolcallParserDefault(resp openai.ChatCompletionResponse) (toolCalls []*Fun
 			if i := strings.LastIndex(toolcallString, "}"); i > 0 {
 				toolcallString = toolcallString[:i+1]
 			}
-			//remove comment
-			lines := strings.Split(toolcallString, "\n")
-			for i := 0; i < len(lines); i++ {
-				txt := strings.TrimSpace(lines[i])
-				//remove +number in json
-				txt = strings.ReplaceAll(txt, "\": +", "\": ")
-				//remove comment
-				txt = strings.Split(txt, "\\")[0]
-				lines[i] = txt
-			}
-			toolcallString = strings.Join(lines, "\n")
 
 			if toolcall := parseOneToolcall(toolcallString); toolcall != nil {
 				toolCalls = append(toolCalls, toolcall)
