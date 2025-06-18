@@ -134,9 +134,10 @@ var (
 	DSV3Baidu          = NewModel("https://qianfan.baidubce.com/v2", os.Getenv("BDAPIKEY"), "deepseek-v3").WithTopP(0.6)
 	DeepSeekV3         = NewModel("https://api.deepseek.com/", utils.TextFromFile("/Users/yang/eloevo/.vscode/DSAPIKEY.txt"), "deepseek-chat").WithTopP(0.6).WithToolsInSystemPrompt()
 	//https://tbnx.plus7.plus/token
-	DeepSeekV3TB = NewModel("https://tbnx.plus7.plus/v1", os.Getenv("DSTB"), "deepseek-chat").WithTopP(0.6)
-	GeminiTB     = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gemini-2.0-flash-exp").WithTopP(0.8).WithToolsInUserPrompt()
-	GPT41Mini    = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gpt-4.1-mini").WithTopP(0.8)
+	DeepSeekV3TB     = NewModel("https://tbnx.plus7.plus/v1", os.Getenv("DSTB"), "deepseek-chat").WithTopP(0.6)
+	GeminiTB         = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gemini-2.0-flash-exp").WithTopP(0.8).WithToolsInUserPrompt()
+	GeminiFlashLight = NewModel("https://tao.plus7.plus/v1", "gemini-2.0-flash-lite", "gemini-2.0-flash-light").WithTopP(0.8).WithToolsInUserPrompt()
+	GPT41Mini        = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gpt-4.1-mini").WithTopP(0.8)
 
 	DolphinR1Mistral24B = NewModel("http://gpu.lan:4733/v1", ApiKey, "Dolphin3.0-R1-Mistral-24B-AWQ").WithToolsInSystemPrompt()
 	FuseO1              = NewModel("http://gpu.lan:4732/v1", ApiKey, "FuseO1").WithTopP(0.92).WithTemperature(0.6).WithTopK(40)

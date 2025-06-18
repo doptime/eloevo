@@ -127,11 +127,13 @@ func EvoLearningSolution() {
 		MaxThreadsSemaphore <- struct{}{} // Acquire a spot in the semaphore
 		go func(SolutionSummary string, AllItems map[string]*SolutionFileNode) {
 			defer func() { <-MaxThreadsSemaphore }()
+
+			// 当前项目已经通过编译。摄像头也可以打开并且显示视频。但前端页面只有空白的页面和
+			// 等待挑战开始 文字
+			// 没有办法开始游戏。接下来应该怎么让游戏正常运行起来呢？请给出方案。
 			runtimeError, _ := utils.ExtractNextJSError("http://localhost:3000/perceptual-understanding-numbers-1-to-20/error.js")
 			runtimeError = `
-当前项目已经通过编译。摄像头也可以打开并且显示视频。但前端页面只有空白的页面和
-等待挑战开始 文字
-没有办法开始游戏。接下来应该怎么让游戏正常运行起来呢？请给出方案。
+
 `
 			err := AgentEvoLearningSolution.WithModels(models.DeepSeekV3).Call(context.Background(), map[string]any{
 				"runtimeError": string(runtimeError),
