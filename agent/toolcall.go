@@ -35,6 +35,8 @@ func ToolcallParserDefault(resp openai.ChatCompletionResponse) (toolCalls []*Fun
 	}
 	if len(toolCalls) == 0 && len(resp.Choices) > 0 {
 		rsp := resp.Choices[0].Message.Content
+
+		rsp = strings.ReplaceAll(rsp, "tool_code>", "tool_call>")
 		rsp = strings.ReplaceAll(rsp, "<tool>", "<tool_call>")
 		rsp = strings.ReplaceAll(rsp, "</tools>", "<tool_call>")
 		rsp = strings.ReplaceAll(rsp, "</tool_call>", "<tool_call>")

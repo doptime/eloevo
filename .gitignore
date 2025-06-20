@@ -2,4 +2,4 @@
 .vscode/
 .expired
 **/config*
-./models/model.go
+**/**/model.go

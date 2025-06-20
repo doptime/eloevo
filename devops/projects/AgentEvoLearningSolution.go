@@ -83,7 +83,7 @@ var AgentEvoLearningSolution = agent.NewAgent(template.Must(template.New("AgentE
 
 ## To Do : SolutionFileRefine
 	请按给定的本次迭代的目标，行深度思考，并提出有效的Refine 方案，确保目标文件内容正确，并且确保在下一轮的迭代中可以被进一步改善。
-	最后通过一次或多次调用 FunctionCall:SolutionFileRefine 来保存方案改进。改进形式包括: 1)创建新节点; 2)修改条目:指定Id,并修改字段(可忽略不修改字段若，若修改的字段需确保完整性); 3)删除无效节点
+	最后通过（多次）调用 FunctionCall:SolutionFileRefine 来提交不同文件的改进。改进形式包括: 1)创建新节点; 2)修改条目:指定Filename,并修改字段(可忽略不修改字段若，若修改的字段需确保完整性); 3)删除无效节点
 
 
 `))).WithToolCallMutextRun().WithTools(tool.NewTool("SolutionFileRefine", "create/modify/remove solution file", nodeRefine))
@@ -133,9 +133,17 @@ func EvoLearningSolution() {
 			// 没有办法开始游戏。接下来应该怎么让游戏正常运行起来呢？请给出方案。
 			runtimeError, _ := utils.ExtractNextJSError("http://localhost:3000/perceptual-understanding-numbers-1-to-20/error.js")
 			runtimeError = `
+命题端 的 视觉化的方式显示数量 异常，应该能够显示相应数量的AnerygyBall. 
 
+ChallengeWalls 工作异常
+如果注释ChallengeWalls ，则不会报错。
+
+如果不注释ChallengeWalls，则会报错，提示
+Something went wrong:
+Cannot convert undefined or null to object
+Try again
 `
-			err := AgentEvoLearningSolution.WithModels(models.DeepSeekV3).Call(context.Background(), map[string]any{
+			err := AgentEvoLearningSolution.WithModels(models.Gemini25FlashNonthinking).Call(context.Background(), map[string]any{
 				"runtimeError": string(runtimeError),
 				"ProductGoal":  string(scrum.ProductGoalUniLearning) + "\n\n这是当前规划的游戏场景:\n" + PlanForTopic + "\n\n",
 				"HashKey":      keySolution,

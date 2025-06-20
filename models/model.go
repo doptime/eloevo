@@ -1,6 +1,8 @@
 package models
 
 import (
+	"net"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -43,11 +45,51 @@ func NewModel(baseURL, apiKey, modelName string) *Model {
 	if baseURL != "" {
 		config.BaseURL = baseURL
 	}
+	config.HTTPClient = &http.Client{
+		Timeout: 900 * time.Second, // 整个请求的总超时时间，包括连接和接收响应
+		Transport: &http.Transport{
+			// 设置连接超时时间
+			DialContext: (&net.Dialer{
+				Timeout:   900 * time.Second, // 连接超时
+				KeepAlive: 900 * time.Second, // 保持连接的时间
+			}).DialContext,
+			// 设置TLS配置
+			TLSHandshakeTimeout: 30 * time.Second, // TLS握手超时
+			// 设置HTTP/2配置
+			ForceAttemptHTTP2:     true,              // 强制尝试使用HTTP/2
+			MaxIdleConns:          100,               // 最大空闲连接数
+			IdleConnTimeout:       900 * time.Second, // 空闲连接的超时时间
+			ExpectContinueTimeout: 90 * time.Second,  // 期望继续的超时时间
+			// 其他HTTP/2相关配置
+			// 例如，设置HTTP/2的最大帧大小、最大流数等
+			// 这些配置可以根据需要进行调整
+			MaxIdleConnsPerHost: 100,   // 每个主机的最大空闲连接数
+			DisableKeepAlives:   false, // 是否禁用Keep-Alive
+			// 其他Transport配置
+			// 例如，设置代理、TLS配置等
+			// Proxy: http.ProxyFromEnvironment, // 使用环境变量中的代理设置
+			// TLSClientConfig: &tls.Config{
+			// 	InsecureSkipVerify: true, // 如果需要跳过TLS验证，可以设置为true
+			// },
+			// 其他Transport配置
+			// 例如，设置代理、TLS配置等
+			// Proxy: http.ProxyFromEnvironment, // 使用环境变量中的代理设置
+			// TLSClientConfig: &tls.Config{
+			// 	InsecureSkipVerify: true, // 如果需要跳过TLS验证，可以设置为true
+			// },
+		},
+		// 设置HTTP/2配置
+		// ForceAttemptHTTP2:     true, // 强制尝试使用HTTP/2
+		// MaxIdleConns:          100, // 最大空闲连接数
+		// IdleConnTimeout:       90 * time.Second, // 空闲连接的超时时间
+		// ExpectContinueTimeout: 1 * time.Second, // 期望继续的超时时间
+	}
+
 	client := openai.NewClientWithConfig(config)
 	return &Model{
 		Client:          client,
 		Name:            modelName,
-		avgResponseTime: 120 * time.Second,
+		avgResponseTime: 600 * time.Second,
 	}
 }
 func (m *Model) WithToolsInSystemPrompt() *Model {
@@ -134,10 +176,18 @@ var (
 	DSV3Baidu          = NewModel("https://qianfan.baidubce.com/v2", os.Getenv("BDAPIKEY"), "deepseek-v3").WithTopP(0.6)
 	DeepSeekV3         = NewModel("https://api.deepseek.com/", utils.TextFromFile("/Users/yang/eloevo/.vscode/DSAPIKEY.txt"), "deepseek-chat").WithTopP(0.6).WithToolsInSystemPrompt()
 	//https://tbnx.plus7.plus/token
-	DeepSeekV3TB     = NewModel("https://tbnx.plus7.plus/v1", os.Getenv("DSTB"), "deepseek-chat").WithTopP(0.6)
-	GeminiTB         = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gemini-2.0-flash-exp").WithTopP(0.8).WithToolsInUserPrompt()
-	GeminiFlashLight = NewModel("https://tao.plus7.plus/v1", "gemini-2.0-flash-lite", "gemini-2.0-flash-light").WithTopP(0.8).WithToolsInUserPrompt()
-	GPT41Mini        = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gpt-4.1-mini").WithTopP(0.8)
+	DeepSeekV3TB = NewModel("https://tbnx.plus7.plus/v1", os.Getenv("DSTB"), "deepseek-chat").WithTopP(0.6)
+	GeminiTB     = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gemini-2.0-flash-exp").WithTopP(0.8).WithToolsInUserPrompt()
+	//https://ai.google.dev/gemini-api/docs/models?hl=zh-cn
+	GeminiFlashLight         = NewModel("https://www.chataiapi.com/v1", "sk-U3lPyfaPDE6abmfRwGqSI1jMONNgDdPBQ16pKev9FfAgRXmE", "gemini-2.0-flash-light").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25Flash            = NewModel("https://api.aigptapi.com/v1", "sk-yyD2v3Bz6GksQshJwOBAcPRqN7NWVzgLa8bcsDh2DUf0uZYF", "gemini-2.5-flash-preview-05-20").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25FlashThinking    = NewModel("https://api.aigptapi.com/v1", "sk-yyD2v3Bz6GksQshJwOBAcPRqN7NWVzgLa8bcsDh2DUf0uZYF", "gemini-2.5-flash-preview-05-20-thinking").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25FlashNonthinking = NewModel("https://api.aigptapi.com/v1", "sk-yyD2v3Bz6GksQshJwOBAcPRqN7NWVzgLa8bcsDh2DUf0uZYF", "gemini-2.5-flash-preview-05-20-nothinking").WithTopP(0.8).WithToolsInUserPrompt()
+
+	Gemini25Flashlight = NewModel("https://api.aigptapi.com/v1", "sk-yyD2v3Bz6GksQshJwOBAcPRqN7NWVzgLa8bcsDh2DUf0uZYF", "gemini-2.5-flash-lite-preview-06-17").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25Pro        = NewModel("https://api.aigptapi.com/v1", "sk-yyD2v3Bz6GksQshJwOBAcPRqN7NWVzgLa8bcsDh2DUf0uZYF", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
+
+	GPT41Mini = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gpt-4.1-mini").WithTopP(0.8)
 
 	DolphinR1Mistral24B = NewModel("http://gpu.lan:4733/v1", ApiKey, "Dolphin3.0-R1-Mistral-24B-AWQ").WithToolsInSystemPrompt()
 	FuseO1              = NewModel("http://gpu.lan:4732/v1", ApiKey, "FuseO1").WithTopP(0.92).WithTemperature(0.6).WithTopK(40)
