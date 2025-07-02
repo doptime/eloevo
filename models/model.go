@@ -14,6 +14,7 @@ import (
 // Model represents an OpenAI model with its associated client and model name.
 type Model struct {
 	Client          *openai.Client
+	ApiKey          string // API key for authentication
 	Name            string
 	TopP            float32
 	TopK            int
@@ -90,6 +91,7 @@ func NewModel(baseURL, apiKey, modelName string) *Model {
 	return &Model{
 		Client:          client,
 		Name:            modelName,
+		ApiKey:          apiKey,
 		avgResponseTime: 600 * time.Second,
 	}
 }

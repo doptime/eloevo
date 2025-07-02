@@ -7,22 +7,29 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 	openai "github.com/sashabaranov/go-openai"
+
+	genai "google.golang.org/genai"
 )
 
 type ToolInterface interface {
 	HandleCallback(Param interface{}, CallMemory map[string]any) (err error)
 	OaiTool() *openai.Tool
+	GoogleGenaiTool() *genai.FunctionDeclaration
 	Name() string
 }
 
 // Tool 是FuctionCall的逻辑实现。FunctionCall 是Tool的接口定义
 type Tool[v any] struct {
 	openai.Tool
-	Functions []func(param v)
+	GoogleFunc genai.FunctionDeclaration
+	Functions  []func(param v)
 }
 
 func (t *Tool[v]) OaiTool() *openai.Tool {
 	return &t.Tool
+}
+func (t *Tool[v]) GoogleGenaiTool() *genai.FunctionDeclaration {
+	return &t.GoogleFunc
 }
 func (t *Tool[v]) Name() string {
 	return t.Tool.Function.Name
@@ -72,8 +79,14 @@ func NewTool[v any](name string, description string, fs ...func(param v)) *Tool[
 	}
 
 	params := make(map[string]any)
+	var goooglefunctionDeclarations genai.FunctionDeclaration = genai.FunctionDeclaration{
+		Name:        name,
+		Description: description,
+		Parameters:  &genai.Schema{},
+	}
 	if vType.Kind() == reflect.Struct {
 		// Map parameter fields to JSON schema definitions
+		//build openai.Tool
 		for i := 0; i < vType.NumField(); i++ {
 			field := vType.Field(i)
 			def := map[string]string{
@@ -85,6 +98,39 @@ func NewTool[v any](name string, description string, fs ...func(param v)) *Tool[
 			}
 			params[field.Name] = def
 		}
+		//build google genai.Tool
+		goooglefunctionDeclarations.Parameters.Type = genai.TypeObject
+		for i := 0; i < vType.NumField(); i++ {
+			field := vType.Field(i)
+
+			if goooglefunctionDeclarations.Description == "-" || goooglefunctionDeclarations.Description == "" {
+				continue
+			}
+			var Parameters genai.Schema
+			Parameters.Title = field.Name
+			Parameters.Type = genai.TypeUnspecified
+			if field.Type.Kind() == reflect.Struct {
+				Parameters.Type = genai.TypeObject
+			} else if field.Type.Kind() == reflect.Slice || field.Type.Kind() == reflect.Array {
+				Parameters.Type = genai.TypeArray
+			} else if field.Type.Kind() == reflect.Map {
+				Parameters.Type = genai.TypeObject
+			} else if field.Type.Kind() == reflect.String {
+				Parameters.Type = genai.TypeString
+			} else if field.Type.Kind() == reflect.Int || field.Type.Kind() == reflect.Int8 || field.Type.Kind() == reflect.Int16 || field.Type.Kind() == reflect.Int32 || field.Type.Kind() == reflect.Int64 ||
+				field.Type.Kind() == reflect.Uint || field.Type.Kind() == reflect.Uint8 || field.Type.Kind() == reflect.Uint16 || field.Type.Kind() == reflect.Uint32 || field.Type.Kind() == reflect.Uint64 {
+				Parameters.Type = genai.TypeInteger
+			} else if field.Type.Kind() == reflect.Float32 || field.Type.Kind() == reflect.Float64 {
+				Parameters.Type = genai.TypeNumber
+			} else if field.Type.Kind() == reflect.Bool {
+				Parameters.Type = genai.TypeBoolean
+			} else if field.Type.Kind() == reflect.Invalid {
+				Parameters.Type = genai.TypeNULL
+			}
+			Parameters.Description = field.Tag.Get("description")
+
+			goooglefunctionDeclarations.Parameters.Properties[field.Name] = &Parameters
+		}
 	}
 
 	a := &Tool[v]{
@@ -93,7 +139,8 @@ func NewTool[v any](name string, description string, fs ...func(param v)) *Tool[
 			Description: description,
 			Parameters:  params,
 		}},
-		Functions: fs,
+		GoogleFunc: goooglefunctionDeclarations,
+		Functions:  fs,
 	}
 
 	// Define the function to handle LLM response
