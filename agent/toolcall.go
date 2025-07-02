@@ -18,7 +18,18 @@ func parseOneToolcall(toolcallString string) (toolCalls *FunctionCall) {
 	tool := FunctionCall{Name: "", Arguments: map[string]any{}}
 	//openai.FunctionCall 中的Arguments是string类型.直接unmrshal 会报错
 	err := json.Unmarshal([]byte(toolcallString), &tool)
-	if err == nil && tool.Name != "" && tool.Arguments != nil {
+	//try fix extra "}" at the end of toolcallString
+	if err != nil {
+		toolcallString = toolcallString[:len(toolcallString)-1]
+		err = json.Unmarshal([]byte(toolcallString), &tool)
+	}
+	//  try fix Name and Arguments merge issue
+	if err == nil && tool.Name != "" {
+		if len(tool.Arguments.(map[string]any)) == 0 {
+			err = json.Unmarshal([]byte(toolcallString), &tool.Arguments)
+		}
+	}
+	if err == nil && len(tool.Arguments.(map[string]any)) > 0 {
 		return &tool
 	}
 	return nil

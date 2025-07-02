@@ -18,7 +18,8 @@ func (a *Agent) GetResponse(Client *openai.Client, req openai.ChatCompletionRequ
 		resp, err = utils.FileToResponse(a.msgDeFile)
 		return resp, err
 	}
-	if a.msgDeCliboard {
+	ctx := context.Background()
+	if a.msgFromCliboard {
 		textbytes := clipboard.Read(clipboard.FmtText)
 		if len(textbytes) == 0 {
 			return resp, fmt.Errorf("no data in clipboard")
@@ -35,10 +36,7 @@ func (a *Agent) GetResponse(Client *openai.Client, req openai.ChatCompletionRequ
 			},
 		}
 		return resp, nil
-	}
-	ctx := context.Background()
-	//not load from file yet, then send request to openai
-	if len(req.Messages) > 0 {
+	} else if len(req.Messages) > 0 {
 		resp, err = Client.CreateChatCompletion(ctx, req)
 	}
 

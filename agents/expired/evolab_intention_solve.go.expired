@@ -36,7 +36,7 @@ var EvoLabIntentionAnalyzePrompt = template.Must(template.New("question").Parse(
 3. 提出目标意图有效的解决方案。
 
 `))
-var AgentIntentionDiveIn = agent.NewAgent(EvoLabIntentionAnalyzePrompt).WithCallback(
+var AgentIntentionDiveIn = agent.NewAgent(EvoLabIntentionAnalyzePrompt).WithMessegeCallback(
 	func(ctx context.Context, inputs string) error {
 		file, err := os.Create(config.DefaultRealmPath() + "/thinking_over_intention.evolab")
 		if err == nil {

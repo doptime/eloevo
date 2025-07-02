@@ -9,15 +9,11 @@ import (
 	//_ "github.com/doptime/doptime/httpserve"
 )
 
-type TestStruct struct {
-	Name string `case:"lower" trim:"left"`
-	Age  int    `min:"18" max:"60"`
-}
-
 func main() {
-	projects.EvoLearningSolution()
+	projects.Debug()
 	httpserve.Debug()
 	time.Sleep(1000000 * time.Second)
+	projects.EvoLearningSolution()
 	a, e := utils.GetEmbedding("hello world")
 	println("embedding result", a, e.Error())
 	projects.AgentSelectAndExecute()

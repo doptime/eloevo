@@ -13,26 +13,19 @@ import (
 	"github.com/doptime/eloevo/tool"
 	"github.com/doptime/eloevo/tools"
 	"github.com/doptime/eloevo/utils"
-	"github.com/doptime/redisdb"
 	"github.com/samber/lo"
-	openai "github.com/sashabaranov/go-openai"
-
 	"golang.design/x/clipboard"
+	genai "google.golang.org/genai"
 )
 
-type FileToMem struct {
-	File string `json:"file"`
-	Mem  string `json:"mem"`
-}
-
-// GoalProposer is responsible for proposing goals using an OpenAI model,
+// GoalProposer is responsible for proposing goals using an genai model,
 // handling function calls, and managing callbacks.
-type Agent struct {
+type AgentGoogle struct {
 	SharedMemory map[string]any
 	Models       []*models.Model
 
 	Prompt              *template.Template
-	Tools               []openai.Tool
+	Tools               []genai.Tool
 	toolsCallbacks      map[string]func(Param interface{}, CallMemory map[string]any) error
 	msgToMemKey         string
 	msgDeFile           string
@@ -42,7 +35,7 @@ type Agent struct {
 	fieldReaderFunc     FieldReaderFunc
 	msgFromCliboard     bool
 	memDeCliboardKey    string
-	functioncallParsers []func(resp openai.ChatCompletionResponse) (toolCalls []*FunctionCall)
+	functioncallParsers []func(resp genai.ChatCompletionResponse) (toolCalls []*FunctionCall)
 
 	copyPromptOnly bool
 	CallBack       func(ctx context.Context, inputs string) error
@@ -50,23 +43,22 @@ type Agent struct {
 	ToolCallRunningMutext interface{}
 }
 
-func NewAgent(prompt *template.Template, tools ...tool.ToolInterface) (a *Agent) {
-	a = &Agent{
+func NewAgentGoogle(prompt *template.Template, tools ...tool.ToolInterface) (a *AgentGoogle) {
+	a = &AgentGoogle{
 		Models:         []*models.Model{models.ModelDefault},
 		Prompt:         prompt,
 		toolsCallbacks: map[string]func(Param interface{}, CallMemory map[string]any) error{},
 		SharedMemory:   map[string]any{},
 	}
 	a.WithTools(tools...)
-	a.WithToolcallParser(nil)
 	return a
 }
-func (a *Agent) WithToolCallMutextRun() *Agent {
+func (a *AgentGoogle) WithToolCallMutextRun() *AgentGoogle {
 	a.ToolCallRunningMutext = &sync.Mutex{}
 	return a
 }
-func (a *Agent) WithTools(tools ...tool.ToolInterface) (ret *Agent) {
-	ret = &Agent{}
+func (a *AgentGoogle) WithTools(tools ...tool.ToolInterface) (ret *AgentGoogle) {
+	ret = &AgentGoogle{}
 	*ret = *a
 	for _, tool := range tools {
 		ret.Tools = append(ret.Tools, *tool.OaiTool())
@@ -74,81 +66,69 @@ func (a *Agent) WithTools(tools ...tool.ToolInterface) (ret *Agent) {
 	}
 	return ret
 }
-func (a *Agent) WithMsgToMem(memoryKey string) *Agent {
+func (a *AgentGoogle) WithMsgToMem(memoryKey string) *AgentGoogle {
 	a.msgToMemKey = memoryKey
 	return a
 }
-func (a *Agent) WithMsgDeFile(filename string) *Agent {
+func (a *AgentGoogle) WithMsgDeFile(filename string) *AgentGoogle {
 	a.msgDeFile = filename
 	return a
 }
-func (a *Agent) WithMsgToFile(filename string) *Agent {
+func (a *AgentGoogle) WithMsgToFile(filename string) *AgentGoogle {
 	a.msgToFile = filename
 	return a
 }
-func (a *Agent) WithMsgContentToFile(filename string) *Agent {
+func (a *AgentGoogle) WithMsgContentToFile(filename string) *AgentGoogle {
 	a.msgContentToFile = filename
 	return a
 }
 
-type FieldReaderFunc func(content string) (field string)
-
-func (a *Agent) ShareMemoryUpdate(MemoryCacheKey string, param interface{}) {
+func (a *AgentGoogle) ShareMemoryUpdate(MemoryCacheKey string, param interface{}) {
 	if len(MemoryCacheKey) == 0 {
 		return
 	}
 	a.SharedMemory[MemoryCacheKey] = param
 }
 
-func (a *Agent) WithContent2RedisHash(Key string, f FieldReaderFunc) *Agent {
-	var b Agent = *a
+func (a *AgentGoogle) WithContent2RedisHash(Key string, f FieldReaderFunc) *AgentGoogle {
+	var b AgentGoogle = *a
 	b.redisKey = Key
 	b.fieldReaderFunc = f
 	return &b
 }
-func (a *Agent) Clone() *Agent {
-	var b Agent = *a
+func (a *AgentGoogle) Clone() *AgentGoogle {
+	var b AgentGoogle = *a
 	b.toolsCallbacks = map[string]func(Param interface{}, CallMemory map[string]any) error{}
 	for k, v := range a.toolsCallbacks {
 		b.toolsCallbacks[k] = v
 	}
-	b.Tools = append([]openai.Tool{}, a.Tools...)
+	b.Tools = append([]genai.Tool{}, a.Tools...)
 
 	return &b
 }
-func (a *Agent) WithMsgDeClipboard() *Agent {
+func (a *AgentGoogle) WithMsgDeClipboard() *AgentGoogle {
 	a.msgFromCliboard = true
 	return a
 }
-func (a *Agent) WithMemDeClipboard(memoryKey string) *Agent {
+func (a *AgentGoogle) WithMemDeClipboard(memoryKey string) *AgentGoogle {
 	a.memDeCliboardKey = memoryKey
 	return a
 }
-func (a *Agent) WithModels(Model ...*models.Model) *Agent {
+func (a *AgentGoogle) WithModels(Model ...*models.Model) *AgentGoogle {
 	a.Models = Model
 	return a
 }
 
-func (a *Agent) WithCallback(callback func(ctx context.Context, inputs string) error) *Agent {
+func (a *AgentGoogle) WithCallback(callback func(ctx context.Context, inputs string) error) *AgentGoogle {
 	a.CallBack = callback
 	return a
 }
-func (a *Agent) CopyPromptOnly() *Agent {
+func (a *AgentGoogle) CopyPromptOnly() *AgentGoogle {
 	a.copyPromptOnly = true
 	return a
 }
 
-type QAPaire struct {
-	Time      time.Time
-	Model     string
-	Question  any
-	Response  any
-	ToolCalls any
-}
-
-var keyQA = redisdb.NewListKey[*QAPaire](redisdb.Opt.Rds("Catalogs"))
-
-func (a *Agent) ExeResponse(params map[string]any, resp openai.ChatCompletionResponse) (err error) {
+func (a *AgentGoogle) ExeResponse(params map[string]any, resp genai.ChatCompletionResponse) (err error) {
 	var toolCalls []*FunctionCall
 	for _, parser := range a.functioncallParsers {
 		toolCalls = append(toolCalls, parser(resp)...)
@@ -178,7 +158,7 @@ func (a *Agent) ExeResponse(params map[string]any, resp openai.ChatCompletionRes
 	return nil
 
 }
-func (a *Agent) CallWithResponseString(content string) (err error) {
+func (a *AgentGoogle) CallWithResponseString(content string) (err error) {
 	var params = map[string]any{}
 	for k, v := range a.SharedMemory {
 		params[k] = v
@@ -191,8 +171,8 @@ func (a *Agent) CallWithResponseString(content string) (err error) {
 }
 
 // ProposeGoals generates goals based on the provided file contents.
-// It renders the prompt, sends a request to the OpenAI model, and processes the response.
-func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error) {
+// It renders the prompt, sends a request to the genai model, and processes the response.
+func (a *AgentGoogle) Call(ctx context.Context, memories ...map[string]any) (err error) {
 	// Render the prompt with the provided files content and available functions
 	var params = map[string]any{}
 	for k, v := range a.SharedMemory {
@@ -203,7 +183,7 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 			params[k] = v
 		}
 	}
-	params["ThisAgent"] = a // add self reference to memory
+	params["ThisAgentGoogle"] = a // add self reference to memory
 	if a.memDeCliboardKey != "" {
 		textbytes := clipboard.Read(clipboard.FmtText)
 		if len(textbytes) == 0 {
@@ -222,11 +202,11 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 	model := models.LoadbalancedPick(a.Models...)
 	params["Model"] = model
 	// Create the chat completion request with function calls enabled
-	req := openai.ChatCompletionRequest{
+	req := genai.ChatCompletionRequest{
 		Model: model.Name,
-		Messages: []openai.ChatCompletionMessage{
+		Messages: []genai.ChatCompletionMessage{
 			{
-				Role:    openai.ChatMessageRoleUser,
+				Role:    genai.ChatMessageRoleUser,
 				Content: promptBuffer.String(),
 			},
 		},
@@ -251,7 +231,7 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 	}
 
 	if a.copyPromptOnly {
-		msg := strings.Join(lo.Map(req.Messages, func(m openai.ChatCompletionMessage, _ int) string { return m.Content }), "\n")
+		msg := strings.Join(lo.Map(req.Messages, func(m genai.ChatCompletionMessage, _ int) string { return m.Content }), "\n")
 		fmt.Println("copy prompt to clipboard", msg)
 		clipboard.Write(clipboard.FmtText, []byte(msg))
 		return nil
@@ -260,16 +240,15 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 	resp, err := a.GetResponse(model.Client, req)
 	if err == nil {
 		model.ResponseTime(time.Since(timestart))
-		reqMesseges := lo.Map(req.Messages, func(m openai.ChatCompletionMessage, _ int) string {
+		reqMesseges := lo.Map(req.Messages, func(m genai.ChatCompletionMessage, _ int) string {
 			return m.Content
 		})
-		resmesseges := lo.Map(resp.Choices, func(c openai.ChatCompletionChoice, _ int) string {
+		resmesseges := lo.Map(resp.Choices, func(c genai.ChatCompletionChoice, _ int) string {
 			return c.Message.Content
 		})
-		toolCalls := lo.Map(resp.Choices, func(c openai.ChatCompletionChoice, _ int) any {
+		toolCalls := lo.Map(resp.Choices, func(c genai.ChatCompletionChoice, _ int) any {
 			return c.Message.FunctionCall
 		})
-		keyQA.LPush(&QAPaire{Time: time.Now(), Model: model.Name, Question: reqMesseges, Response: resmesseges, ToolCalls: toolCalls})
 	}
 	fmt.Println("resp:", resp)
 	if err != nil {

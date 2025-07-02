@@ -42,6 +42,7 @@ func (model *Model) ResponseTime(duration ...time.Duration) time.Duration {
 // It configures the OpenAI client to use a custom base URL if provided.
 func NewModel(baseURL, apiKey, modelName string) *Model {
 	config := openai.DefaultConfig(apiKey)
+	config.EmptyMessagesLimit = 10000000
 	if baseURL != "" {
 		config.BaseURL = baseURL
 	}
@@ -179,13 +180,22 @@ var (
 	DeepSeekV3TB = NewModel("https://tbnx.plus7.plus/v1", os.Getenv("DSTB"), "deepseek-chat").WithTopP(0.6)
 	GeminiTB     = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gemini-2.0-flash-exp").WithTopP(0.8).WithToolsInUserPrompt()
 	//https://ai.google.dev/gemini-api/docs/models?hl=zh-cn
-	GeminiFlashLight         = NewModel("https://www.chataiapi.com/v1", "sk-U3lPyfaPDE6abmfRwGqSI1jMONNgDdPBQ16pKev9FfAgRXmE", "gemini-2.0-flash-light").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini25Flash            = NewModel("https://api.aigptapi.com/v1", "sk-yyD2v3Bz6GksQshJwOBAcPRqN7NWVzgLa8bcsDh2DUf0uZYF", "gemini-2.5-flash-preview-05-20").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini25FlashThinking    = NewModel("https://api.aigptapi.com/v1", "sk-yyD2v3Bz6GksQshJwOBAcPRqN7NWVzgLa8bcsDh2DUf0uZYF", "gemini-2.5-flash-preview-05-20-thinking").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini25FlashNonthinking = NewModel("https://api.aigptapi.com/v1", "sk-yyD2v3Bz6GksQshJwOBAcPRqN7NWVzgLa8bcsDh2DUf0uZYF", "gemini-2.5-flash-preview-05-20-nothinking").WithTopP(0.8).WithToolsInUserPrompt()
+	GeminiFlashLight          = NewModel("https://www.chataiapi.com/v1", "sk-U3lPyfaPDE6abmfRwGqSI1jMONNgDdPBQ16pKev9FfAgRXmE", "gemini-2.0-flash-light").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25Flash             = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-flash-preview-05-20").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25FlashThinking     = NewModel("https://api.yun163.top/v1", "sk-Lz2zwPj0DOBUxPN8d9BwBH7h0Uxa3DTjsguHdOGyYYDe5xPt", "gemini-2.5-flash-preview-05-20-thinking").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25Flashlight        = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-flash-lite-preview-06-17").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25FlashNonthinking_ = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-flash-preview-05-20-nothinking").WithToolsInUserPrompt()
+	Gemini25FlashNonthinking  = NewModel("https://api.yun163.top/v1", "sk-Lz2zwPj0DOBUxPN8d9BwBH7h0Uxa3DTjsguHdOGyYYDe5xPt", "gemini-2.5-flash-preview-05-20-nothinking").WithToolsInUserPrompt()
+	Gemini25ProYun163         = NewModel("https://api.yun163.top/v1", "sk-Lz2zwPj0DOBUxPN8d9BwBH7h0Uxa3DTjsguHdOGyYYDe5xPt", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25ProAigpt          = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
+	//多模态回答生成仅在 gemini-2.0-flash-exp 和 gemini-2.0-flash-preview-image-generation
+	Gemini20FlashImageAigpt   = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.0-flash-preview-image-generation").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini20FlashExpRunAPIgpt = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.0-flash-exp").WithTopP(0.8).WithToolsInUserPrompt()
 
-	Gemini25Flashlight = NewModel("https://api.aigptapi.com/v1", "sk-yyD2v3Bz6GksQshJwOBAcPRqN7NWVzgLa8bcsDh2DUf0uZYF", "gemini-2.5-flash-lite-preview-06-17").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini25Pro        = NewModel("https://api.aigptapi.com/v1", "sk-yyD2v3Bz6GksQshJwOBAcPRqN7NWVzgLa8bcsDh2DUf0uZYF", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25FlashPreviewRunAPI = NewModel("https://api.runapi.sbs/v1", "sk-0t6RD5gAK1spJS408b07Dd214b8845Df94127eF6D05c65D8", "gemini-2.5-flash-preview-05-20").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25FlashRunAPI        = NewModel("https://api.runapi.sbs/v1", "sk-0t6RD5gAK1spJS408b07Dd214b8845Df94127eF6D05c65D8", "gemini-2.5-flash").WithTopP(0.8).WithToolsInUserPrompt()
+
+	Gemini25ProRunAPI = NewModel("https://api.runapi.sbs/v1", "sk-0t6RD5gAK1spJS408b07Dd214b8845Df94127eF6D05c65D8", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
 
 	GPT41Mini = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gpt-4.1-mini").WithTopP(0.8)
 
