@@ -56,9 +56,31 @@ func nodeRefine(newItem *SolutionFileNode) {
 }
 
 var AgentEvoLearningSolution = agent.NewAgent(template.Must(template.New("AgentEvoLearningCallback").Parse(`
-小孩今年高考，文科，342，福建省排名是49735/60252人（文科生是60252人报考）
+## 本系统采用迭代方式完成开发工作,以实现或改进方案的实现。
+请确保采用简单且Just-Enough的方式来实现或改进方案的实现。
 
-从职业和未来前景规划看，有什么建议。请帮设计一条国内学习，去日本或国外工作的路径
+## 当前的系统状态:
+这是系统的product goal:
+{{.ProductGoal}}
+
+这是本次迭代的目标: 
+迭代一个或若干个文件，以使得项目场景得以简洁、尽可能完整地建构
+如果必要
+	- 对粒度过大，难以实施的文件，优先对粒度进行拆分，也就是创建多个更细粒度的文件实现，并且删除原有的文件。
+	- 如果有必要，提出或删除相关模块文件。维护解决方案的完整性和简洁性。
+	- 优先删除无效的引用、消除错误。尽可能使得项目处于可编译、可运行的状态。
+
+
+这是当前的解决方案:
+{{.Solution}}
+
+这是当前的编译信息:
+{{.runtimeError}}
+
+
+## To Do : SolutionFileRefine
+	请按给定的本次迭代的目标，行深度思考，并提出有效的Refine 方案，确保目标文件内容正确，并且确保在下一轮的迭代中可以被进一步改善。
+	最后通过（多次）调用 FunctionCall:SolutionFileRefine 来提交不同文件的改进。改进形式包括: 1)创建新节点; 2)修改条目:指定Filename,并修改字段(可忽略不修改字段若，若修改的字段需确保完整性); 3)删除无效节点
 
 
 `))).WithToolCallMutextRun().WithTools(tool.NewTool("SolutionFileRefine", "create/modify/remove solution file", nodeRefine))

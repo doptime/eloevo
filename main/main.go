@@ -10,10 +10,10 @@ import (
 )
 
 func main() {
+	projects.EvoLearnByChooseSolution()
 	projects.Debug()
 	httpserve.Debug()
 	time.Sleep(1000000 * time.Second)
-	projects.EvoLearningSolution()
 	a, e := utils.GetEmbedding("hello world")
 	println("embedding result", a, e.Error())
 	projects.AgentSelectAndExecute()

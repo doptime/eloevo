@@ -239,9 +239,6 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 	if model.TopP > 0 {
 		req.TopP = model.TopP
 	}
-	if model.TopK > 0 {
-		req.N = model.TopK
-	}
 	if len(a.Tools) > 0 {
 		if model.ToolInPrompt != nil {
 			model.ToolInPrompt.WithToolcallSysMsg(a.Tools, &req)

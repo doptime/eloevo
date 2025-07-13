@@ -47,7 +47,7 @@ TODO：
 
 先完成TODO, 并再次调用ToolCall 来保存学习材料
 
-`))).WithToolCallMutextRun().WithTools(tool.NewTool("WordLearningData", "For learning purpose, given a word, generate a bunch of related learning materials for that keywords ", func(newItem *WordLearningData) {
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("SaveWordLearningData", "For learning purpose, given a word, generate a bunch of related learning materials for that keywords ", func(newItem *WordLearningData) {
 	if newItem.Word == "" || newItem.ImageURL != "" {
 		return
 	}

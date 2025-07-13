@@ -15,9 +15,10 @@ import (
 type Model struct {
 	Client          *openai.Client
 	ApiKey          string // API key for authentication
+	BaseURL         string // Base URL for the OpenAI API, can be empty for default
 	Name            string
 	TopP            float32
-	TopK            int
+	TopK            float32
 	Temperature     float32
 	ToolInPrompt    *ToolInPrompt
 	avgResponseTime time.Duration
@@ -92,6 +93,7 @@ func NewModel(baseURL, apiKey, modelName string) *Model {
 		Client:          client,
 		Name:            modelName,
 		ApiKey:          apiKey,
+		BaseURL:         baseURL,
 		avgResponseTime: 600 * time.Second,
 	}
 }
@@ -107,7 +109,7 @@ func (m *Model) WithTopP(topP float32) *Model {
 	m.TopP = topP
 	return m
 }
-func (m *Model) WithTopK(topK int) *Model {
+func (m *Model) WithTopK(topK float32) *Model {
 	m.TopK = topK
 	return m
 }
@@ -191,7 +193,7 @@ var (
 	Gemini25ProYun163         = NewModel("https://api.yun163.top/v1", "sk-Lz2zwPj0DOBUxPN8d9BwBH7h0Uxa3DTjsguHdOGyYYDe5xPt", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
 	Gemini25ProAigpt          = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
 	//多模态回答生成仅在 gemini-2.0-flash-exp 和 gemini-2.0-flash-preview-image-generation
-	Gemini20FlashImageAigpt   = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.0-flash-preview-image-generation").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini20FlashImageAigpt   = NewModel("https://api.aigptapi.com/", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.0-flash-preview-image-generation").WithTopP(0.8).WithToolsInUserPrompt()
 	Gemini20FlashExpRunAPIgpt = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.0-flash-exp").WithTopP(0.8).WithToolsInUserPrompt()
 
 	Gemini25FlashPreviewRunAPI = NewModel("https://api.runapi.sbs/v1", "sk-0t6RD5gAK1spJS408b07Dd214b8845Df94127eF6D05c65D8", "gemini-2.5-flash-preview-05-20").WithTopP(0.8).WithToolsInUserPrompt()

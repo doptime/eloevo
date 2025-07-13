@@ -11,6 +11,7 @@ require (
 	github.com/faiface/beep v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mroth/weightedrand v1.0.0
+	github.com/open-spaced-repetition/go-fsrs v1.2.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/samber/lo v1.49.1

@@ -24,10 +24,11 @@ import (
 // handling function calls, and managing state.
 type AgentGoogle struct {
 	SharedMemory map[string]any
-	Models       []*models.Model // Assumes models.Model is adapted to hold *genai.Client
+	Models       []*models.Model // Assumes models.Model is adapted to hold genai client info
 
-	Prompt         *template.Template
-	Tools          *genai.Tool
+	Prompt *template.Template
+	Tools  *genai.Tool
+	//【注意】Go的map是引用类型，Clone时需要深拷贝
 	toolsCallbacks map[string]func(Param interface{}, CallMemory map[string]any) error
 
 	// Configuration for message handling
@@ -52,13 +53,14 @@ type AgentGoogle struct {
 // NewAgentGoogle creates a new instance of AgentGoogle.
 func NewAgentGoogle(prompt *template.Template, tools ...tool.ToolInterface) (a *AgentGoogle) {
 	a = &AgentGoogle{
-		Models:         []*models.Model{models.ModelDefault}, // Ensure ModelDefault is configured for GenAI
+		Models:         []*models.Model{models.ModelDefault}, // Ensure ModelDefault is configured
 		Prompt:         prompt,
 		toolsCallbacks: make(map[string]func(Param interface{}, CallMemory map[string]any) error),
 		SharedMemory:   make(map[string]any),
+		Tools:          &genai.Tool{}, // Initialize Tools to avoid nil pointer
 	}
-	a.WithTools(tools...)
-	return a
+	// Note: WithTools now returns a new instance, so we re-assign it.
+	return a.WithTools(tools...)
 }
 
 // WithToolCallMutextRun enables a mutex for serializing tool calls.
@@ -68,15 +70,13 @@ func (a *AgentGoogle) WithToolCallMutextRun() *AgentGoogle {
 }
 
 // WithTools adds a set of tools (function declarations) to the agent.
-// Note: This now creates a new agent instance to maintain immutability.
+// This method returns a new agent instance to maintain immutability.
 func (a *AgentGoogle) WithTools(tools ...tool.ToolInterface) *AgentGoogle {
 	// Create a shallow copy of the agent
 	ret := a.Clone()
-	if ret.Tools == nil {
-		ret.Tools = &genai.Tool{}
-	}
 
 	for _, t := range tools {
+		// Append to the new agent's tool set
 		ret.Tools.FunctionDeclarations = append(ret.Tools.FunctionDeclarations, t.GoogleGenaiTool())
 		ret.toolsCallbacks[t.Name()] = t.HandleCallback
 	}
@@ -119,14 +119,25 @@ func (a *AgentGoogle) WithContent2RedisHash(Key string, f FieldReaderFunc) *Agen
 	return b
 }
 
-// Clone creates a shallow copy of the agent.
+// Clone creates a new AgentGoogle instance with copied values.
 func (a *AgentGoogle) Clone() *AgentGoogle {
-	b := *a
+	b := *a // Shallow copy of the struct itself
+
+	// Deep copy the toolsCallbacks map
 	b.toolsCallbacks = make(map[string]func(Param interface{}, CallMemory map[string]any) error, len(a.toolsCallbacks))
 	for k, v := range a.toolsCallbacks {
 		b.toolsCallbacks[k] = v
 	}
-	*b.Tools = *a.Tools
+
+	// Deep copy the Tools struct to ensure slice independence
+	if a.Tools != nil {
+		newTools := &genai.Tool{}
+		// Create a new slice with the same capacity and copy elements
+		newTools.FunctionDeclarations = make([]*genai.FunctionDeclaration, len(a.Tools.FunctionDeclarations))
+		copy(newTools.FunctionDeclarations, a.Tools.FunctionDeclarations)
+		b.Tools = newTools
+	}
+
 	return &b
 }
 
@@ -161,19 +172,20 @@ func (a *AgentGoogle) ExeResponse(params map[string]any, resp *genai.GenerateCon
 		return nil // No content to process
 	}
 
-	toolCallParts := lo.Filter(resp.Candidates[0].Content.Parts, func(part genai.ContentPart, _ int) bool {
-		_, ok := part.(genai.FunctionCall)
-		return ok
+	// Filter for function call parts
+	// toolCallParts := lo.Filter(resp.Candidates[0].Content.Parts, func(part *genai.Part, _ int) bool {
+	// 	return part.FunctionCall != nil && part.FunctionCall.Name != "" && part.FunctionCall.Args != nil
+	// })
+	toolCalls := lo.Map(resp.Candidates[0].Content.Parts, func(candidate *genai.Part, _ int) *genai.FunctionCall {
+		return candidate.FunctionCall
 	})
 
-	if len(toolCallParts) == 0 {
+	if len(toolCalls) == 0 {
 		return nil // No function calls in the response
 	}
 
 	ToolCallHash := make(map[uint64]bool)
-	for _, part := range toolCallParts {
-		toolcall := part.(genai.FunctionCall)
-
+	for _, toolcall := range toolCalls {
 		// Convert args from map[string]interface{} to a consistent format for hashing
 		argsBytes, jsonErr := json.Marshal(toolcall.Args)
 		if jsonErr != nil {
@@ -189,7 +201,9 @@ func (a *AgentGoogle) ExeResponse(params map[string]any, resp *genai.GenerateCon
 
 		callback, ok := a.toolsCallbacks[toolcall.Name]
 		if !ok {
-			return fmt.Errorf("error: function '%s' not found in FunctionMap", toolcall.Name)
+			// It's better to log a warning and continue, rather than failing the entire process
+			log.Printf("Warning: function '%s' not found in FunctionMap, skipping.", toolcall.Name)
+			continue
 		}
 
 		// Execute the callback
@@ -211,25 +225,12 @@ func (a *AgentGoogle) ExeResponse(params map[string]any, resp *genai.GenerateCon
 	return nil
 }
 
-// CallWithResponseString processes a string assumed to be a JSON representation of a genai response.
-// This function is highly dependent on the string format and may be brittle.
+// CallWithResponseString processes a simple string. Note: This cannot handle function calls.
 func (a *AgentGoogle) CallWithResponseString(content string) (err error) {
-	var params = make(map[string]any)
-	for k, v := range a.SharedMemory {
-		params[k] = v
-	}
+	log.Println("CallWithResponseString invoked. Note: This function only processes the text content and cannot execute function calls.")
 
-	// This is a significant change. We can't just convert a string to a genai.GenerateContentResponse.
-	// We'll assume the string is the *text content* of the response, not the full response object.
-	// To handle function calls, the full response object is needed.
-	// A better approach would be to simulate a response if needed.
-	// For now, this function might have limited utility unless the string contains function call JSON.
-	log.Println("Warning: CallWithResponseString has limited functionality with the GenAI library.")
-	log.Println("It cannot process function calls from a simple string.")
-
-	// If you want to process text content from a string:
 	if a.CallBack != nil {
-		a.CallBack(context.Background(), content)
+		return a.CallBack(context.Background(), content)
 	}
 	return nil
 }
@@ -237,7 +238,7 @@ func (a *AgentGoogle) CallWithResponseString(content string) (err error) {
 // Call executes the main logic: renders a prompt, sends it to the GenAI model, and processes the response.
 func (a *AgentGoogle) Call(ctx context.Context, memories ...map[string]any) (err error) {
 	// 1. Prepare parameters for the prompt template
-	var params = make(map[string]any)
+	params := make(map[string]any)
 	for k, v := range a.SharedMemory {
 		params[k] = v
 	}
@@ -271,57 +272,63 @@ func (a *AgentGoogle) Call(ctx context.Context, memories ...map[string]any) (err
 	}
 
 	// 3. Select a model and initialize the GenAI client
-	model := models.LoadbalancedPick(a.Models...)
-	params["Model"] = model
-	// Assumes model.Client is a *genai.Client
-	if model.Client == nil {
-		return fmt.Errorf("model '%s' has a nil genai.Client", model.Name)
+	modelInfo := models.LoadbalancedPick(a.Models...)
+	params["Model"] = modelInfo
+	if modelInfo.ApiKey == "" {
+		return fmt.Errorf("model '%s' has an empty API key", modelInfo.Name)
 	}
-	gm := genai.NewClient(context.Background(), &genai.ClientConfig{
-		APIKey: model.ApiKey,
 
-		Model: model.Name,
+	// 【修正】使用 option.WithAPIKey 正确创建客户端
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+		APIKey: modelInfo.ApiKey,
+		HTTPOptions: genai.HTTPOptions{
+			BaseURL: modelInfo.BaseURL,
+		},
 	})
+	if err != nil {
+		return fmt.Errorf("error creating genai client: %w", err)
+	}
 
-	// 4. Configure the generation settings
-	gm.GenerationConfig = genai.GenerationConfig{}
-	if model.Temperature > 0 {
-		gm.Temperature = model.Temperature
+	// 4. 【修正】在 GenerativeModel 实例上配置生成参数
+	GenerationConfig := genai.GenerateContentConfig{}
+	if modelInfo.Temperature != 0 {
+		GenerationConfig.Temperature = &modelInfo.Temperature
 	}
-	if model.TopP > 0 {
-		gm.TopP = model.TopP
+	if modelInfo.TopP != 0 {
+		GenerationConfig.TopP = &modelInfo.TopP
 	}
-	if model.TopK > 0 {
-		gm.N = model.TopK
+	if modelInfo.TopK != 0 {
+		GenerationConfig.TopK = &modelInfo.TopK
 	}
-	if len(a.Tools.FunctionDeclarations) > 0 {
-		gm.Tools = a.Tools
+	if a.Tools != nil && len(a.Tools.FunctionDeclarations) > 0 {
+		GenerationConfig.Tools = append(GenerationConfig.Tools, a.Tools)
 	}
 
 	// 5. Send the request to the model
 	timestart := time.Now()
-	log.Printf("Sending request to model %s...", model.Name)
-	resp, err := gm.GenerateContent(ctx, genai.Text(promptContent))
+	log.Printf("Sending request to model %s...", modelInfo.Name)
+	msg := genai.Text(promptContent)
+
+	resp, err := client.Models.GenerateContent(context.Background(), modelInfo.Name, msg, &GenerationConfig)
 	if err != nil {
-		model.ResponseTime(time.Since(timestart)) // Record time even on failure
-		return fmt.Errorf("error generating content for model %s: %w", model.Name, err)
+		modelInfo.ResponseTime(time.Since(timestart)) // Record time even on failure
+		return fmt.Errorf("error generating content for model %s: %w", modelInfo.Name, err)
 	}
-	model.ResponseTime(time.Since(timestart))
+	modelInfo.ResponseTime(time.Since(timestart))
 
 	// 6. Process the response
 	if resp == nil || len(resp.Candidates) == 0 {
 		log.Println("Received an empty response from the model.")
 		return nil
 	}
-	if resp.Candidates[0].FinishReason == genai.FinishReasonStop {
-		log.Println("Model finished generation.")
-	}
 
 	// Extract and log the text content from the response
 	var responseText strings.Builder
-	for _, part := range resp.Candidates[0].Content.Parts {
-		if txt, ok := part.(genai.Text); ok {
-			responseText.WriteString(string(txt))
+	if resp.Candidates[0].Content != nil {
+		for _, part := range resp.Candidates[0].Content.Parts {
+			if part.Text != "" {
+				responseText.WriteString(part.Text)
+			}
 		}
 	}
 	fullResponseText := responseText.String()
@@ -344,41 +351,3 @@ func (a *AgentGoogle) Call(ctx context.Context, memories ...map[string]any) (err
 	// 8. Execute any function calls returned by the model
 	return a.ExeResponse(params, resp)
 }
-
-// GetResponse is a deprecated placeholder. The logic is now inside Call.
-// Kept for compatibility if other parts of the codebase use it, but should be removed.
-func (a *AgentGoogle) GetResponse(client *genai.Client, req interface{}) (*genai.GenerateContentResponse, error) {
-	// This function's signature is problematic as it mixes concerns.
-	// The new `Call` method handles this flow correctly.
-	return nil, fmt.Errorf("GetResponse is deprecated; use the Call method instead")
-}
-
-// --- Helper for converting old tool format to new genai.Schema format ---
-// You will need to implement this based on your `tool.ToolInterface` and its `OaiTool()` method.
-// This is a conceptual example.
-func convertParamsToSchema(params interface{}) *genai.Schema {
-	// Assuming params is a JSON-like structure (e.g., map[string]interface{})
-	// that describes the OpenAI function parameters.
-	pBytes, err := json.Marshal(params)
-	if err != nil {
-		return nil
-	}
-
-	var schema genai.Schema
-	if err := json.Unmarshal(pBytes, &schema); err != nil {
-		log.Printf("Failed to convert OpenAI params to genai.Schema: %v", err)
-		return nil
-	}
-	return &schema
-}
-
-// You need to add a GenaiTool() method to your ToolInterface
-// Example:
-/*
-type ToolInterface interface {
-    Name() string
-    HandleCallback(Param interface{}, CallMemory map[string]any) error
-    OaiTool() *SomeOpenAIStructure // Old method
-    GenaiTool() *genai.Tool        // New method
-}
-*/

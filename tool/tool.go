@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"reflect"
+	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	openai "github.com/sashabaranov/go-openai"
@@ -99,34 +100,16 @@ func NewTool[v any](name string, description string, fs ...func(param v)) *Tool[
 			params[field.Name] = def
 		}
 		//build google genai.Tool
+		goooglefunctionDeclarations.Parameters.Properties = make(map[string]*genai.Schema)
 		goooglefunctionDeclarations.Parameters.Type = genai.TypeObject
 		for i := 0; i < vType.NumField(); i++ {
 			field := vType.Field(i)
-
 			if goooglefunctionDeclarations.Description == "-" || goooglefunctionDeclarations.Description == "" {
 				continue
 			}
 			var Parameters genai.Schema
 			Parameters.Title = field.Name
-			Parameters.Type = genai.TypeUnspecified
-			if field.Type.Kind() == reflect.Struct {
-				Parameters.Type = genai.TypeObject
-			} else if field.Type.Kind() == reflect.Slice || field.Type.Kind() == reflect.Array {
-				Parameters.Type = genai.TypeArray
-			} else if field.Type.Kind() == reflect.Map {
-				Parameters.Type = genai.TypeObject
-			} else if field.Type.Kind() == reflect.String {
-				Parameters.Type = genai.TypeString
-			} else if field.Type.Kind() == reflect.Int || field.Type.Kind() == reflect.Int8 || field.Type.Kind() == reflect.Int16 || field.Type.Kind() == reflect.Int32 || field.Type.Kind() == reflect.Int64 ||
-				field.Type.Kind() == reflect.Uint || field.Type.Kind() == reflect.Uint8 || field.Type.Kind() == reflect.Uint16 || field.Type.Kind() == reflect.Uint32 || field.Type.Kind() == reflect.Uint64 {
-				Parameters.Type = genai.TypeInteger
-			} else if field.Type.Kind() == reflect.Float32 || field.Type.Kind() == reflect.Float64 {
-				Parameters.Type = genai.TypeNumber
-			} else if field.Type.Kind() == reflect.Bool {
-				Parameters.Type = genai.TypeBoolean
-			} else if field.Type.Kind() == reflect.Invalid {
-				Parameters.Type = genai.TypeNULL
-			}
+			Parameters.Type = KindToJSONType(field.Type.Kind()) // 这里使用了之前定义的 mapKindToDataType 函数来映射类型
 			Parameters.Description = field.Tag.Get("description")
 
 			goooglefunctionDeclarations.Parameters.Properties[field.Name] = &Parameters
@@ -162,5 +145,15 @@ func mapKindToDataType(kind reflect.Kind) string {
 		reflect.Invalid: "null",
 		reflect.Map:     "object",
 	}
-	return mapKindToDataType[kind]
+	_type, ok := mapKindToDataType[kind]
+	if !ok {
+		return "type_unspecified"
+	}
+	return _type
+}
+
+func KindToJSONType(kind reflect.Kind) genai.Type {
+
+	return genai.Type(strings.ToUpper(mapKindToDataType(kind)))
+
 }

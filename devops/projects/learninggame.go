@@ -1,0 +1,57 @@
+package projects
+
+import (
+	"github.com/doptime/doptime/api"
+	"github.com/doptime/redisdb"
+	fsrs "github.com/open-spaced-repetition/go-fsrs"
+)
+
+type LearningLesson struct {
+	LessonID       int64           `json:"lesson_id"`
+	Name           string          `json:"name"`
+	Description    string          `json:"description"`
+	LearningTopics []LearningTopic `json:"learning_topic_ids"`
+}
+type UsersLearningLesson LearningLesson
+
+type LearningTopicOption struct {
+	OptionId      string `json:"option_id"`
+	Answer        string `json:"answer"`
+	Weight        int64  `json:"weight"`
+	RegretComment string `json:"regret_comment" 第一人称心理活动` // regret_comment is the comment for the user to reflect on the answer, using first person perspective ,in baby's voice, like "哇！我错过了！" or "哇！就差一点点金彩蛋就是我的了！" or "哇！就差一点点超级暴击！" or "哇！就差一点命中！"
+}
+
+type LearningTopic struct {
+	*fsrs.Card
+	TopicId              string                `json:"topic_id"`
+	Question             string                `json:"word"`
+	LearningTopicOptions []LearningTopicOption `json:"learning_topic_options"`
+}
+
+type LearningTopicAnswerResponse struct {
+	TopicId string `json:"topic_id"`
+	User    string `json:"user"`
+
+	TimeTakenMS int64    `json:"time_taken_ms"`
+	Corrects    []string `json:"corrects"`   // corrects is the list of correct option ids
+	Incorrects  []string `json:"incorrects"` // incorrects is the list of incorrect
+}
+
+var KeyLesson = redisdb.NewHashKey[string, *LearningLesson]()
+var KeyLessonUser = redisdb.NewHashKey[string, *LearningLesson](redisdb.Opt.Key("LearningLessonUser"))
+var KeyUserLesson = redisdb.NewHashKey[string, *UsersLearningLesson]()
+var KeyUserTimeTakenMS = redisdb.NewHashKey[string, int64](redisdb.Opt.Key("UserTimeTakenMS"))
+
+var ApiLearningTopicAnswerCallback = api.Api(func(rlt *LearningTopicAnswerResponse) (string, error) {
+	if rlt == nil || rlt.TopicId == "" || rlt.User == "" {
+		return "invalid input, check TopicId or User", nil
+	}
+	if len(rlt.Corrects)+len(rlt.Incorrects) == 0 {
+		return "no answers provided", nil
+	}
+	// var r fsrs.Rating
+	// alpha, beta := 0.5, 0.5
+	// correctness := float64(len(rlt.Corrects)) / float64(len(rlt.Corrects)+len(rlt.Incorrects))
+	// r = 4 * (alpha*(correctness) + beta*timePercentile)
+	return "ok", nil
+})

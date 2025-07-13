@@ -14,3 +14,7 @@ func Text2Clipboard(text ...string) {
 
 	clipboard.Write(clipboard.FmtText, []byte(sb.String()))
 }
+func TextFromClipboard() string {
+	data := clipboard.Read(clipboard.FmtText)
+	return string(data)
+}
