@@ -20,10 +20,10 @@ import (
 )
 
 // var ThisTopic = "直观感受1-20数字的大小"
-var SolutionBaseLearnByChoose = redisdb.NewHashKey[string, *FileRefine](redisdb.Opt.HttpVisit(), redisdb.Opt.Key("SolutionBaseLearnByChoose"))
+var SolutionBaseLearnByChoose = redisdb.NewHashKey[string, *FileRefine](redisdb.Opt.HttpVisit(), redisdb.Opt.Key("ProjectRefine:LearnByChoose"))
 
 // var RootPathLearnByChoose = "/Users/yang/doptime/evolab/web/app/perceptual-understanding-numbers-1-to-20"
-var RootPathLearnByChoose = "/Users/yang/doptime/evolab/web/app/learnning-game-by-choose"
+var RootPathLearnByChoose = "/Users/yang/doptime/evolab/web/app/learn-by-choose"
 var ExtraPathLearnByChoose = "../../components/guesture"
 
 func LoadExtraPathToMap1(solution map[string]*FileRefine) {
@@ -67,9 +67,10 @@ var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(templat
 {{.Solution}}
 
 
-这是当前的编译信息:
+
 {{.runtimeError}}
 
+{{.Revision}}
 
 `))).WithToolCallMutextRun().WithTools(tool.NewTool("SolutionFileRefine", "create/modify/remove solution file", func(newItem *FileRefine) {
 	newItem.BulletDescription = strings.TrimSpace(newItem.BulletDescription)
@@ -79,6 +80,7 @@ var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(templat
 	}
 	newItem.Filename = strings.TrimPrefix(newItem.Filename, "Pathname")
 	newItem.Filename = strings.TrimPrefix(newItem.Filename, "Path")
+	newItem.Filename = strings.TrimPrefix(newItem.Filename, "./")
 	oItem, _ = newItem.HashKey.HGet(newItem.Filename)
 	if newItem.Delete {
 		pathname := filepath.Join(RootPath, newItem.Filename)
@@ -95,8 +97,7 @@ var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(templat
 }))
 
 func EvoLearnByChooseSolution() {
-	//var KeyBacklog = KeyBacklogBase.ConcatKey(ThisTopic)
-	var keySolution = SolutionBaseLearnByChoose.ConcatKey(ThisTopic)
+	var keySolution = SolutionBaseLearnByChoose
 
 	const MaxThreads = 1
 	MaxThreadsSemaphore := make(chan struct{}, MaxThreads)
@@ -110,7 +111,7 @@ func EvoLearnByChooseSolution() {
 			utils.TextFromFile(filepath.Join(RootPathLearnByChoose, node.Filename), &node.FileContent)
 		}
 		LoadExtraPathToMapFileRefineMap(RootPathLearnByChoose, ".", allNodes)
-		LoadExtraPathToMapFileRefineMap(RootPathLearnByChoose, ExtraPathLearnByChoose, allNodes)
+		//LoadExtraPathToMapFileRefineMap(RootPathLearnByChoose, ExtraPathLearnByChoose, allNodes)
 
 		SolutionSummary := FileRefineList(lo.Values(allNodes))
 		time.Sleep(300 * time.Millisecond)
@@ -122,22 +123,35 @@ func EvoLearnByChooseSolution() {
 			//- 蓝色的手势位置x轴方向（左右移动方向）和手的移动方向相反。
 
 			//runtimeError, _ := utils.ExtractNextJSError("http://localhost:3000/perceptual-understanding-numbers-1-to-20/error.js")
-			runtimeError := `
-现现有的代码是另一个相近项目的源码。和现在的项目差异非常巨大。要求参考旧项目进行完全的重构。
-数据也需要重新设计。	
+			runtimeError := "这是当前的编译信息或迭代需求:\n" + `
+Bug修复：现在朗读的时候会朗读emoji表情，emoji 表情是用内容描述的方式度。
 
-这是现在得到的改进意见，请将它提交到SolutionFileRefine中。
 
-` + utils.TextFromClipboard()
-			ProductGoalUniLearning := utils.TextFromFile("/Users/yang/eloevo/devops/projects/learninggame.md")
+
+
+请思考，并且有重点地改进现有系统
+`
+			Revision := utils.TextFromClipboard()
+			if len(Revision) > 200 && strings.LastIndex(Revision, ".ts") > 60 {
+				Revision = `对上面的需求，这是我的修改意见，请变动内容完整地提交到本地文件:
+1. 不同的文件内容，你需要多次调用 SolutionFileRefine ,每次修改一个本地文件当中。
+2. 文件内容必须完整而没有遗漏和错误，不能只提交部分内容。如果是增量修改，请将其转化为全量的文件内容。以避免编译失败。
+3. 对每个文件的修改，应该先进行思考或者是讨论，以明确修改意图和修改内容。
+4. 可能存在部分文件已经完成修改的情形。对于已经完成的修改，可以忽略或者是跳过。
+给定的修改建议内容如下：` + Revision
+			} else {
+				Revision = ""
+			}
+			ProductGoalUniLearning := utils.TextFromFile("/Users/yang/learn-by-choose-goserver/learninggame.md")
 			//Gemini25Flashlight Gemini25ProAigpt
-			err := AgentEvoLearningSolutionLearnByChoose.WithModels(models.Qwen3B14). //CopyPromptOnly(). //UseClipboardMsg().
-													Call(context.Background(), map[string]any{
+			err := AgentEvoLearningSolutionLearnByChoose.WithModels(models.Qwen3B30A3b2507). //CopyPromptOnly(). //Qwen3B32Thinking
+														Call(context.Background(), map[string]any{
 					"runtimeError": string(runtimeError),
 					"ProductGoal":  string(ProductGoalUniLearning) + "\n\n",
 					"HashKey":      keySolution,
 					"AllItems":     allNodes,
 					"Solution":     SolutionSummary,
+					"Revision":     Revision,
 				})
 			if err != nil {
 				fmt.Printf("Agent call failed: %v\n", err)

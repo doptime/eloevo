@@ -16,23 +16,31 @@ UrlBase = "https://api.doptime.com"
 
 [[Redis]]
 DB = 0
-Host = "projects.lan"
+Host = "dragonflyprojects.lan"
 Name = "default"
 Password = "XWkHqup04Gcm7Plieh5x"
 Port = 6379
 Username = ""
 
 [[Redis]]
+DB = 5
+Host = "dragonflyprojects.lan"
+Name = "learnbychoose"
+Password = "XWkHqup04Gcm7Plieh5x"
+Port = 6379
+Username = ""
+
+[[Redis]]
 DB = 0
-Host = "projects.lan"
-Name = "projects"
+Host = "dragonflyprojects.lan"
+Name = "dragonflyprojects"
 Password = "XWkHqup04Gcm7Plieh5x"
 Port = 6379
 Username = ""
 
 [[Redis]]
 DB = 2
-Host = "projects.lan"
+Host = "dragonflyprojects.lan"
 Name = "Catalogs"
 Password = "XWkHqup04Gcm7Plieh5x"
 Port = 6379
@@ -40,7 +48,7 @@ Username = ""
 
 [[Redis]]
 DB = 2
-Host = "projects.lan"
+Host = "dragonflyprojects.lan"
 Name = "usecase"
 Password = "XWkHqup04Gcm7Plieh5x"
 Port = 6379

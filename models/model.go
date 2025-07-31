@@ -119,12 +119,12 @@ func (m *Model) WithTemperature(temperature float32) *Model {
 }
 
 const (
-	EndPoint8010   = "http://gpu.lan:8010/v1"
-	EndPoint8009   = "http://gpu.lan:8009/v1"
-	EndPoint8008   = "http://gpu.lan:8008/v1"
-	EndPoint8007   = "http://gpu.lan:8007/v1"
-	EndPoint8006   = "http://gpu.lan:8006/v1"
-	EndPoint8003   = "http://gpu.lan:8003/v1"
+	EndPoint8010   = "http://rtxserver.lan:8010/v1"
+	EndPoint8009   = "http://rtxserver.lan:8009/v1"
+	EndPoint8008   = "http://rtxserver.lan:8008/v1"
+	EndPoint8007   = "http://rtxserver.lan:8007/v1"
+	EndPoint8006   = "http://rtxserver.lan:8006/v1"
+	EndPoint8003   = "http://rtxserver.lan:8003/v1"
 	ApiKey         = "token-deaf"
 	ApiKeyDeepseek = "sk-2d9e2689120c4544820485740ea2f36c"
 	NameQwen32B    = "Qwen/Qwen2.5-32B-Instruct-AWQ"
@@ -162,7 +162,7 @@ var (
 
 	ModelQwenQvq72B = NewModel(EndPoint8007, ApiKey, "/home/deaf/.cache/huggingface/hub/models--kosbu--QVQ-72B-Preview-AWQ/snapshots/9f763dc5a3bf51ed157aee12a8aae4ae8e7c1926")
 
-	ModelQwen14B        = NewModel("http://gpu.lan:1214/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-14B-Instruct-AWQ/snapshots/539535859b135b0244c91f3e59816150c8056698")
+	ModelQwen14B        = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-14B-Instruct-AWQ/snapshots/539535859b135b0244c91f3e59816150c8056698")
 	ModelQwen7B         = NewModel(EndPoint8007, ApiKey, NameQwen7B)
 	ModelPhi3           = NewModel(EndPoint8006, ApiKey, "neuralmagic/Phi-3-medium-128k-instruct-quantized.w4a16")
 	ModelGemma          = NewModel(EndPoint8006, ApiKey, NameGemma)
@@ -174,27 +174,27 @@ var (
 	ModelQwen32B12K     = NewModel(EndPoint8008, ApiKey, NameQwen32B)
 	ModelLlama33_70b    = NewModel(EndPoint8007, ApiKey, NameLlama33_70b)
 	//ModelDeepseek       = NewModel(EndPointDeepseek, ApiKeyDeepseek, NameDeepseek)
-	ModelQwen2_1d5B    = NewModel("http://gpu.lan:8215/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306")
-	ModelQwen2_7B      = NewModel("http://gpu.lan:1207/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct-AWQ/snapshots/b25037543e9394b818fdfca67ab2a00ecc7dd641")
-	DeepSeekR1_Qwen_14 = NewModel("http://gpu.lan:3214/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--casperhansen--deepseek-r1-distill-qwen-14b-awq/snapshots/1874537e80f451042f7993dfa2b21fd25b4e7223")
-	DeepSeekR132B      = NewModel("http://gpu.lan:4733/v1", ApiKey, "DeepSeek-R1-Distill-Qwen-32B-AWQ").WithTopP(0.6)
+	ModelQwen2_1d5B    = NewModel("http://rtxserver.lan:8215/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B-Instruct/snapshots/989aa7980e4cf806f80c7fef2b1adb7bc71aa306")
+	ModelQwen2_7B      = NewModel("http://rtxserver.lan:1207/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B-Instruct-AWQ/snapshots/b25037543e9394b818fdfca67ab2a00ecc7dd641")
+	DeepSeekR1_Qwen_14 = NewModel("http://rtxserver.lan:3214/v1", ApiKey, "/home/deaf/.cache/huggingface/hub/models--casperhansen--deepseek-r1-distill-qwen-14b-awq/snapshots/1874537e80f451042f7993dfa2b21fd25b4e7223")
+	DeepSeekR132B      = NewModel("http://rtxserver.lan:4733/v1", ApiKey, "DeepSeek-R1-Distill-Qwen-32B-AWQ").WithTopP(0.6)
 	DSV3Baidu          = NewModel("https://qianfan.baidubce.com/v2", os.Getenv("BDAPIKEY"), "deepseek-v3").WithTopP(0.6)
 	DeepSeekV3         = NewModel("https://api.deepseek.com/", utils.TextFromFile("/Users/yang/eloevo/.vscode/DSAPIKEY.txt"), "deepseek-chat").WithTopP(0.6).WithToolsInSystemPrompt()
 	//https://tbnx.plus7.plus/token
 	DeepSeekV3TB = NewModel("https://tbnx.plus7.plus/v1", os.Getenv("DSTB"), "deepseek-chat").WithTopP(0.6)
 	GeminiTB     = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gemini-2.0-flash-exp").WithTopP(0.8).WithToolsInUserPrompt()
 	//https://ai.google.dev/gemini-api/docs/models?hl=zh-cn
-	GeminiFlashLight          = NewModel("https://www.chataiapi.com/v1", "sk-U3lPyfaPDE6abmfRwGqSI1jMONNgDdPBQ16pKev9FfAgRXmE", "gemini-2.0-flash-light").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini25Flash             = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-flash-preview-05-20").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini25FlashThinking     = NewModel("https://api.yun163.top/v1", "sk-Lz2zwPj0DOBUxPN8d9BwBH7h0Uxa3DTjsguHdOGyYYDe5xPt", "gemini-2.5-flash-preview-05-20-thinking").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini25Flashlight        = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-flash-lite-preview-06-17").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini25FlashNonthinking_ = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-flash-preview-05-20-nothinking").WithToolsInUserPrompt()
-	Gemini25FlashNonthinking  = NewModel("https://api.yun163.top/v1", "sk-Lz2zwPj0DOBUxPN8d9BwBH7h0Uxa3DTjsguHdOGyYYDe5xPt", "gemini-2.5-flash-preview-05-20-nothinking").WithToolsInUserPrompt()
-	Gemini25ProYun163         = NewModel("https://api.yun163.top/v1", "sk-Lz2zwPj0DOBUxPN8d9BwBH7h0Uxa3DTjsguHdOGyYYDe5xPt", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini25ProAigpt          = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
+	GeminiFlashLight         = NewModel("https://www.chataiapi.com/v1", "sk-U3lPyfaPDE6abmfRwGqSI1jMONNgDdPBQ16pKev9FfAgRXmE", "gemini-2.0-flash-light").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25FlashThinking    = NewModel("https://api.yun163.top/v1", "sk-Lz2zwPj0DOBUxPN8d9BwBH7h0Uxa3DTjsguHdOGyYYDe5xPt", "gemini-2.5-flash-preview-05-20-thinking").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25FlashNonthinking = NewModel("https://api.yun163.top/v1", "sk-Lz2zwPj0DOBUxPN8d9BwBH7h0Uxa3DTjsguHdOGyYYDe5xPt", "gemini-2.5-flash-preview-05-20-nothinking").WithToolsInUserPrompt()
+	Gemini25ProYun163        = NewModel("https://api.yun163.top/v1", "sk-Lz2zwPj0DOBUxPN8d9BwBH7h0Uxa3DTjsguHdOGyYYDe5xPt", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
 	//多模态回答生成仅在 gemini-2.0-flash-exp 和 gemini-2.0-flash-preview-image-generation
 	Gemini20FlashImageAigpt   = NewModel("https://api.aigptapi.com/", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.0-flash-preview-image-generation").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini20FlashExpRunAPIgpt = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.0-flash-exp").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini20FlashExpAPIgpt    = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.0-flash-exp").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25Flashlight        = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-flash-lite-preview-06-17").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25FlashNonthinking_ = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-flash-preview-05-20-nothinking").WithToolsInUserPrompt()
+	Gemini25ProAigpt          = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25FlashAigpt        = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-flash-preview-05-20").WithTopP(0.8).WithToolsInUserPrompt()
 
 	Gemini25FlashPreviewRunAPI = NewModel("https://api.runapi.sbs/v1", "sk-0t6RD5gAK1spJS408b07Dd214b8845Df94127eF6D05c65D8", "gemini-2.5-flash-preview-05-20").WithTopP(0.8).WithToolsInUserPrompt()
 	Gemini25FlashRunAPI        = NewModel("https://api.runapi.sbs/v1", "sk-0t6RD5gAK1spJS408b07Dd214b8845Df94127eF6D05c65D8", "gemini-2.5-flash").WithTopP(0.8).WithToolsInUserPrompt()
@@ -203,23 +203,31 @@ var (
 
 	GPT41Mini = NewModel("https://tao.plus7.plus/v1", os.Getenv("geminitb"), "gpt-4.1-mini").WithTopP(0.8)
 
-	DolphinR1Mistral24B = NewModel("http://gpu.lan:4733/v1", ApiKey, "Dolphin3.0-R1-Mistral-24B-AWQ").WithToolsInSystemPrompt()
-	FuseO1              = NewModel("http://gpu.lan:4732/v1", ApiKey, "FuseO1").WithTopP(0.92).WithTemperature(0.6).WithTopK(40)
-	Qwq32B              = NewModel("http://gpu.lan:1232/v1", ApiKey, "QwQ-32B").WithTopP(0.92).WithTemperature(0.6) //.WithTopK(40)
-	Qwen32B             = NewModel("http://gpu.lan:1232/v1", ApiKey, "Qwen25B32")
+	DolphinR1Mistral24B = NewModel("http://rtxserver.lan:4733/v1", ApiKey, "Dolphin3.0-R1-Mistral-24B-AWQ").WithToolsInSystemPrompt()
+	FuseO1              = NewModel("http://rtxserver.lan:4732/v1", ApiKey, "FuseO1").WithTopP(0.92).WithTemperature(0.6).WithTopK(40)
+	Qwq32B              = NewModel("http://rtxserver.lan:1232/v1", ApiKey, "QwQ-32B").WithTopP(0.92).WithTemperature(0.6) //.WithTopK(40)
+	Qwen32B             = NewModel("http://rtxserver.lan:1232/v1", ApiKey, "Qwen25B32")
 
-	GLM32B = NewModel("http://gpu.lan:19732/v1", ApiKey, "glmz132b").WithTemperature(0.6).WithTopP(0.95) //.WithTopK(40) .WithToolInPrompt(true)
+	GLM32B = NewModel("http://rtxserver.lan:19732/v1", ApiKey, "glmz132b").WithTemperature(0.6).WithTopP(0.95) //.WithTopK(40) .WithToolInPrompt(true)
 
-	Gemma3B27           = NewModel("http://gpu.lan:5527/v1", ApiKey, "gemma3").WithTopP(0.92).WithTemperature(0.9).WithToolsInUserPrompt()
-	Gemma3B12           = NewModel("http://gpu.lan:5527/v1", ApiKey, "gemma3b12").WithTopP(0.95).WithTemperature(1.0).WithToolsInSystemPrompt()
-	Qwen30BA3           = NewModel("http://gpu.lan:12303/v1", ApiKey, "qwen30ba3").WithTemperature(0.7).WithTopP(0.8)
-	Qwen3B14            = NewModel("http://gpu.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.7).WithTopP(0.8)
-	Qwen3B32Nonthinking = NewModel("http://gpu.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.7).WithTopP(0.8)
-	Qwen3B32Thinking    = NewModel("http://gpu.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.6).WithTopP(0.95)
+	Gemma3B27           = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b27").WithTopP(0.92).WithTemperature(0.9).WithToolsInUserPrompt()
+	Gemma3B12           = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b12").WithTopP(0.95).WithTemperature(1.0).WithToolsInSystemPrompt()
+	Qwen30BA3           = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen30ba3").WithTemperature(0.7).WithTopP(0.8)
+	Qwen3B14            = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.7).WithTopP(0.8)
+	Qwen3B14Thinking    = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.6).WithTopP(0.95)
+	Qwen3B32Nonthinking = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.2).WithTopP(0.8)
+	GLM45               = NewModel("https://open.bigmodel.cn/api/paas/v4/", ApiKey, "qwen3b32").WithTemperature(0.2).WithTopP(0.8)
+	Qwen3B30A3b2507     = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3b30a3b2507").WithTemperature(0.7).WithTopP(0.8).WithTopK(20)
+	glm45air            = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3b30a3b2507").WithTemperature(0.7).WithTopP(0.8).WithTopK(20)
 
-	Reka3 = NewModel("http://gpu.lan:43813/v1", ApiKey, "reka3").WithTopP(0.92).WithTemperature(0.9).WithToolsInSystemPrompt()
-	Phi4  = NewModel("http://gpu.lan:7214/v1", ApiKey, "phi4").WithToolsInSystemPrompt()
+	Qwen3B32Thinking = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.6).WithTopP(0.95)
 
 	//ModelDefault        = ModelQwen32BCoderLocal
 	ModelDefault = ModelQwen72BLocal
 )
+
+// - DOMAIN,api.aigptapi.com,DIRECT
+// - DOMAIN,api.runapi.sbs,DIRECT
+// - DOMAIN,tao.plus7.plus,DIRECT
+// - DOMAIN,tbnx.plus7.plus,DIRECT
+// - DOMAIN,api.yun163.top,DIRECT

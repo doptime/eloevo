@@ -249,7 +249,19 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 
 	if a.copyPromptOnly {
 		msg := strings.Join(lo.Map(req.Messages, func(m openai.ChatCompletionMessage, _ int) string { return m.Content }), "\n")
+		err := clipboard.Init()
+		if err != nil {
+			return fmt.Errorf("error initializing clipboard: %w", err)
+		}
+		//remove \x00 in the msg
+		var sb strings.Builder
+		for _, r := range msg {
+			if r != '\x00' {
+				sb.WriteRune(r)
+			}
+		}
 		fmt.Println("copy prompt to clipboard", msg)
+		msg = sb.String()
 		clipboard.Write(clipboard.FmtText, []byte(msg))
 		return nil
 	}

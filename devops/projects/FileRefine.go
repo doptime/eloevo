@@ -83,9 +83,18 @@ func LoadExtraPathToMapFileRefineMap(RootPath, ExtraPath string, solution map[st
 	for _, file := range ExtraPathFiles {
 		fn := filepath.Join(extraPath, file.Name())
 		filename := ExtraPath + "/" + file.Name()
+		//hidden file skip
+		if strings.HasPrefix(file.Name(), ".") {
+			continue
+		}
+		FileContent := utils.TextFromFile(fn)
+		if strings.Index(FileContent, "\x00") >= 0 {
+			continue // skip file with null character
+		}
+		filename = strings.TrimPrefix(filename, "./")
 		solution[filename] = &FileRefine{
 			Filename:    filename,
-			FileContent: utils.TextFromFile(fn),
+			FileContent: FileContent,
 		}
 	}
 }

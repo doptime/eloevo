@@ -266,6 +266,10 @@ func (a *AgentGoogle) Call(ctx context.Context, memories ...map[string]any) (err
 	promptContent := promptBuffer.String()
 
 	if a.copyPromptOnly {
+		err := clipboard.Init()
+		if err != nil {
+			return fmt.Errorf("error initializing clipboard: %w", err)
+		}
 		fmt.Println("Copying prompt to clipboard:", promptContent)
 		clipboard.Write(clipboard.FmtText, []byte(promptContent))
 		return nil
