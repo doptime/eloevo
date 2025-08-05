@@ -18,7 +18,7 @@ type LearningTopicOption struct {
 	OptionId      string `json:"option_id"`
 	Answer        string `json:"answer"`
 	Weight        int64  `json:"weight"`
-	RegretComment string `json:"regret_comment" 第一人称心理活动` // regret_comment is the comment for the user to reflect on the answer, using first person perspective ,in baby's voice, like "哇！我错过了！" or "哇！就差一点点金彩蛋就是我的了！" or "哇！就差一点点超级暴击！" or "哇！就差一点命中！"
+	RegretComment string `json:"regret_comment"` // 第一人称心理活动 regret_comment is the comment for the user to reflect on the answer, using first person perspective ,in baby's voice, like "哇！我错过了！" or "哇！就差一点点金彩蛋就是我的了！" or "哇！就差一点点超级暴击！" or "哇！就差一点命中！"
 }
 
 type LearningTopic struct {

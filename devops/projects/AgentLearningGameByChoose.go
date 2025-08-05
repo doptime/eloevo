@@ -23,6 +23,7 @@ import (
 var SolutionBaseLearnByChoose = redisdb.NewHashKey[string, *FileRefine](redisdb.Opt.HttpVisit(), redisdb.Opt.Key("ProjectRefine:LearnByChoose"))
 
 // var RootPathLearnByChoose = "/Users/yang/doptime/evolab/web/app/perceptual-understanding-numbers-1-to-20"
+// /Users/yang/doptime/evolab/web/app/learn-by-choose/data-mock.ts
 var RootPathLearnByChoose = "/Users/yang/doptime/evolab/web/app/learn-by-choose"
 var ExtraPathLearnByChoose = "../../components/guesture"
 
@@ -81,6 +82,8 @@ var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(templat
 	newItem.Filename = strings.TrimPrefix(newItem.Filename, "Pathname")
 	newItem.Filename = strings.TrimPrefix(newItem.Filename, "Path")
 	newItem.Filename = strings.TrimPrefix(newItem.Filename, "./")
+	newItem.Filename = strings.TrimPrefix(newItem.Filename, "src/")
+	newItem.Filename = strings.TrimPrefix(newItem.Filename, "app/")
 	oItem, _ = newItem.HashKey.HGet(newItem.Filename)
 	if newItem.Delete {
 		pathname := filepath.Join(RootPath, newItem.Filename)
@@ -124,17 +127,18 @@ func EvoLearnByChooseSolution() {
 
 			//runtimeError, _ := utils.ExtractNextJSError("http://localhost:3000/perceptual-understanding-numbers-1-to-20/error.js")
 			runtimeError := "这是当前的编译信息或迭代需求:\n" + `
-Bug修复：现在朗读的时候会朗读emoji表情，emoji 表情是用内容描述的方式度。
+fix: 
+修复选项卡条目的内容高度。现在的选项卡条目高度固定的。但可以容纳的文本相当有限。请允许选项卡条目根据内容自适应高度。
+现在会自动调整宽度，但是不会自动调整高度。现有的内容在高度上被遮挡。无法完全显示。需要修复
 
 
+请思考，并且有重点地改进现有系统. 
 
-
-请思考，并且有重点地改进现有系统
 `
 			Revision := utils.TextFromClipboard()
 			if len(Revision) > 200 && strings.LastIndex(Revision, ".ts") > 60 {
-				Revision = `对上面的需求，这是我的修改意见，请变动内容完整地提交到本地文件:
-1. 不同的文件内容，你需要多次调用 SolutionFileRefine ,每次修改一个本地文件当中。
+				Revision = `对上面的需求，这是我的修改意见，请接受合理的内容变动，如果不合理则重新思考实现。并提交完整的代码到本地文件:
+1. 不同的文件内容，你需要多次调用 SolutionFileRefine , 每次修改一个本地文件当中。要遵守正确的函数调用规定。不要受被用户数据中错误的格式影响。
 2. 文件内容必须完整而没有遗漏和错误，不能只提交部分内容。如果是增量修改，请将其转化为全量的文件内容。以避免编译失败。
 3. 对每个文件的修改，应该先进行思考或者是讨论，以明确修改意图和修改内容。
 4. 可能存在部分文件已经完成修改的情形。对于已经完成的修改，可以忽略或者是跳过。
@@ -144,8 +148,8 @@ Bug修复：现在朗读的时候会朗读emoji表情，emoji 表情是用内容
 			}
 			ProductGoalUniLearning := utils.TextFromFile("/Users/yang/learn-by-choose-goserver/learninggame.md")
 			//Gemini25Flashlight Gemini25ProAigpt
-			err := AgentEvoLearningSolutionLearnByChoose.WithModels(models.Qwen3B30A3b2507). //CopyPromptOnly(). //Qwen3B32Thinking
-														Call(context.Background(), map[string]any{
+			err := AgentEvoLearningSolutionLearnByChoose.WithModels(models.Glm45AirLocal). //CopyPromptOnly(). //Qwen3B32Thinking
+													Call(context.Background(), map[string]any{
 					"runtimeError": string(runtimeError),
 					"ProductGoal":  string(ProductGoalUniLearning) + "\n\n",
 					"HashKey":      keySolution,

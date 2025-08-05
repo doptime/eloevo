@@ -236,6 +236,12 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 	if model.Temperature > 0 {
 		req.Temperature = model.Temperature
 	}
+	if strings.Contains(model.Name, "qwen3-235b") {
+		if req.Metadata == nil {
+			req.Metadata = make(map[string]string)
+		}
+		req.Metadata["enable_thinking"] = "false"
+	}
 	if model.TopP > 0 {
 		req.TopP = model.TopP
 	}

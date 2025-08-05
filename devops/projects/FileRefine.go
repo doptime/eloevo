@@ -88,7 +88,7 @@ func LoadExtraPathToMapFileRefineMap(RootPath, ExtraPath string, solution map[st
 			continue
 		}
 		FileContent := utils.TextFromFile(fn)
-		if strings.Index(FileContent, "\x00") >= 0 {
+		if strings.Contains(FileContent, "\x00") {
 			continue // skip file with null character
 		}
 		filename = strings.TrimPrefix(filename, "./")
