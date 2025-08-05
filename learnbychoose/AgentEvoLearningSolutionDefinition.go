@@ -1,4 +1,4 @@
-package projects
+package learnbychoose
 
 var PlanForWordSensation = `
 认识单词游戏:

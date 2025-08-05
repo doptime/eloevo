@@ -12,13 +12,18 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/doptime/eloevo/agent"
 	"github.com/doptime/eloevo/models"
-	"github.com/doptime/eloevo/tools"
 	"github.com/doptime/redisdb"
 	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
 )
 
-func toolClustering(param *tools.ModuleName) {
+type ModuleName struct {
+	PreviousPath string `json:"previouspath" description:"previous path of the file"`
+	Modulename   string `json:"modulename" description:"module name the file belongs to. Represented as path or Multi-level path"`
+	Filename     string `json:"filename" description:"name of file. file should describe the content of the file, use printable characters allowed by os, no more than 60 characters"`
+}
+
+func toolClustering(param *ModuleName) {
 	if _, ok := clustered[param.PreviousPath]; !ok {
 		return
 	}
@@ -67,7 +72,7 @@ Filename = "filename.ext"
 		return nil
 	}
 	parameter := messege[ind:]
-	var toolCall tools.ModuleName
+	var toolCall ModuleName
 
 	// 解析 TOML 文件
 	if _, err := toml.DecodeFile(parameter, &toolCall); err != nil {

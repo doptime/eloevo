@@ -1,4 +1,4 @@
-package evotests
+package projects
 
 type TestBuilder struct {
 	Id string `description:"ID of the test scenario, unique"`

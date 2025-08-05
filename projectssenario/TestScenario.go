@@ -1,4 +1,4 @@
-package evotests
+package projectssenario
 
 import (
 	"fmt"
