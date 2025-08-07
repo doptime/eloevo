@@ -4,14 +4,15 @@ import (
 	"time"
 
 	"github.com/doptime/doptime/httpserve"
-	"github.com/doptime/eloevo/learnbychoose"
+	"github.com/doptime/eloevo/evobymeasure"
 	"github.com/doptime/eloevo/projects"
 	"github.com/doptime/eloevo/utils"
 	//_ "github.com/doptime/doptime/httpserve"
 )
 
 func main() {
-	learnbychoose.EvoLearnByChooseSolution()
+	evobymeasure.MakeAEvo()
+	//learnbychoose.EvoLearnByChooseSolution()
 	httpserve.Debug()
 	time.Sleep(1000000 * time.Second)
 	a, e := utils.GetEmbedding("hello world")

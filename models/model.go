@@ -213,22 +213,23 @@ var (
 
 	GLM32B = NewModel("http://rtxserver.lan:19732/v1", ApiKey, "glmz132b").WithTemperature(0.6).WithTopP(0.95) //.WithTopK(40) .WithToolInPrompt(true)
 
-	Gemma3B27             = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b27").WithTopP(0.92).WithTemperature(0.9).WithToolsInUserPrompt()
-	Gemma3B12             = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b12").WithTopP(0.95).WithTemperature(1.0).WithToolsInSystemPrompt()
-	Qwen30BA3             = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen30ba3").WithTemperature(0.7).WithTopP(0.8)
-	Qwen3B14              = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.7).WithTopP(0.8)
-	Qwen3B14Thinking      = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.6).WithTopP(0.95)
-	Qwen3B32Nonthinking   = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.2).WithTopP(0.8)
-	Qwen3B30A3b2507       = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3b30a3b2507").WithTemperature(0.7).WithTopP(0.8).WithTopK(20)
-	Qwen3Coder            = NewModel("https://api.xiaocaseai.com/v1", "xiaocaseai", "qwen3-coder-480b-a35b-instruct")
-	Gemini25Proxiaocaseai = NewModel("https://api.xiaocaseai.com/v1", "xiaocaseai", "gemini-2.5-pro")
+	Gemma3B27               = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b27").WithTopP(0.92).WithTemperature(0.9).WithToolsInUserPrompt()
+	Gemma3B12               = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b12").WithTopP(0.95).WithTemperature(1.0).WithToolsInSystemPrompt()
+	Qwen30BA3               = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen30ba3").WithTemperature(0.7).WithTopP(0.8)
+	Qwen3B14                = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.7).WithTopP(0.8)
+	Qwen3B14Thinking        = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.6).WithTopP(0.95)
+	Qwen3B32Nonthinking     = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.2).WithTopP(0.8)
+	Qwen3B30A3b2507         = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3b30a3b2507").WithTemperature(0.7).WithTopP(0.8).WithTopK(20)
+	Qwen3BThinking30A3b2507 = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3thinkingb30a3b2507")
+	Qwen3Coder              = NewModel("https://api.xiaocaseai.com/v1", "xiaocaseai", "qwen3-coder-480b-a35b-instruct")
+	Gemini25Proxiaocaseai   = NewModel("https://api.xiaocaseai.com/v1", "xiaocaseai", "gemini-2.5-pro")
 
 	Qwen3B235B        = NewModel("https://api.xiaocaseai.com/v1", "xiaocaseai", "qwen3-235b-a22b")
 	Qwen3Coder30B2507 = NewModel("http://rtxserver.lan:12304/v1", ApiKey, "qwen3coder30b2507")
 
-	GLM45         = NewModel("https://open.bigmodel.cn/api/paas/v4/", "ZHIPUAPIKEY", "GLM-4.5").WithToolsInSystemPrompt()
-	Glm45Air      = NewModel("https://open.bigmodel.cn/api/paas/v4/", "ZHIPUAPIKEY", "GLM-4.5-Air").WithToolsInSystemPrompt()
-	Glm45AirLocal = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "GLM-4.5-Air")
+	GLM45         = NewModel("https://open.bigmodel.cn/api/paas/v4/", "ZHIPUAPIKEY", "GLM-4.5")
+	Glm45Air      = NewModel("https://open.bigmodel.cn/api/paas/v4/", "ZHIPUAPIKEY", "GLM-4.5-Air")
+	Glm45AirLocal = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "GLM-4.5-Air").WithToolsInSystemPrompt()
 
 	Qwen3B32Thinking = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.6).WithTopP(0.95)
 
