@@ -18,6 +18,14 @@ import (
 	"github.com/samber/lo"
 )
 
+// Core idea:
+// 测度  全局梯度 与 工具链中的短板
+// 许多时候，我觉得闭环这个概念也毫无意义。闭环的结果是下一次出发的前提。但这只是一个信息流的拓扑。它没有涉及关键的系统度量点应该如何实施。而且闭环这个纯前向传播的概念其实是有些基于能量学习（EM）的概念在里面。但是EM的实施难以轻易进行。
+// 如果我们同时接受有限理性（归因）和 贝叶斯统计的作为核心的工作方法论。那么我们应该 在结构空间和性能空间内分别进行的结构和性能的双重测度优化。如果两个都是改进的，那就是更优的。特别是，我们知道高维空间的梯度实际上不会有驻点。因而如果为性能建立维度广泛的性能梯度，同时为结构建立维度广泛的性能梯度，那么实际上进化的连续性和终极性能连续可导性是有保证的。
+// 这种梯度同样包括了逻辑归因。
+// 在系统改进的时候，一个关键的问题还是工具的性能的受限性。但表面上工具链的短板影响极大，其实问题也不大。我们应该约束工具在短板之下工作。这根本说来重点不在于改善的全局有效性，重点在于提高对产出的全局性能度量的准确性；工作的可靠性，性能的改善都不是重点，重点是确保好的改良可以在后续的测度分析中被保留。
+// 校验审核相比推理落实是容易的，但最强大的模型反而应当配置在这个环节，这可以使得系统的全局定向改善的杠杆最大化。
+
 type FileRefine struct {
 	Filename            string `description:"string, Ascii filename of current node。using bullet name to denodes node's modualized intention. extension name such as .md ... is needed"`
 	BulletDescription   string `description:"string, Required when create. BulletDescription 是文件内容的摘要。描述和文件的模块化的意图。规定实现的细节."`
@@ -152,56 +160,75 @@ func (node *FileRefine) SaveContentToPath(RootPath string) {
 // VetoPenalty 是一个巨大的负分，用于惩罚任何违反护栏的改进
 const VetoPenalty = -10000.0
 
-// ScoreOfFileRefine calculates a weighted score for the refinement.
-// It assumes the FileRefine struct is fully populated with context (weights) and metrics.
 func (f *FileRefineMeasurements) ScoreOfFileRefine() float64 {
-	// --- Step 1: Guardrail Checks (护栏检查) ---
-	// 任何违反基本质量门禁的尝试都将立即被否决.
+	// --- Step 1: 软性护栏检查（不再一票否决）---
+	var guardrailPenalty float64 = 0
 	if !f.Guardrail_Absolute_BuildMustSucceed {
-		return VetoPenalty // 编译/构建失败，直接否决
+		guardrailPenalty = -50.0 // 编译失败给予惩罚，但不直接否决
 	}
-	// 获取修改后的绝对测试覆盖率 (这里假设可以从某个地方获得，例如一个临时的Metric字段)
-	// 为简化，我们这里假设TestabilityDelta的计算基准包含了绝对值信息。
-	// 一个更鲁棒的设计可能需要一个`Metric_Absolute_TestCoverage`字段。
-	// if After_Test_Coverage < f.Guardrail_Absolute_MinTestCoverage {
-	//     return VetoPenalty
-	// }
-	// 其他护栏检查...
 
-	// --- Step 2: Calculate Weighted Sub-Scores (计算各指标簇的加权子分数) ---
+	// --- Step 2: 动态权重调整 ---
+	// 根据改进的性质调整权重，突出重要目标
+	structuralWeight := f.Weight_StructuralQuality
+	maintainabilityWeight := f.Weight_Maintainability
+	performanceWeight := f.Weight_Performance
+	userValueWeight := f.Weight_UserValue
 
-	// 结构质量分
+	// 如果用户价值有显著提升，增加其权重
+	if f.Metric_User_SenarioCoverageDelta > 5 || f.Metric_User_SatisfactionProxyDelta > 5 {
+		userValueWeight *= 1.5
+		// 相应降低其他权重保持平衡
+		structuralWeight *= 0.8
+		maintainabilityWeight *= 0.8
+		performanceWeight *= 0.8
+	}
+
+	// --- Step 3: 计算各指标簇分数 ---
 	structuralScore := f.Metric_Struct_CognitiveComplexityDelta +
 		f.Metric_Struct_CyclomaticComplexityDelta +
 		f.Metric_Struct_CodeCouplingDelta +
 		f.Metric_Struct_CodeCohesionDelta +
 		f.Metric_Struct_CodeConcisenessDelta
 
-	// 可维护性分
 	maintainabilityScore := f.Metric_Maint_CoreLogicDocumentationDelta +
 		f.Metric_Maint_TestabilityDelta +
 		f.Metric_Maint_DuplicationRateDelta
 
-	// 性能与可靠性分
 	performanceScore := f.Metric_Perf_CorrectnessDelta +
 		f.Metric_Perf_ChangeFailureRateDelta +
 		f.Metric_Perf_EstimatedLatencyDelta +
 		f.Metric_Perf_EstimatedThroughputDelta +
 		f.Metric_Perf_ProductionErrorRateDelta
 
-	// 用户价值分
 	userValueScore := f.Metric_User_SenarioCoverageDelta +
 		f.Metric_User_SatisfactionProxyDelta
 
-	// --- Step 3: Final Weighted Sum (最终加权求和) ---
-	// 将各簇的分数与上下文中的权重相乘，得到最终总分。
-	finalScore := (f.Weight_StructuralQuality * structuralScore) +
-		(f.Weight_Maintainability * maintainabilityScore) +
-		(f.Weight_Performance * performanceScore) +
-		(f.Weight_UserValue * userValueScore)
+	// --- Step 4: 进步奖励机制 ---
+	progressBonus := 0.0
 
-	// 确保权重总和大致归一化，否则分数会无限膨胀。
-	// 调用者有责任提供合理的权重。
+	// 奖励显著的功能性改进
+	if userValueScore > 10 {
+		progressBonus += 20.0 // 用户价值大幅提升的奖励
+	}
+
+	// 奖励向核心架构目标前进的改进
+	if performanceScore > 15 && structuralScore > 5 {
+		progressBonus += 15.0 // 性能和结构双重提升
+	}
+
+	// 奖励实际解决问题的改进（不仅仅是代码清理）
+	if f.Metric_Perf_CorrectnessDelta > 5 || f.Metric_User_SenarioCoverageDelta > 10 {
+		progressBonus += 10.0 // 实际功能改进奖励
+	}
+
+	// --- Step 5: 最终加权计算 ---
+	finalScore := (structuralWeight * structuralScore) +
+		(maintainabilityWeight * maintainabilityScore) +
+		(performanceWeight * performanceScore) +
+		(userValueWeight * userValueScore) +
+		progressBonus +
+		guardrailPenalty
+
 	return finalScore
 }
 
@@ -247,7 +274,7 @@ TODO:总的任务分成两部分，一部分是对方案的改进，另一部分
 
 TODO Step 1: SolutionFileRefine
 请在现有的实现。思考并提出一个清晰而明确的小改进，并提交完整的修改代码到本地文件:
-- 请先讨论，提出需要修改的主题。注意改进的主题粒度宜小不宜大。如果你有十成的能力，那只要用20%的能力来确保改进的可靠性。
+- 请先讨论，提出需要修改的主题。注意改进的主题粒度宜小不宜大。如果你有十成的能力，那只要用50%的能力来确保改进的可靠性。
 - 主题的品味关键是确保演化方向的正确性。绝不要追求大幅的改进。要追求小幅的调整。对大幅的改进目标，应该转而实现目标中的一个小Milestone。
 - 由于当前正在大并发生成修改方案，因此请确保生成的内容在探索方向上具有多样性。
 - 确保当前的改进副作用很少。现有的好的思路和实现方式可以被保留。
@@ -257,35 +284,78 @@ TODO Step 1: SolutionFileRefine
 TODO Step 2:  SolutionRefineMeasure：在完成了（一个或多个）调文件内容的修改之后，还需要对本次修改进行评价。
 - 请确保评价仅当发生在全部修改完成之后。
 - 当前正在大并发生成修改和评价修改，最后保留得分最高的。你必须在看不到其它修改方案的前提下，正确而适当地评价你的修改，以便能正确筛选出包括最可靠的修改方案，确保最终可以成功演化系统。
-- 方案评价的得分的计算公式是确定的。你同样需要填写相关的评价参数：
+- 方案评价的得分的计算公式是确定的。意图是可靠的进化当前系统。你同样需要填写相关的评价参数：
+func (f *FileRefineMeasurements) ScoreOfFileRefine() float64 {
+	// --- Step 1: 软性护栏检查（不再一票否决）---
+	var guardrailPenalty float64 = 0
+	if !f.Guardrail_Absolute_BuildMustSucceed {
+		guardrailPenalty = -50.0 // 编译失败给予惩罚，但不直接否决
+	}
+
+	// --- Step 2: 动态权重调整 ---
+	// 根据改进的性质调整权重，突出重要目标
+	structuralWeight := f.Weight_StructuralQuality
+	maintainabilityWeight := f.Weight_Maintainability
+	performanceWeight := f.Weight_Performance
+	userValueWeight := f.Weight_UserValue
+
+	// 如果用户价值有显著提升，增加其权重
+	if f.Metric_User_SenarioCoverageDelta > 5 || f.Metric_User_SatisfactionProxyDelta > 5 {
+		userValueWeight *= 1.5
+		// 相应降低其他权重保持平衡
+		structuralWeight *= 0.8
+		maintainabilityWeight *= 0.8
+		performanceWeight *= 0.8
+	}
+
+	// --- Step 3: 计算各指标簇分数 ---
 	structuralScore := f.Metric_Struct_CognitiveComplexityDelta +
 		f.Metric_Struct_CyclomaticComplexityDelta +
 		f.Metric_Struct_CodeCouplingDelta +
 		f.Metric_Struct_CodeCohesionDelta +
 		f.Metric_Struct_CodeConcisenessDelta
 
-	// 可维护性分
 	maintainabilityScore := f.Metric_Maint_CoreLogicDocumentationDelta +
 		f.Metric_Maint_TestabilityDelta +
 		f.Metric_Maint_DuplicationRateDelta
 
-	// 性能与可靠性分
 	performanceScore := f.Metric_Perf_CorrectnessDelta +
 		f.Metric_Perf_ChangeFailureRateDelta +
 		f.Metric_Perf_EstimatedLatencyDelta +
 		f.Metric_Perf_EstimatedThroughputDelta +
 		f.Metric_Perf_ProductionErrorRateDelta
 
-	// 用户价值分
 	userValueScore := f.Metric_User_SenarioCoverageDelta +
 		f.Metric_User_SatisfactionProxyDelta
 
-	// --- Step 3: Final Weighted Sum (最终加权求和) ---
-	// 将各簇的分数与上下文中的权重相乘，得到最终总分。
-	finalScore := (f.Weight_StructuralQuality * structuralScore) +
-		(f.Weight_Maintainability * maintainabilityScore) +
-		(f.Weight_Performance * performanceScore) +
-		(f.Weight_UserValue * userValueScore)
+	// --- Step 4: 进步奖励机制 ---
+	progressBonus := 0.0
+
+	// 奖励显著的功能性改进
+	if userValueScore > 10 {
+		progressBonus += 20.0 // 用户价值大幅提升的奖励
+	}
+
+	// 奖励向核心架构目标前进的改进
+	if performanceScore > 15 && structuralScore > 5 {
+		progressBonus += 15.0 // 性能和结构双重提升
+	}
+
+	// 奖励实际解决问题的改进（不仅仅是代码清理）
+	if f.Metric_Perf_CorrectnessDelta > 5 || f.Metric_User_SenarioCoverageDelta > 10 {
+		progressBonus += 10.0 // 实际功能改进奖励
+	}
+
+	// --- Step 5: 最终加权计算 ---
+	finalScore := (structuralWeight * structuralScore) +
+		(maintainabilityWeight * maintainabilityScore) +
+		(performanceWeight * performanceScore) +
+		(userValueWeight * userValueScore) +
+		progressBonus +
+		guardrailPenalty
+
+	return finalScore
+}
 - 最后，请调用一次SolutionRefineMeasure 来完成对本次修改进行评价。
 
 
