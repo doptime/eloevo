@@ -127,7 +127,8 @@ func (list *ModelList) SelectOne(policy string) *Model {
 		sum += weights[i]
 	}
 
-	if policy == "random" {
+	switch policy {
+	case "random":
 		// Select model based on weights
 		randNum := rand.Float64()
 		var cumulativeWeight float64
@@ -141,7 +142,8 @@ func (list *ModelList) SelectOne(policy string) *Model {
 		fmt.Println("No model selected! use last model")
 		// Fallback to last model if no selection was made
 		return list.Models[len(list.Models)-1]
-	} else if policy == "roundrobin" {
+
+	case "roundrobin":
 		selectIndex := list.SelectCursor % len(list.Models)
 		if fatestIndex == selectIndex && rand.Float64() < 0.1 {
 			return list.Models[fatestIndex]

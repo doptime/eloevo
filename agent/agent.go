@@ -33,6 +33,8 @@ type Agent struct {
 
 	Prompt              *template.Template
 	Tools               []openai.Tool
+	ToolInSystemPrompt  bool
+	ToolInUserPrompt    bool
 	toolsCallbacks      map[string]func(Param interface{}, CallMemory map[string]any) error
 	msgToMemKey         string
 	msgDeFile           string
@@ -217,6 +219,7 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 		fmt.Printf("Error rendering prompt: %v\n", err)
 		return err
 	}
+	fmt.Printf("Requesting prompt: %v\n", promptBuffer.String())
 
 	//model might be changed by other process
 	model := models.LoadbalancedPick(a.Models...)
@@ -235,12 +238,6 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 	}
 	if model.Temperature > 0 {
 		req.Temperature = model.Temperature
-	}
-	if strings.Contains(model.Name, "qwen3-235b") {
-		if req.Metadata == nil {
-			req.Metadata = make(map[string]string)
-		}
-		req.Metadata["enable_thinking"] = "false"
 	}
 	if model.TopP > 0 {
 		req.TopP = model.TopP

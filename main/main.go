@@ -4,14 +4,14 @@ import (
 	"time"
 
 	"github.com/doptime/doptime/httpserve"
-	"github.com/doptime/eloevo/evobymeasure"
+	"github.com/doptime/eloevo/evobymeasured"
 	"github.com/doptime/eloevo/projects"
 	"github.com/doptime/eloevo/utils"
 	//_ "github.com/doptime/doptime/httpserve"
 )
 
 func main() {
-	evobymeasure.MakeAEvo()
+	evobymeasured.MakeAEvo()
 	//learnbychoose.EvoLearnByChooseSolution()
 	httpserve.Debug()
 	time.Sleep(1000000 * time.Second)

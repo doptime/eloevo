@@ -192,12 +192,14 @@ var (
 	Gemini25FlashNonthinking = NewModel("https://api.yun163.top/v1", "sk-Lz2zwPj0DOBUxPN8d9BwBH7h0Uxa3DTjsguHdOGyYYDe5xPt", "gemini-2.5-flash-preview-05-20-nothinking").WithToolsInUserPrompt()
 	Gemini25ProYun163        = NewModel("https://api.yun163.top/v1", "sk-Lz2zwPj0DOBUxPN8d9BwBH7h0Uxa3DTjsguHdOGyYYDe5xPt", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
 	//多模态回答生成仅在 gemini-2.0-flash-exp 和 gemini-2.0-flash-preview-image-generation
-	Gemini20FlashImageAigpt   = NewModel("https://api.aigptapi.com/", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.0-flash-preview-image-generation").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini20FlashExpAPIgpt    = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.0-flash-exp").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini25Flashlight        = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-flash-lite-preview-06-17").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini25FlashNonthinking_ = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-flash-preview-05-20-nothinking").WithToolsInUserPrompt()
-	Gemini25ProAigpt          = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
-	Gemini25FlashAigpt        = NewModel("https://api.aigptapi.com/v1", "sk-hsIUHgjHd89QbjAuPmPyUg0LKJQsGc8bfypjhmga8EQK1L8c", "gemini-2.5-flash-preview-05-20").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini20FlashImageAigpt   = NewModel("https://api.aigptapi.com/", "apgptapi", "gemini-2.0-flash-preview-image-generation").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini20FlashExpAPIgpt    = NewModel("https://api.aigptapi.com/v1", "apgptapi", "gemini-2.0-flash-exp").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25Flashlight        = NewModel("https://api.aigptapi.com/v1", "apgptapi", "gemini-2.5-flash-lite-preview-06-17").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25FlashNonthinking_ = NewModel("https://api.aigptapi.com/v1", "apgptapi", "gemini-2.5-flash-preview-05-20-nothinking").WithToolsInUserPrompt()
+	Gemini25ProAigpt          = NewModel("https://api.aigptapi.com/v1", "apgptapi", "gemini-2.5-pro-preview-06-05").WithTopP(0.8).WithToolsInUserPrompt()
+	Gemini25FlashAigpt        = NewModel("https://api.aigptapi.com/v1", "apgptapi", "gemini-2.5-flash-preview-05-20").WithTopP(0.8).WithToolsInUserPrompt()
+	GPT5Aigpt                 = NewModel("https://api.aigptapi.com/v1", "apgptapi", "gpt-5")
+	GPT5ChatAigpt             = NewModel("https://api.aigptapi.com/v1", "apgptapi", "gpt-5-chat-latest").WithToolsInUserPrompt()
 
 	Gemini25FlashPreviewRunAPI = NewModel("https://api.runapi.sbs/v1", "sk-0t6RD5gAK1spJS408b07Dd214b8845Df94127eF6D05c65D8", "gemini-2.5-flash-preview-05-20").WithTopP(0.8).WithToolsInUserPrompt()
 	Gemini25FlashRunAPI        = NewModel("https://api.runapi.sbs/v1", "sk-0t6RD5gAK1spJS408b07Dd214b8845Df94127eF6D05c65D8", "gemini-2.5-flash").WithTopP(0.8).WithToolsInUserPrompt()
@@ -224,8 +226,12 @@ var (
 	Qwen3Coder              = NewModel("https://api.xiaocaseai.com/v1", "xiaocaseai", "qwen3-coder-480b-a35b-instruct")
 	Gemini25Proxiaocaseai   = NewModel("https://api.xiaocaseai.com/v1", "xiaocaseai", "gemini-2.5-pro")
 
-	Qwen3B235B        = NewModel("https://api.xiaocaseai.com/v1", "xiaocaseai", "qwen3-235b-a22b")
 	Qwen3Coder30B2507 = NewModel("http://rtxserver.lan:12304/v1", ApiKey, "qwen3coder30b2507")
+
+	//qwen3-coder-480b-a35b-instruct  qwen3-coder-plus qwen3-coder-plus-2025-07-22 qwen3-235b-a22b qwen3-235b-a22b-instruct-2507 qwen3-235b-a22b-think
+	//qwen3-235b-a22b-thinking-2507 qwen-max-latest qwen-max-longcontext qwen-plus-2025-04-28 qwen-mt-plus qwen-mt-turbo
+	Qwen3Coder235B = NewModel("https://api.qingyuntop.top/v1", "QingyunKey", "qwen3-235b-a22b-instruct-2507")
+	Qwen3B235B     = NewModel("https://api.xiaocaseai.com/v1", "xiaocaseai", "qwen3-235b-a22b")
 
 	GLM45         = NewModel("https://open.bigmodel.cn/api/paas/v4/", "ZHIPUAPIKEY", "GLM-4.5")
 	Glm45Air      = NewModel("https://open.bigmodel.cn/api/paas/v4/", "ZHIPUAPIKEY", "GLM-4.5-Air")

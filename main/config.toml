@@ -55,7 +55,6 @@ Port = 6379
 Username = ""
 
 
-
 # [[Redis]]
 # DB = 2
 # Host = "keydb.lan"
@@ -74,6 +73,29 @@ Enable = false
 RootPath = "/Users/yang/doptime/redisdb"
 SkipFiles = ".DS_Store,.gitignore,.mod,.sum"
 SkipDirs = "doc,.git,.idea,.vscode,.evolab"
+
+[[EvoRealms]]
+Enable = false
+Name = "RedisDB"
+RootPath = "/Users/yang/learniverse"
+SkipFiles = ".DS_Store,.gitignore,.mod,.sum,expired_ideas.md"
+SkipDirs = ".git,.idea,.vscode,.evolab,.ignored,"
+
+
+[[EvoRealms]]
+Name = "learniversebackend"
+Enable = true
+RootPath = "/Users/yang/learn-by-choose-goserver"
+SkipFiles = ".DS_Store,.gitignore,.mod,.sum"
+SkipDirs = ".doc,.git,.idea,.vscode,.evolab"
+
+[[EvoRealms]]
+Name = "learniverseweb"
+Enable = true
+RootPath = "/Users/yang/doptime/evolab/web/app/learn-by-choose"
+SkipFiles = ".DS_Store,.gitignore,.mod,.sum"
+SkipDirs = "doc,.git,.idea,.vscode,.evolab"
+
 
 [[EvoRealms]]
 Name = "doptimeutils"
@@ -111,16 +133,8 @@ SkipFiles = ".DS_Store,.gitignore,.mod,.sum,expired_ideas.md"
 SkipDirs = ".git,.idea,.vscode,.evolab,.ignored"
 
 [[EvoRealms]]
-Name = "learniverse"
-Enable = false
-RootPath = "/Users/yang/learniverse"
-SkipFiles = ".DS_Store,.gitignore,.mod,.sum,expired_ideas.md"
-SkipDirs = ".git,.idea,.vscode,.evolab,.ignored"
-
-[[EvoRealms]]
 Name = "doptime-client"
-Enable = true
+Enable = false
 RootPath = "/Users/yang/doptime/doptime-client"
 SkipFiles = ".DS_Store,.gitignore,.mod,.sum,package-lock.json"
 SkipDirs = ".git,.idea,.vscode,.evolab,.ignored,node_modules,lib"
-

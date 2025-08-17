@@ -3,9 +3,10 @@ package models
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"html/template"
+	"strings"
 
+	"github.com/samber/lo"
 	openai "github.com/sashabaranov/go-openai"
 )
 
@@ -14,12 +15,7 @@ type ToolInPrompt struct {
 	InUserPrompt   bool
 }
 
-func (toolInPrompt *ToolInPrompt) WithToolcallSysMsg(tools []openai.Tool, req *openai.ChatCompletionRequest) {
-
-	if len(tools) == 0 {
-		return
-	}
-	ToolCallMsg, err := template.New("ToolCallMsg").Parse(`
+var ToolCallMsgQwen, _ = template.New("ToolCallMsg").Parse(`
 # Tools
 
 You may call one or more functions to assist with the user query.
@@ -37,27 +33,34 @@ For each function call, return a json object with function name and arguments wi
 {\"name\": <function-name>, \"arguments\": <args-json-object>}
 </tool_call>
 `)
-	if err != nil {
-		fmt.Println("Error parsing ToolCallMsg template:", err)
+var ToolCallGlm45Air, _ = template.New("ToolCallMsg").Parse(`
+# Tools
+
+You may call one or more functions to assist with the user query.
+
+You are provided with function signatures within <tools></tools> XML tags:
+
+<tools>
+{{range $ind, $val := .Tools}}
+{{$val}}
+{{end}}
+</tools>
+
+For each function call, output the function name and arguments within the following XML format:
+<function_calls>
+<invoke name="{function-name}">
+<parameter name="{arg-parameter-name-1}">{arg-parameter-value-1}</parameter>
+<parameter name="{arg-parameter-name-2}">{arg-parameter-value-2}</parameter>
+...
+</invoke>
+</function_calls>
+`)
+
+func (toolInPrompt *ToolInPrompt) WithToolcallSysMsg(tools []openai.Tool, req *openai.ChatCompletionRequest) {
+
+	if len(tools) == 0 {
 		return
 	}
-
-	// ToolStr := []string{}
-	// for _, v := range tools {
-	// 	toolBytes, _ := json.Marshal(v)
-	// 	ToolStr = append(ToolStr, string(toolBytes))
-	// }
-
-	// var promptBuffer bytes.Buffer
-	// if err := ToolCallMsg.Execute(&promptBuffer, map[string]any{"Tools": ToolStr}); err == nil {
-	// 	if toolInPrompt.InSystemPrompt {
-	// 		msgToolCall := openai.ChatCompletionMessage{Role: openai.ChatMessageRoleSystem, Content: promptBuffer.String()}
-	// 		req.Messages = append([]openai.ChatCompletionMessage{msgToolCall}, req.Messages...)
-	// 	} else if toolInPrompt.InUserPrompt {
-	// 		msgToolCall := openai.ChatCompletionMessage{Role: openai.ChatMessageRoleUser, Content: promptBuffer.String()}
-	// 		req.Messages = append([]openai.ChatCompletionMessage{msgToolCall}, req.Messages...)
-	// 	}
-	// }
 
 	ToolStr := []template.HTML{}
 	for _, v := range tools {
@@ -73,6 +76,7 @@ For each function call, return a json object with function name and arguments wi
 		jsonStr = jsonStr[:len(jsonStr)-1]
 		ToolStr = append(ToolStr, template.HTML(jsonStr))
 	}
+	ToolCallMsg := lo.Ternary(strings.Contains(req.Model, "GLM-4.5-Air"), ToolCallGlm45Air, ToolCallMsgQwen)
 	var promptBuffer bytes.Buffer
 	if err := ToolCallMsg.Execute(&promptBuffer, map[string]any{"Tools": ToolStr}); err == nil {
 		if toolInPrompt.InSystemPrompt {

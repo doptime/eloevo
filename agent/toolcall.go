@@ -2,6 +2,7 @@ package agent
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
 
 	openai "github.com/sashabaranov/go-openai"
@@ -34,6 +35,42 @@ func parseOneToolcall(toolcallString string) (toolCalls *FunctionCall) {
 	}
 	return nil
 }
+func ParseToolCallFromXlm(s string) (toolCalls *FunctionCall) {
+	// Extract function name
+	nameRe := regexp.MustCompile(`<invoke name="([^"]+)"`)
+	nameMatches := nameRe.FindStringSubmatch(s)
+	if len(nameMatches) < 2 {
+		return nil
+	}
+	functionName := strings.TrimSpace(nameMatches[1])
+
+	// Extract all parameters
+	paramRe := regexp.MustCompile(`(?s)<parameter name="([^"]+)">(.+?)</parameter>`)
+	paramMatches := paramRe.FindAllStringSubmatch(s, -1)
+
+	args := make(map[string]interface{})
+	for _, match := range paramMatches {
+		if len(match) < 3 {
+			continue
+		}
+		key := strings.TrimSpace(match[1])
+		value := strings.TrimSpace(match[2])
+
+		// Try to unmarshal as JSON, otherwise use as string
+		var jsonValue interface{}
+		if err := json.Unmarshal([]byte(value), &jsonValue); err == nil {
+			args[key] = jsonValue
+		} else {
+			args[key] = value
+		}
+	}
+
+	return &FunctionCall{
+		Name:      functionName,
+		Arguments: args,
+	}
+}
+
 func ToolcallParserDefault(resp openai.ChatCompletionResponse) (toolCalls []*FunctionCall) {
 	for _, choice := range resp.Choices {
 		for _, toolcall := range choice.Message.ToolCalls {
@@ -51,6 +88,8 @@ func ToolcallParserDefault(resp openai.ChatCompletionResponse) (toolCalls []*Fun
 			rsp = rsp[:ind2+1] + "</tool_call>"
 		}
 
+		rsp = strings.ReplaceAll(rsp, "/function_calls>", "tool_call>")
+		rsp = strings.ReplaceAll(rsp, "function_calls>", "tool_call>")
 		rsp = strings.ReplaceAll(rsp, "tool_code>", "tool_call>")
 		rsp = strings.ReplaceAll(rsp, "<tool>", "<tool_call>")
 		rsp = strings.ReplaceAll(rsp, "</tools>", "<tool_call>")
@@ -72,62 +111,23 @@ func ToolcallParserDefault(resp openai.ChatCompletionResponse) (toolCalls []*Fun
 			if len(toolcallString) < 10 {
 				continue
 			}
-			if i := strings.Index(toolcallString, "{"); i > 0 {
-				toolcallString = toolcallString[i:]
+			toolcall := ParseToolCallFromXlm(toolcallString)
+			if toolcall == nil {
+				if i := strings.Index(toolcallString, "{"); i > 0 {
+					toolcallString = toolcallString[i:]
+				}
+				if i := strings.LastIndex(toolcallString, "}"); i > 0 {
+					toolcallString = toolcallString[:i+1]
+				}
+				toolcall = parseOneToolcall(toolcallString)
 			}
-			if i := strings.LastIndex(toolcallString, "}"); i > 0 {
-				toolcallString = toolcallString[:i+1]
-			}
-
-			if toolcall := parseOneToolcall(toolcallString); toolcall != nil {
+			if toolcall != nil {
 				toolCalls = append(toolCalls, toolcall)
+			} else {
+				// Handle the case where toolcall is still nil
 			}
 		}
 	}
-	return toolCalls
-}
-func ToolcallParserFileSaver(resp openai.ChatCompletionResponse) (toolCalls []*FunctionCall) {
-	var builder strings.Builder
-	for _, choice := range resp.Choices {
-		builder.WriteString(choice.Message.Content)
-	}
-	rsp := builder.String()
-	// 检查 rsp 是否为空
-	if rsp == "" {
-		return nil
-	}
-
-	const (
-		pathMarker    = "\n\nPath:"
-		contentMarker = "\nContent:\n"
-		eofMarker     = "\nEOF\n"
-	)
-	items := strings.Split(rsp, pathMarker)
-	for _, item := range items[1:] { // 跳过第一个无效部分
-		// 截断到 EOF
-		eofIndex := strings.Index(item, eofMarker)
-		if eofIndex == -1 {
-			continue // 如果缺少 EOF，跳过处理
-		}
-		item = item[:eofIndex]
-
-		// 分割 Path 和 Content
-		subItems := strings.Split(item, contentMarker)
-		if len(subItems) != 2 {
-			continue // 如果格式不符合预期，跳过
-		}
-
-		// 去除多余的空白字符
-		filename := strings.TrimSpace(subItems[0])
-		content := strings.TrimSpace(subItems[1])
-
-		// 构建结果
-		toolCalls = append(toolCalls, &FunctionCall{
-			Name:      "SaveToFile",
-			Arguments: map[string]any{"filename": filename, "content": content},
-		})
-	}
-
 	return toolCalls
 }
 func (a *Agent) WithToolcallParser(parse func(resp openai.ChatCompletionResponse) (toolCalls []*FunctionCall)) *Agent {

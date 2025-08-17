@@ -8,6 +8,7 @@ require (
 	github.com/doptime/config v0.0.0-20250322030901-0115e7134058
 	github.com/doptime/doptime v0.1.1-0.20250716014959-913bed2755d6
 	github.com/doptime/redisdb v0.0.0-20250716014910-a604cf0d41fb
+	github.com/dustin/go-humanize v1.0.1
 	github.com/faiface/beep v1.1.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mroth/weightedrand v1.0.0
