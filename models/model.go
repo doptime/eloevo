@@ -52,20 +52,20 @@ func NewModel(baseURL, apiKey, modelName string) *Model {
 		config.BaseURL = baseURL
 	}
 	config.HTTPClient = &http.Client{
-		Timeout: 900 * time.Second, // 整个请求的总超时时间，包括连接和接收响应
+		Timeout: 3600 * time.Second, // 整个请求的总超时时间，包括连接和接收响应
 		Transport: &http.Transport{
 			// 设置连接超时时间
 			DialContext: (&net.Dialer{
-				Timeout:   900 * time.Second, // 连接超时
-				KeepAlive: 900 * time.Second, // 保持连接的时间
+				Timeout:   3600 * time.Second, // 连接超时
+				KeepAlive: 3600 * time.Second, // 保持连接的时间
 			}).DialContext,
 			// 设置TLS配置
 			TLSHandshakeTimeout: 30 * time.Second, // TLS握手超时
 			// 设置HTTP/2配置
-			ForceAttemptHTTP2:     true,              // 强制尝试使用HTTP/2
-			MaxIdleConns:          100,               // 最大空闲连接数
-			IdleConnTimeout:       900 * time.Second, // 空闲连接的超时时间
-			ExpectContinueTimeout: 90 * time.Second,  // 期望继续的超时时间
+			ForceAttemptHTTP2:     true,               // 强制尝试使用HTTP/2
+			MaxIdleConns:          100,                // 最大空闲连接数
+			IdleConnTimeout:       3600 * time.Second, // 空闲连接的超时时间
+			ExpectContinueTimeout: 3600 * time.Second, // 期望继续的超时时间
 			// 其他HTTP/2相关配置
 			// 例如，设置HTTP/2的最大帧大小、最大流数等
 			// 这些配置可以根据需要进行调整
@@ -215,13 +215,16 @@ var (
 
 	GLM32B = NewModel("http://rtxserver.lan:19732/v1", ApiKey, "glmz132b").WithTemperature(0.6).WithTopP(0.95) //.WithTopK(40) .WithToolInPrompt(true)
 
-	Gemma3B27               = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b27").WithTopP(0.92).WithTemperature(0.9).WithToolsInUserPrompt()
-	Gemma3B12               = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b12").WithTopP(0.95).WithTemperature(1.0).WithToolsInSystemPrompt()
-	Qwen30BA3               = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen30ba3").WithTemperature(0.7).WithTopP(0.8)
-	Qwen3B14                = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.7).WithTopP(0.8)
-	Qwen3B14Thinking        = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.6).WithTopP(0.95)
-	Qwen3B32Nonthinking     = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.2).WithTopP(0.8)
-	Qwen3B30A3b2507         = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3b30a3b2507").WithTemperature(0.7).WithTopP(0.8).WithTopK(20)
+	Gemma3B27                   = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b27").WithTopP(0.92).WithTemperature(0.9).WithToolsInUserPrompt()
+	Gemma3B12                   = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b12").WithTopP(0.95).WithTemperature(1.0).WithToolsInSystemPrompt()
+	Qwen30BA3                   = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen30ba3").WithTemperature(0.7).WithTopP(0.8)
+	Qwen3B14                    = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.7).WithTopP(0.8)
+	Qwen3B14Thinking            = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.6).WithTopP(0.95)
+	Qwen3B32Nonthinking         = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.2).WithTopP(0.8)
+	Qwen3B30A3b2507             = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3b30a3b2507").WithTemperature(0.7).WithTopP(0.8).WithTopK(20)
+	Qwen3B235Thinking2507       = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3-235b-a22b-thinking-2507")
+	Qwen3B235Thinking2507Aliyun = NewModel("https://dashscope.aliyuncs.com/compatible-mode/v1", "aliyun", "qwen3-235b-a22b-thinking-2507")
+
 	Qwen3BThinking30A3b2507 = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3thinkingb30a3b2507")
 	Qwen3Coder              = NewModel("https://api.xiaocaseai.com/v1", "xiaocaseai", "qwen3-coder-480b-a35b-instruct")
 	Gemini25Proxiaocaseai   = NewModel("https://api.xiaocaseai.com/v1", "xiaocaseai", "gemini-2.5-pro")
@@ -238,6 +241,8 @@ var (
 	Glm45AirLocal = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "GLM-4.5-Air").WithToolsInSystemPrompt()
 
 	Qwen3B32Thinking = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.6).WithTopP(0.95)
+	Oss120b          = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "oss-120b")
+	Oss20b           = NewModel("http://rtxserver.lan:12304/v1", ApiKey, "oss-20b")
 
 	//ModelDefault        = ModelQwen32BCoderLocal
 	ModelDefault = ModelQwen72BLocal

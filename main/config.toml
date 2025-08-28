@@ -66,75 +66,56 @@ Username = ""
 [Settings]
 LogLevel = 1
 SUToken = "HboVsNf0bMa1fYq9HXr02SaRD7yz3gyj"
-
-[[EvoRealms]]
-Name = "RedisDB"
-Enable = false
-RootPath = "/Users/yang/doptime/redisdb"
-SkipFiles = ".DS_Store,.gitignore,.mod,.sum"
-SkipDirs = "doc,.git,.idea,.vscode,.evolab"
-
 [[EvoRealms]]
 Enable = false
 Name = "RedisDB"
 RootPath = "/Users/yang/learniverse"
-SkipFiles = ".DS_Store,.gitignore,.mod,.sum,expired_ideas.md"
-SkipDirs = ".git,.idea,.vscode,.evolab,.ignored,"
-
+GitIgnore = ".*,*.mod,*.sum,*.doc,*.git,*.idea,*.vscode,*.evolab"
 
 [[EvoRealms]]
 Name = "learniversebackend"
 Enable = true
 RootPath = "/Users/yang/learn-by-choose-goserver"
-SkipFiles = ".DS_Store,.gitignore,.mod,.sum"
-SkipDirs = ".doc,.git,.idea,.vscode,.evolab"
+GitIgnore = ".*,*.mod,*.sum,*.doc,*.git,*.idea,*.vscode,*.evolab"
 
 [[EvoRealms]]
 Name = "learniverseweb"
 Enable = true
 RootPath = "/Users/yang/doptime/evolab/web/app/learn-by-choose"
-SkipFiles = ".DS_Store,.gitignore,.mod,.sum"
-SkipDirs = "doc,.git,.idea,.vscode,.evolab"
-
+GitIgnore = ".*,*.mod,*.sum,*.doc,*.git,*.idea,*.vscode,*.evolab"
 
 [[EvoRealms]]
 Name = "doptimeutils"
 Enable = false
 RootPath = "/Users/yang/doptime/doptime/utils"
-SkipFiles = ".DS_Store,.gitignore,.mod,.sum,.excalidraw,.png,.mdx,*.go"
-SkipDirs = ".git,.idea,.vscode,3rd_lang,DockerFile,test,.evolab,vars,"
+GitIgnore = ".*,.excalidraw,.png,.mdx,*.go,.git,.idea,.vscode,3rd_lang,DockerFile,test,.evolab,vars,"
 
 [[EvoRealms]]
 Name = "doptime"
 Enable = false
 RootPath = "/Users/yang/doptime/doptime"
-SkipFiles = ".DS_Store,.gitignore,.mod,.sum,.excalidraw,.png,.mdx"
-SkipDirs = ".git,.idea,.vscode,3rd_lang,DockerFile,test,.evolab,vars,"
+GitIgnore = ".*,.excalidraw,.png,.mdx,.git,.idea,.vscode,3rd_lang,DockerFile,test,.evolab,vars,"
 
 [[EvoRealms]]
 Name = "aircraft"
 Enable = false
 RootPath = "/Users/yang/aircraft"
-SkipFiles = ".DS_Store,.gitignore,.mod,.sum"
-SkipDirs = ".git,.idea,.vscode,.evolab"
+GitIgnore = ".*,.git,.idea,.vscode,.evolab"
 
 [[EvoRealms]]
 Name = "aircraftwing"
 Enable = false
 RootPath = "/Users/yang/aircraft/wing"
-SkipFiles = ".DS_Store,.gitignore,.mod,.sum,expired_ideas.md"
-SkipDirs = ".git,.idea,.vscode,.evolab"
+GitIgnore = ".*,expired_ideas.md,.git,.idea,.vscode,.evolab"
 
 [[EvoRealms]]
 Name = "btctrade"
 Enable = false
 RootPath = "/Users/yang/btctrade"
-SkipFiles = ".DS_Store,.gitignore,.mod,.sum,expired_ideas.md"
-SkipDirs = ".git,.idea,.vscode,.evolab,.ignored"
+GitIgnore = ".*,expired_ideas.md,.git,.idea,.vscode,.evolab,.ignored"
 
 [[EvoRealms]]
 Name = "doptime-client"
 Enable = false
 RootPath = "/Users/yang/doptime/doptime-client"
-SkipFiles = ".DS_Store,.gitignore,.mod,.sum,package-lock.json"
-SkipDirs = ".git,.idea,.vscode,.evolab,.ignored,node_modules,lib"
+GitIgnore = ".*,package-lock.json,.git,.idea,.vscode,.evolab,.ignored,node_modules,lib"

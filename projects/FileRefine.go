@@ -63,10 +63,12 @@ func (a FileRefineList) View(FullViewPaths ...string) string {
 	for _, v := range a {
 		numlayter := len(strings.Split(v.Filename, "/")) - 1
 		indence := strings.Repeat("\t", numlayter)
-		fileContent := lo.Ternary(slices.Contains(FullViewPaths, v.Filename), "\nFileContent: "+v.FileContent, "")
 
-		s := fmt.Sprint(indence, "\n Pathname", v.Filename, v.FileSize(), "\nBulletDescription: ", v.BulletDescription, fileContent, "\n")
+		fileContent := lo.Ternary(slices.Contains(FullViewPaths, v.Filename), "\n <file-content>: "+v.FileContent, "</file-content>\n")
+
+		s := fmt.Sprint(indence, "<file>\n <file-name>", v.Filename, "</file-name>\n<file-size>", v.FileSize(), "</file-size>\n<file-BulletDescription>", v.BulletDescription, "</file-BulletDescription>", fileContent, "\n</file>")
 		sb.WriteString(s)
+
 	}
 	return sb.String()
 }

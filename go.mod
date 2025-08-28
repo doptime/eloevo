@@ -4,6 +4,7 @@ go 1.23.0
 
 require (
 	github.com/BurntSushi/toml v1.5.0
+	github.com/bluekeyes/go-gitdiff v0.8.1
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/doptime/config v0.0.0-20250322030901-0115e7134058
 	github.com/doptime/doptime v0.1.1-0.20250716014959-913bed2755d6
@@ -15,11 +16,13 @@ require (
 	github.com/open-spaced-repetition/go-fsrs v1.2.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/remeh/sizedwaitgroup v1.0.0
+	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/samber/lo v1.49.1
 	github.com/sashabaranov/go-openai v1.35.6
 	github.com/spf13/afero v1.12.0
 	golang.design/x/clipboard v0.7.0
 	golang.org/x/exp v0.0.0-20190731235908-ec7cb31e5a56
+	golang.org/x/sync v0.16.0
 	google.golang.org/genai v1.14.0
 )
 
@@ -61,7 +64,6 @@ require (
 	golang.org/x/image v0.25.0 // indirect
 	golang.org/x/mobile v0.0.0-20230301163155-e0f57694e12c // indirect
 	golang.org/x/net v0.42.0 // indirect
-	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.27.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241223144023-3abc09e42ca8 // indirect

@@ -28,8 +28,9 @@ type FileToMem struct {
 // GoalProposer is responsible for proposing goals using an OpenAI model,
 // handling function calls, and managing callbacks.
 type Agent struct {
-	SharedMemory map[string]any
-	Models       []*models.Model
+	SharedMemory           map[string]any
+	Models                 []*models.Model
+	AbbreviateContextModel *models.Model
 
 	Prompt              *template.Template
 	Tools               []openai.Tool
@@ -128,6 +129,10 @@ func (a *Agent) WithMemDeClipboard(memoryKey string) *Agent {
 }
 func (a *Agent) WithModels(Model ...*models.Model) *Agent {
 	a.Models = Model
+	return a
+}
+func (a *Agent) WithAbbreviateContext(Model *models.Model) *Agent {
+	a.AbbreviateContextModel = Model
 	return a
 }
 
@@ -241,6 +246,12 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 	}
 	if model.TopP > 0 {
 		req.TopP = model.TopP
+	}
+	if a.AbbreviateContextModel != nil {
+		messege := promptBuffer.String()
+		AbbreviatedMessege := AbbreviateContext(messege, a.AbbreviateContextModel)
+		req.Messages[0].Content = AbbreviatedMessege
+
 	}
 	if len(a.Tools) > 0 {
 		if model.ToolInPrompt != nil {

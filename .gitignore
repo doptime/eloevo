@@ -3,3 +3,4 @@
 .expired
 **/config*
 **/**/model.go
+.**

@@ -123,8 +123,6 @@ func ToolcallParserDefault(resp openai.ChatCompletionResponse) (toolCalls []*Fun
 			}
 			if toolcall != nil {
 				toolCalls = append(toolCalls, toolcall)
-			} else {
-				// Handle the case where toolcall is still nil
 			}
 		}
 	}
