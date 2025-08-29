@@ -227,8 +227,12 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 	fmt.Printf("Requesting prompt: %v\n", promptBuffer.String())
 
 	//model might be changed by other process
-	model := models.LoadbalancedPick(a.Models...)
-	params["Model"] = model
+	model, ok := params["Model"].(*models.Model)
+	if !ok || model == nil {
+		model = models.LoadbalancedPick(a.Models...)
+		params["Model"] = models.LoadbalancedPick(a.Models...)
+	}
+
 	// Create the chat completion request with function calls enabled
 	req := openai.ChatCompletionRequest{
 		Model: model.Name,

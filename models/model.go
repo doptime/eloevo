@@ -241,8 +241,8 @@ var (
 	Glm45AirLocal = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "GLM-4.5-Air").WithToolsInSystemPrompt()
 
 	Qwen3B32Thinking = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.6).WithTopP(0.95)
-	Oss120b          = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "oss-120b")
-	Oss20b           = NewModel("http://rtxserver.lan:12304/v1", ApiKey, "oss-20b")
+	Oss120b          = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "gpt-oss-120b")
+	Oss20b           = NewModel("http://rtxserver.lan:12302/v1", ApiKey, "gpt-oss-20b")
 
 	//ModelDefault        = ModelQwen32BCoderLocal
 	ModelDefault = ModelQwen72BLocal
