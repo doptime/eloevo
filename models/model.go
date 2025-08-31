@@ -15,6 +15,7 @@ import (
 type Model struct {
 	Client          *openai.Client
 	ApiKey          string // API key for authentication
+	SystemMessage   string
 	BaseURL         string // Base URL for the OpenAI API, can be empty for default
 	Name            string
 	TopP            float32
@@ -120,6 +121,10 @@ func (m *Model) WithTemperature(temperature float32) *Model {
 	m.Temperature = temperature
 	return m
 }
+func (m *Model) WithSysPrompt(message string) *Model {
+	m.SystemMessage = message
+	return m
+}
 
 const (
 	EndPoint8010   = "http://rtxserver.lan:8010/v1"
@@ -215,14 +220,16 @@ var (
 
 	GLM32B = NewModel("http://rtxserver.lan:19732/v1", ApiKey, "glmz132b").WithTemperature(0.6).WithTopP(0.95) //.WithTopK(40) .WithToolInPrompt(true)
 
-	Gemma3B27                   = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b27").WithTopP(0.92).WithTemperature(0.9).WithToolsInUserPrompt()
-	Gemma3B12                   = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b12").WithTopP(0.95).WithTemperature(1.0).WithToolsInSystemPrompt()
-	Qwen30BA3                   = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen30ba3").WithTemperature(0.7).WithTopP(0.8)
-	Qwen3B14                    = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.7).WithTopP(0.8)
-	Qwen3B14Thinking            = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.6).WithTopP(0.95)
-	Qwen3B32Nonthinking         = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.2).WithTopP(0.8)
-	Qwen3B30A3b2507             = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3b30a3b2507").WithTemperature(0.7).WithTopP(0.8).WithTopK(20)
-	Qwen3B235Thinking2507       = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3-235b-a22b-thinking-2507")
+	Gemma3B27             = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b27").WithTopP(0.92).WithTemperature(0.9).WithToolsInUserPrompt()
+	Gemma3B12             = NewModel("http://rtxserver.lan:5527/v1", ApiKey, "gemma3b12").WithTopP(0.95).WithTemperature(1.0).WithToolsInSystemPrompt()
+	Qwen30BA3             = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen30ba3").WithTemperature(0.7).WithTopP(0.8)
+	Qwen3B14              = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.7).WithTopP(0.8)
+	Qwen3B14Thinking      = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b14").WithTemperature(0.6).WithTopP(0.95)
+	Qwen3B32Nonthinking   = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.2).WithTopP(0.8)
+	Qwen3B30A3b2507       = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3b30a3b2507").WithTemperature(0.7).WithTopP(0.8).WithTopK(20)
+	Qwen3B235Thinking2507 = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3-235b-a22b-thinking-2507")
+	Qwen3_4B2507          = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3-4b-2507")
+
 	Qwen3B235Thinking2507Aliyun = NewModel("https://dashscope.aliyuncs.com/compatible-mode/v1", "aliyun", "qwen3-235b-a22b-thinking-2507")
 
 	Qwen3BThinking30A3b2507 = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3thinkingb30a3b2507")
@@ -242,7 +249,7 @@ var (
 
 	Qwen3B32Thinking = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.6).WithTopP(0.95)
 	Oss120b          = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "gpt-oss-120b")
-	Oss20b           = NewModel("http://rtxserver.lan:12302/v1", ApiKey, "gpt-oss-20b")
+	Oss20b           = NewModel("http://rtxserver.lan:12302/v1", ApiKey, "gpt-oss-20b").WithSysPrompt("Reasoning: high")
 
 	//ModelDefault        = ModelQwen32BCoderLocal
 	ModelDefault = ModelQwen72BLocal

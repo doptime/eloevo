@@ -28,9 +28,8 @@ type FileToMem struct {
 // GoalProposer is responsible for proposing goals using an OpenAI model,
 // handling function calls, and managing callbacks.
 type Agent struct {
-	SharedMemory           map[string]any
-	Models                 []*models.Model
-	AbbreviateContextModel *models.Model
+	SharedMemory map[string]any
+	Models       []*models.Model
 
 	Prompt              *template.Template
 	Tools               []openai.Tool
@@ -131,10 +130,6 @@ func (a *Agent) WithModels(Model ...*models.Model) *Agent {
 	a.Models = Model
 	return a
 }
-func (a *Agent) WithAbbreviateContext(Model *models.Model) *Agent {
-	a.AbbreviateContextModel = Model
-	return a
-}
 
 func (a *Agent) WithCallback(callback func(ctx context.Context, inputs string) error) *Agent {
 	a.CallBack = callback
@@ -196,19 +191,25 @@ func (a *Agent) CallWithResponseString(content string) (err error) {
 	}
 	return a.ExeResponse(params, resp)
 }
+func (a *Agent) Messege(params map[string]any) string {
+	var promptBuffer bytes.Buffer
+	if err := a.Prompt.Execute(&promptBuffer, params); err != nil {
+		fmt.Printf("Error rendering prompt: %v\n", err)
+		return ""
+	}
+	return promptBuffer.String()
+}
 
 // ProposeGoals generates goals based on the provided file contents.
 // It renders the prompt, sends a request to the OpenAI model, and processes the response.
 func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error) {
 	// Render the prompt with the provided files content and available functions
 	var params = map[string]any{}
+	if len(memories) > 0 {
+		params = memories[0]
+	}
 	for k, v := range a.SharedMemory {
 		params[k] = v
-	}
-	for _, memory := range memories {
-		for k, v := range memory {
-			params[k] = v
-		}
 	}
 	params["ThisAgent"] = a // add self reference to memory
 	if a.memDeCliboardKey != "" {
@@ -219,12 +220,8 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 		}
 		params[a.memDeCliboardKey] = string(textbytes)
 	}
-	var promptBuffer bytes.Buffer
-	if err := a.Prompt.Execute(&promptBuffer, params); err != nil {
-		fmt.Printf("Error rendering prompt: %v\n", err)
-		return err
-	}
-	fmt.Printf("Requesting prompt: %v\n", promptBuffer.String())
+	messege := a.Messege(params)
+	fmt.Printf("Requesting prompt: %v\n", messege)
 
 	//model might be changed by other process
 	model, ok := params["Model"].(*models.Model)
@@ -239,23 +236,23 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role:    openai.ChatMessageRoleUser,
-				Content: promptBuffer.String(),
+				Content: messege,
 			},
 		},
 		TopP:        model.TopP,
 		Temperature: model.Temperature,
+	}
+	if model.SystemMessage != "" {
+		req.Messages = append([]openai.ChatCompletionMessage{{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: model.SystemMessage,
+		}}, req.Messages...)
 	}
 	if model.Temperature > 0 {
 		req.Temperature = model.Temperature
 	}
 	if model.TopP > 0 {
 		req.TopP = model.TopP
-	}
-	if a.AbbreviateContextModel != nil {
-		messege := promptBuffer.String()
-		AbbreviatedMessege := AbbreviateContext(messege, a.AbbreviateContextModel)
-		req.Messages[0].Content = AbbreviatedMessege
-
 	}
 	if len(a.Tools) > 0 {
 		if model.ToolInPrompt != nil {

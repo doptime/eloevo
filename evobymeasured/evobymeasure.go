@@ -30,12 +30,24 @@ type GitCommitUsingUnifiedDiffFormat struct {
 
 var KeyGitCommits = redisdb.NewHashKey[string, gitdiff.File](redisdb.Opt.HttpVisit(), redisdb.Opt.Key("GitCommits"))
 
-func LoadAllEvoProjects() string {
+func LoadAllEvoProjects(KeepFileNames ...[]string) string {
 	var allFileInfo strings.Builder
+	fileKeepMap := map[string]bool{}
+
+	for _, fn := range KeepFileNames {
+		for _, f := range fn {
+			fileKeepMap[f] = true
+		}
+	}
 
 	for _, realm := range lo.Filter(config.EvoRealms, func(realm *config.EvoRealm, _ int) bool { return realm.Enable }) {
 		realm.WalkDir(func(path, relativePath string, info os.FileInfo, err error) (e error) {
 			fmt.Printf("Processing file: %s\n", path)
+			if len(KeepFileNames) > 0 {
+				if _, ok := fileKeepMap[relativePath]; !ok {
+					return nil
+				}
+			}
 
 			// Read the file content
 			content, err := os.ReadFile(path)
@@ -277,13 +289,24 @@ func MakeAEvo() {
 		time.Sleep(300 * time.Millisecond)
 		SolutionSummary := LoadAllEvoProjects()
 		ProductGoalUniLearning := utils.TextFromFile("/Users/yang/learn-by-choose-goserver/learninggame.md")
+
+		messege := AgentEvoLearningSolutionLearnByChoose.Messege(map[string]any{
+			"ProductGoal": string(ProductGoalUniLearning) + "\n\n",
+			"Solution":    SolutionSummary,
+		})
+
+		param := map[string]any{"Context": messege, "Result": []string{}}
+		agent.AgentSelectContextFiles.Call(context.Background(), param)
+		ResultRelatedFileNames, _ := param["Result"].([]string)
+
+		SolutionSummaryTrimed := LoadAllEvoProjects(ResultRelatedFileNames)
 		errorGroup := errgroup.Group{}
 		errorGroup.Go(func() error {
 			//Gemini25Flashlight Gemini25ProAigpt Glm45AirLocal
-			return AgentEvoLearningSolutionLearnByChoose.WithModels(models.Qwen3B235Thinking2507).WithAbbreviateContext(models.Oss120b). //WithMsgDeClipboard(). //CopyPromptOnly(). //Qwen3B32Thinking
-																			Call(context.Background(), map[string]any{
+			return AgentEvoLearningSolutionLearnByChoose.WithModels(models.Oss20b). //WithMsgDeClipboard(). //CopyPromptOnly(). //Qwen3B32Thinking
+												Call(context.Background(), map[string]any{
 					"ProductGoal": string(ProductGoalUniLearning) + "\n\n",
-					"Solution":    SolutionSummary,
+					"Solution":    SolutionSummaryTrimed,
 				})
 		})
 		err := errorGroup.Wait()

@@ -66,70 +66,139 @@ func (t *Tool[v]) HandleCallback(Param interface{}, CallMemory map[string]any) (
 	for _, f := range t.Functions {
 		f(val)
 	}
+	if CallMemory != nil {
+		// 确保传入的是一个 struct
+		v := reflect.ValueOf(val)
+		for v.Kind() == reflect.Ptr {
+			v = v.Elem() // 如果是指针，获取其指向的值
+		}
+		if v.Kind() == reflect.Struct {
+			t := v.Type()
+
+			// 遍历 struct 的所有字段
+			for i := 0; i < v.NumField(); i++ {
+				field := v.Field(i)
+				fieldName := t.Field(i).Name
+
+				// 将字段名和字段值添加到 map 中
+				CallMemory[fieldName] = field.Interface()
+			}
+
+		}
+
+	}
+
 	return nil
 }
 
+// NewTool creates a new tool, correctly generating schemas for nested structs and slices.
 func NewTool[v any](name string, description string, fs ...func(param v)) *Tool[v] {
-	// Inspect the type of v , should be a struct
 	vType := reflect.TypeOf(new(v)).Elem()
-	vValue := reflect.ValueOf(new(v)).Elem()
-
 	for vType.Kind() == reflect.Ptr {
 		vType = vType.Elem()
-		vValue = vValue.Elem()
 	}
 
-	params := make(map[string]any)
-	var goooglefunctionDeclarations genai.FunctionDeclaration = genai.FunctionDeclaration{
-		Name:        name,
-		Description: description,
-		Parameters:  &genai.Schema{},
-	}
+	oaiProperties := make(map[string]any)
+	googleProperties := make(map[string]*genai.Schema)
+
 	if vType.Kind() == reflect.Struct {
-		// Map parameter fields to JSON schema definitions
-		//build openai.Tool
 		for i := 0; i < vType.NumField(); i++ {
 			field := vType.Field(i)
-			def := map[string]string{
-				"type":        mapKindToDataType(field.Type.Kind()),
-				"description": field.Tag.Get("description"),
-			}
-			if def["description"] == "-" || def["description"] == "" {
+			desc := field.Tag.Get("description")
+			if desc == "-" {
 				continue
 			}
-			params[field.Name] = def
-		}
-		//build google genai.Tool
-		goooglefunctionDeclarations.Parameters.Properties = make(map[string]*genai.Schema)
-		goooglefunctionDeclarations.Parameters.Type = genai.TypeObject
-		for i := 0; i < vType.NumField(); i++ {
-			field := vType.Field(i)
-			if goooglefunctionDeclarations.Description == "-" || goooglefunctionDeclarations.Description == "" {
-				continue
-			}
-			var Parameters genai.Schema
-			Parameters.Title = field.Name
-			Parameters.Type = KindToJSONType(field.Type.Kind()) // 这里使用了之前定义的 mapKindToDataType 函数来映射类型
-			Parameters.Description = field.Tag.Get("description")
 
-			goooglefunctionDeclarations.Parameters.Properties[field.Name] = &Parameters
+			// Generate the schema for each field's type using the recursive helper.
+			fieldOAI, fieldGoogle := buildSchemaForType(field.Type)
+
+			// The description from the tag belongs to the property definition itself.
+			fieldOAI["description"] = desc
+			fieldGoogle.Description = desc
+
+			oaiProperties[field.Name] = fieldOAI
+			googleProperties[field.Name] = fieldGoogle
 		}
+	} else {
+		log.Printf("Warning: Tool %s is created with a non-struct parameter type. No parameters will be defined.", name)
+	}
+
+	// Construct the final top-level schema object that describes the tool's parameters.
+	oaiParams := map[string]any{
+		"type":       "object",
+		"properties": oaiProperties,
+	}
+	googleSchema := &genai.Schema{
+		Type:       genai.TypeObject,
+		Properties: googleProperties,
 	}
 
 	a := &Tool[v]{
-		Tool: openai.Tool{Type: openai.ToolTypeFunction, Function: &openai.FunctionDefinition{
+		Tool: openai.Tool{
+			Type: openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
+				Name:        name,
+				Description: description,
+				Parameters:  oaiParams,
+			},
+		},
+		GoogleFunc: genai.FunctionDeclaration{
 			Name:        name,
 			Description: description,
-			Parameters:  params,
-		}},
-		GoogleFunc: goooglefunctionDeclarations,
-		Functions:  fs,
+			Parameters:  googleSchema,
+		},
+		Functions: fs,
+	}
+	return a
+}
+
+// buildSchemaForType is the recursive helper function. It generates the schema for any given type.
+func buildSchemaForType(t reflect.Type) (map[string]any, *genai.Schema) {
+	// Dereference pointers until we reach the base type
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
 	}
 
-	// Define the function to handle LLM response
-	//HandleFuncs[name] = a
+	oaiSchema := make(map[string]any)
+	googleSchema := &genai.Schema{}
 
-	return a
+	oaiSchema["type"] = mapKindToDataType(t.Kind())
+	googleSchema.Type = KindToJSONType(t.Kind())
+
+	switch t.Kind() {
+	case reflect.Struct:
+		// When we encounter a nested struct, we must define its properties.
+		oaiProperties := make(map[string]any)
+		googleProperties := make(map[string]*genai.Schema)
+
+		for i := 0; i < t.NumField(); i++ {
+			field := t.Field(i)
+			desc := field.Tag.Get("description")
+			if desc == "-" {
+				continue
+			}
+
+			// Recursive call for the nested struct's fields
+			subOAI, subGoogle := buildSchemaForType(field.Type)
+
+			subOAI["description"] = desc
+			subGoogle.Description = desc
+
+			oaiProperties[field.Name] = subOAI
+			googleProperties[field.Name] = subGoogle
+		}
+		oaiSchema["properties"] = oaiProperties
+		googleSchema.Properties = googleProperties
+
+	case reflect.Slice, reflect.Array:
+		// For a slice, we define the schema of its items.
+		elemType := t.Elem()
+		itemsOAI, itemsGoogle := buildSchemaForType(elemType) // Recursive call for the element type
+		oaiSchema["items"] = itemsOAI
+		googleSchema.Items = itemsGoogle
+	}
+
+	return oaiSchema, googleSchema
 }
 
 func mapKindToDataType(kind reflect.Kind) string {
