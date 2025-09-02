@@ -189,21 +189,21 @@ func LoadAllEvoProjects(KeepFileNames ...[]string) string {
 // 实施方案：模拟服务端响应，验证客户端从加载到显示内容的完整流程。
 
 type TextFragment struct {
-	Comment     string   `description:"string, The git commit comment associated with the text fragment"`
-	OldPosition int64    `description:"integer, The old position of the text fragment"`
-	NewPosition int64    `description:"integer, The new position of the text fragment"`
-	Lines       []string `description:"array, The lines in the text fragment. Each line starts with a space (context), '+' (addition context), or '-' (deletion context)"`
+	Comment     string   `description:"The git commit message or comment associated with the hunk. This provides context for the changes."`
+	OldPosition int64    `description:"The starting line number in the original (old) file from which this fragment begins."`
+	NewPosition int64    `description:"The starting line number in the modified (new) file from which this fragment begins."`
+	Lines       []string `description:"A strings of mutiple lines, representing the lines in this fragment. Each line is prefixed with a character: ' ' for context (unchanged), '+' for a new line, and '-' for a deleted line."`
 }
 type GitCommitUsingUnifiedDiffFormat struct {
-	OldName string `description:"string, The old file name"`
-	NewName string `description:"string, The new file name"`
+	OldName string `description:"The name of the file before the change."`
+	NewName string `description:"The name of the file after the change."`
 
-	IsNew    bool `description:"boolean, Whether the file is new"`
-	IsDelete bool `description:"boolean, Whether the file is deleted"`
-	IsCopy   bool `description:"boolean, Whether the file is copied"`
-	IsRename bool `description:"boolean, Whether the file is renamed"`
+	IsNew    bool `description:"Indicates if the file is newly added in this commit."`
+	IsDelete bool `description:"Indicates if the file was deleted in this commit."`
+	IsCopy   bool `description:"Indicates if the file was copied from another file in this commit."`
+	IsRename bool `description:"Indicates if the file was renamed in this commit."`
 
-	TextFragments []*TextFragment
+	TextFragments []*TextFragment `description:"An array of hunks (text fragments), each detailing a specific change block (additions, deletions, or modifications) within the file."`
 }
 
 var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
@@ -235,8 +235,7 @@ var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(templat
 	- **可维护性**：应关注核心逻辑文档覆盖率的提升，确保代码可理解和可测试。
 	- **性能与可靠性**：优化代码的正确性、变更失败率、预估延迟和吞吐量。
 	针对评估中发现的问题进一步优化，对每个重要缺陷给出具体的优化方案。确保在当前能力圈的安全边际内进行调整。
-3. 尝试生成最终的优化方案。
-请注意。调用GitCommitUsingUnifiedDiffFormat生成的Git Unified Diff文件普遍存在行数量和真实的行变动不匹配得问题。为了解决这个问题。这里务必先写下完整的修改内容。等正式提交改进方案的时候，需要重新校验，并确保与实际变更一致。
+3. 尝试使用UnifiedDiffFormat格式生成最终的优化方案。
 
 ## 提交最终改进方案
 最后通过 N次独立的toolcall调用: GitCommitUsingUnifiedDiffFormat 来提交一个使用 Git Unified Diff 格式的代码变更。
@@ -261,6 +260,17 @@ var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(templat
 		os.Link(OldName, newName)
 		os.Remove(OldName)
 	}
+	content, err := os.Open(OldName)
+	if err != nil {
+		return
+	}
+	defer content.Close()
+	var contentBytes []byte = make([]byte, 10*1024*1024)
+	n, e := content.Read(contentBytes)
+	if e != nil || n == 0 {
+		fmt.Println("read file error: none such file or empty")
+	}
+	linesInFile := strings.Split(string(contentBytes), "\n")
 	gitDiffFile, err := KeyGitCommits.ConcatKey(realmNew.Name).HGet(file.NewName)
 	if err != nil {
 		gitDiffFile = gitdiff.File{OldName: file.OldName, NewName: file.NewName, IsNew: file.IsNew, IsDelete: file.IsDelete, IsCopy: file.IsCopy, IsRename: file.IsRename}
@@ -268,12 +278,13 @@ var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(templat
 	for _, fragment := range file.TextFragments {
 		// count the types of lines in the fragment content
 		frag := gitdiff.TextFragment{Comment: fragment.Comment, OldPosition: fragment.OldPosition, NewPosition: fragment.NewPosition}
-		for _, line := range fragment.Lines {
+		var addedLines, deletedLines int64 = 0, 0
+		splitLines := strings.Split(strings.Join(fragment.Lines, "\n"), "\n")
+		for _, line := range splitLines {
 			if len(line) == 0 {
 				continue
 			}
 			gline := gitdiff.Line{Line: line[1:]}
-			var addedLines, deletedLines int64 = 0, 0
 			switch line[0] {
 			case ' ':
 				gline.Op = gitdiff.OpContext
@@ -284,23 +295,39 @@ var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(templat
 				} else {
 					frag.TrailingContext++
 				}
+				frag.Lines = append(frag.Lines, gline)
 			case '+':
 				gline.Op = gitdiff.OpAdd
 				frag.NewLines++
+				frag.LinesAdded++
 				addedLines++
 				frag.TrailingContext = 0
+				frag.Lines = append(frag.Lines, gline)
 			case '-':
 				gline.Op = gitdiff.OpDelete
 				frag.OldLines++
+				frag.LinesDeleted++
 				deletedLines++
 				frag.TrailingContext = 0
+				frag.Lines = append(frag.Lines, gline)
 			}
-			frag.Lines = append(frag.Lines, gline)
 		}
-	}
-	content, err := os.Open(OldName)
-	if err != nil {
-		return
+		//fix start line number
+		for i := 0; len(linesInFile) > 0 && len(frag.Lines) > 0 && i < 5; i++ {
+			ib, ie := int(frag.OldPosition)+i, int(frag.OldPosition)-i
+			if ib >= 0 && ib < len(linesInFile) && linesInFile[ib] == frag.Lines[0].Line {
+				frag.OldPosition, frag.NewPosition = int64(ib)+1, int64(ib)+1
+				break
+			}
+			if ie >= 0 && ie < len(linesInFile) && linesInFile[ie] == frag.Lines[0].Line {
+				frag.OldPosition, frag.NewPosition = int64(ie)+1, int64(ie)+1
+				break
+			}
+		}
+
+		if len(frag.Lines) > 0 {
+			gitDiffFile.TextFragments = append(gitDiffFile.TextFragments, &frag)
+		}
 	}
 	var output bytes.Buffer
 	if err = gitdiff.Apply(&output, content, &gitDiffFile); err != nil {
