@@ -42,7 +42,7 @@ func DefaultRealmPath() string {
 	fmt.Println("No default realm found in config")
 	return ""
 }
-func (evoRealm *EvoRealm) WalkDir(fn func(path, relativePath string, info os.FileInfo, err error) error) {
+func (evoRealm *EvoRealm) WalkDir(fn func(path, relativePath string, info os.FileInfo) error) {
 	// Check if the directory exists
 	info, err := os.Stat(evoRealm.RootPath)
 	if os.IsNotExist(err) {
@@ -57,7 +57,7 @@ func (evoRealm *EvoRealm) WalkDir(fn func(path, relativePath string, info os.Fil
 	ignorer := gitignore.CompileIgnoreLines(ignoreLines...)
 
 	// Walk through the directory
-	err = filepath.Walk(evoRealm.RootPath, func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(evoRealm.RootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Printf("Error accessing path %q: %v\n", path, err)
 			return err
@@ -74,7 +74,7 @@ func (evoRealm *EvoRealm) WalkDir(fn func(path, relativePath string, info os.Fil
 		}
 
 		relativePath := "/" + evoRealm.Name + strings.TrimPrefix(path, evoRealm.RootPath)
-		fn(path, relativePath, info, err)
+		fn(path, relativePath, info)
 
 		return nil
 	})

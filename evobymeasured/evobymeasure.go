@@ -23,11 +23,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type GitCommitUsingUnifiedDiffFormat struct {
-	//"@@ -%d,%d +%d,%d @@", f.OldPosition, f.OldLines, f.NewPosition, f.NewLines
-	GitUnifiedDiffFormatFile string `description:"string , a git Unified Diff Format File (starting with \"--- a/file\n+++ b/file\n@@ -OldPosition,OldLines +NewPosition,NewLines @@ comment\n...\") modification data. comment is not optional, but required."`
-}
-
 var KeyGitCommits = redisdb.NewHashKey[string, gitdiff.File](redisdb.Opt.HttpVisit(), redisdb.Opt.Key("GitCommits"))
 
 func LoadAllEvoProjects(KeepFileNames ...[]string) string {
@@ -41,7 +36,7 @@ func LoadAllEvoProjects(KeepFileNames ...[]string) string {
 	}
 
 	for _, realm := range lo.Filter(config.EvoRealms, func(realm *config.EvoRealm, _ int) bool { return realm.Enable }) {
-		realm.WalkDir(func(path, relativePath string, info os.FileInfo, err error) (e error) {
+		realm.WalkDir(func(path, relativePath string, info os.FileInfo) (e error) {
 			fmt.Printf("Processing file: %s\n", path)
 			if len(KeepFileNames) > 0 {
 				if _, ok := fileKeepMap[relativePath]; !ok {
@@ -71,7 +66,7 @@ func LoadAllEvoProjects(KeepFileNames ...[]string) string {
 				commitStr = "\n<git-commits>\n" + gitDiffFileToShow.String() + "\n</git-commits>"
 			}
 
-			fileinfo := fmt.Sprint("\n<file>\n<file-name>", relativePath, "</file-name>"+fileSz+commitStr, fileContent, "\n</file>")
+			fileinfo := fmt.Sprint("\n<file>\n<file-name>", relativePath, "</file-name>"+fileSz+commitStr, fileContent, "\n</file>\n")
 
 			allFileInfo.WriteString(fileinfo)
 			return nil
@@ -192,6 +187,25 @@ func LoadAllEvoProjects(KeepFileNames ...[]string) string {
 // 改进点：测试端到端数据流
 
 // 实施方案：模拟服务端响应，验证客户端从加载到显示内容的完整流程。
+
+type TextFragment struct {
+	Comment     string   `description:"string, The git commit comment associated with the text fragment"`
+	OldPosition int64    `description:"integer, The old position of the text fragment"`
+	NewPosition int64    `description:"integer, The new position of the text fragment"`
+	Lines       []string `description:"array, The lines in the text fragment. Each line starts with a space (context), '+' (addition context), or '-' (deletion context)"`
+}
+type GitCommitUsingUnifiedDiffFormat struct {
+	OldName string `description:"string, The old file name"`
+	NewName string `description:"string, The new file name"`
+
+	IsNew    bool `description:"boolean, Whether the file is new"`
+	IsDelete bool `description:"boolean, Whether the file is deleted"`
+	IsCopy   bool `description:"boolean, Whether the file is copied"`
+	IsRename bool `description:"boolean, Whether the file is renamed"`
+
+	TextFragments []*TextFragment
+}
+
 var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
 # 系统演化任务描述:
 
@@ -215,70 +229,85 @@ var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(templat
 实施中间步骤:
 1. **初步改进方案**：基于现有方案，提出一个准确、可靠的改进方案,以便实施evolution Goals。
 2. **基于行为准则的方案强化**：对改进方案进行进一步评估优化，以确保新的改进方案能够克服对本系统的行为准则的破坏。重点评估并优化的领域包括：目标明确、用户价值、结构质量、可维护性、性能与可靠性。
-	- **目标都明确**：明确围绕特定的目标来提升现有方案。高质量实施给定目标，最小化副作用。
+	- **目标明确**：明确围绕特定的目标来提升现有方案。高质量实施给定目标，最小化副作用。
 	- **用户价值**：强化业务场景覆盖度、用户满意度和长期价值。
 	- **结构质量**：应着重在认知复杂度、圈复杂度、模块耦合度、内聚度和代码简洁度方面进行优化。
 	- **可维护性**：应关注核心逻辑文档覆盖率的提升，确保代码可理解和可测试。
 	- **性能与可靠性**：优化代码的正确性、变更失败率、预估延迟和吞吐量。
 	针对评估中发现的问题进一步优化，对每个重要缺陷给出具体的优化方案。确保在当前能力圈的安全边际内进行调整。
 3. 尝试生成最终的优化方案。
+请注意。调用GitCommitUsingUnifiedDiffFormat生成的Git Unified Diff文件普遍存在行数量和真实的行变动不匹配得问题。为了解决这个问题。这里务必先写下完整的修改内容。等正式提交改进方案的时候，需要重新校验，并确保与实际变更一致。
 
 ## 提交最终改进方案
-最后通过 N次独立的toolcall调用: GitCommitUsingUnifiedDiffFormat 来提交对现有方案的改进（增、删、改、重命名等）。
+最后通过 N次独立的toolcall调用: GitCommitUsingUnifiedDiffFormat 来提交一个使用 Git Unified Diff 格式的代码变更。
 </Implementation Steps>
 
-{{if .SetContext}}
-<Commit Changes>
-请调用: SelectedContextLines 除原始的上下当中不必要的内容，进一步筛选出对于保存必要的上下文行信息。
-</Commit Changes>
-{{end}}
-`))).WithToolCallMutextRun().WithTools(tool.NewTool("GitCommitUsingUnifiedDiffFormat", "create/modify/remove solution file", func(commits *GitCommitUsingUnifiedDiffFormat) {
-	if len(commits.GitUnifiedDiffFormatFile) == 0 {
-		return
-	}
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("GitCommitUsingUnifiedDiffFormat", "提交一个使用 Git Unified Diff 格式的代码变更", func(file *GitCommitUsingUnifiedDiffFormat) {
 
-	reader := strings.NewReader(commits.GitUnifiedDiffFormatFile)
-	files, _, err := gitdiff.Parse(reader)
+	OldName, _ := utils.ToLocalEvoFile(file.OldName)
+	newName, realmNew := utils.ToLocalEvoFile(file.NewName)
+
+	if file.IsDelete {
+		os.Remove(OldName)
+		return
+	} else if file.IsNew {
+		os.MkdirAll(filepath.Dir(newName), 0o755)
+	} else if file.IsCopy {
+		os.MkdirAll(filepath.Dir(newName), 0o755)
+		os.Link(OldName, newName)
+		return
+	} else if file.IsRename {
+		os.MkdirAll(filepath.Dir(newName), 0o755)
+		os.Link(OldName, newName)
+		os.Remove(OldName)
+	}
+	gitDiffFile, err := KeyGitCommits.ConcatKey(realmNew.Name).HGet(file.NewName)
+	if err != nil {
+		gitDiffFile = gitdiff.File{OldName: file.OldName, NewName: file.NewName, IsNew: file.IsNew, IsDelete: file.IsDelete, IsCopy: file.IsCopy, IsRename: file.IsRename}
+	}
+	for _, fragment := range file.TextFragments {
+		// count the types of lines in the fragment content
+		frag := gitdiff.TextFragment{Comment: fragment.Comment, OldPosition: fragment.OldPosition, NewPosition: fragment.NewPosition}
+		for _, line := range fragment.Lines {
+			if len(line) == 0 {
+				continue
+			}
+			gline := gitdiff.Line{Line: line[1:]}
+			var addedLines, deletedLines int64 = 0, 0
+			switch line[0] {
+			case ' ':
+				gline.Op = gitdiff.OpContext
+				frag.OldLines++
+				frag.NewLines++
+				if addedLines == 0 && deletedLines == 0 {
+					frag.LeadingContext++
+				} else {
+					frag.TrailingContext++
+				}
+			case '+':
+				gline.Op = gitdiff.OpAdd
+				frag.NewLines++
+				addedLines++
+				frag.TrailingContext = 0
+			case '-':
+				gline.Op = gitdiff.OpDelete
+				frag.OldLines++
+				deletedLines++
+				frag.TrailingContext = 0
+			}
+			frag.Lines = append(frag.Lines, gline)
+		}
+	}
+	content, err := os.Open(OldName)
 	if err != nil {
 		return
 	}
-	//apply gitdiff
-	for _, file := range files {
-		OldName, _ := utils.ToLocalEvoFile(file.OldName)
-		newName, realmNew := utils.ToLocalEvoFile(file.NewName)
-
-		if file.IsDelete {
-			os.Remove(OldName)
-			continue
-		} else if file.IsNew {
-			os.MkdirAll(filepath.Dir(newName), 0o755)
-		} else if file.IsCopy {
-			os.MkdirAll(filepath.Dir(newName), 0o755)
-			os.Link(OldName, newName)
-			continue
-		} else if file.IsRename {
-			os.MkdirAll(filepath.Dir(newName), 0o755)
-			os.Link(OldName, newName)
-			os.Remove(OldName)
-		}
-		newCommitFile, err := KeyGitCommits.ConcatKey(realmNew.Name).HGet(file.NewName)
-		if err == nil {
-			continue
-		}
-		newCommitFile.TextFragments = append(newCommitFile.TextFragments, file.TextFragments...)
-
-		content, err := os.Open(OldName)
-		if err != nil {
-			continue
-		}
-		var output bytes.Buffer
-		if err = gitdiff.Apply(&output, content, file); err != nil {
-			log.Fatal(err)
-		}
-		if err := os.WriteFile(newName, output.Bytes(), 0o644); err != nil {
-			return
-		}
-
+	var output bytes.Buffer
+	if err = gitdiff.Apply(&output, content, &gitDiffFile); err != nil {
+		log.Fatal(err)
+	}
+	if err := os.WriteFile(newName, output.Bytes(), 0o644); err != nil {
+		return
 	}
 
 }))
@@ -287,24 +316,32 @@ func MakeAEvo() {
 
 	for i, TotalTasks := 0, 2000; i < TotalTasks; i++ {
 		time.Sleep(300 * time.Millisecond)
-		SolutionSummary := LoadAllEvoProjects()
 		ProductGoalUniLearning := utils.TextFromFile("/Users/yang/learn-by-choose-goserver/learninggame.md")
 
-		messege := AgentEvoLearningSolutionLearnByChoose.Messege(map[string]any{
-			"ProductGoal": string(ProductGoalUniLearning) + "\n\n",
-			"Solution":    SolutionSummary,
-		})
+		// SolutionSummary := LoadAllEvoProjects()
+		// messege := AgentEvoLearningSolutionLearnByChoose.Messege(map[string]any{
+		// 	"ProductGoal": string(ProductGoalUniLearning) + "\n\n",
+		// 	"Solution":    SolutionSummary,
+		// })
+		// param := map[string]any{"Context": messege, "Result": []string{}}
+		// agent.AgentSelectContextFiles.Call(context.Background(), param)
+		// ResultRelatedFileNames, _ := param["Result"].([]string)
 
-		param := map[string]any{"Context": messege, "Result": []string{}}
-		agent.AgentSelectContextFiles.Call(context.Background(), param)
-		ResultRelatedFileNames, _ := param["Result"].([]string)
+		ResultRelatedFileNames := []string{
+			"/learniversebackend/fsrs_example.go",
+			"/learniversebackend/fsrs_integrate.go",
+			"/learniversebackend/fsrs_interfaces.go",
+			"/Learniversebackend/fsrs_refine.go",
+			"/Learniversebackend/fsrs_stats.go",
+			"/learniversebackend/Learninggame.md",
+		}
 
 		SolutionSummaryTrimed := LoadAllEvoProjects(ResultRelatedFileNames)
 		errorGroup := errgroup.Group{}
 		errorGroup.Go(func() error {
 			//Gemini25Flashlight Gemini25ProAigpt Glm45AirLocal
-			return AgentEvoLearningSolutionLearnByChoose.WithModels(models.Oss20b). //WithMsgDeClipboard(). //CopyPromptOnly(). //Qwen3B32Thinking
-												Call(context.Background(), map[string]any{
+			return AgentEvoLearningSolutionLearnByChoose.WithModels(models.Qwen3B235Thinking2507).WithMsgDeClipboard(). //CopyPromptOnly(). //Qwen3B32Thinking
+																	Call(context.Background(), map[string]any{
 					"ProductGoal": string(ProductGoalUniLearning) + "\n\n",
 					"Solution":    SolutionSummaryTrimed,
 				})

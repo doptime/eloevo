@@ -21,8 +21,11 @@ func parseOneToolcall(toolcallString string) (toolCalls *FunctionCall) {
 	err := json.Unmarshal([]byte(toolcallString), &tool)
 	//try fix extra "}" at the end of toolcallString
 	if err != nil {
-		toolcallString = toolcallString[:len(toolcallString)-1]
-		err = json.Unmarshal([]byte(toolcallString), &tool)
+		err = json.Unmarshal([]byte(toolcallString+"}"), &tool)
+	}
+	if err != nil {
+		str := toolcallString[:len(toolcallString)-1]
+		err = json.Unmarshal([]byte(str), &tool)
 	}
 	//  try fix Name and Arguments merge issue
 	if err == nil && tool.Name != "" {
