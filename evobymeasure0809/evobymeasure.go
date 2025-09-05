@@ -226,7 +226,7 @@ func normalizeFileContent(s string) string {
 	return s
 }
 
-var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
+var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent().WithTemplate(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
 Note: 请函数调用需要遵守<tool_call>...</tool_call>的约定。每一个函数调用都必须包含完整的<tool_call>...</tool_call>标记。
 # 系统演化任务描述:
 
@@ -330,8 +330,8 @@ func MakeAEvo() {
 
 				ProductGoalUniLearning := utils.TextFromFile("/Users/yang/learn-by-choose-goserver/learninggame.md")
 				//Gemini25Flashlight Gemini25ProAigpt
-				err := AgentEvoLearningSolutionLearnByChoose.WithModels(models.Glm45AirLocal).WithMsgDeClipboard(). //CopyPromptOnly(). //Qwen3B32Thinking
-																	Call(context.Background(), map[string]any{
+				err := AgentEvoLearningSolutionLearnByChoose.WithModels(models.Glm45AirLocal). //CopyPromptOnly(). //Qwen3B32Thinking
+														Call(context.Background(), map[string]any{
 						"ProductGoal":         string(ProductGoalUniLearning) + "\n\n",
 						"Solution":            SolutionSummary,
 						"ModificationGroupID": utils.ID("", 5),

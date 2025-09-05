@@ -37,7 +37,7 @@ func toolClustering(param *ModuleName) {
 	keyProjectsClustered.HDel(param.PreviousPath)
 }
 
-var AgentClustering = agent.NewAgent(template.Must(template.New("AgentClustering").Parse(`
+var AgentClustering = agent.NewAgent().WithTemplate(template.Must(template.New("AgentClustering").Parse(`
 ## 这是现有的系统文件的目录结构：
 {{range .Directories}}
 {{.}}

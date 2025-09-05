@@ -1,17 +1,15 @@
 package evobymeasured
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
 
-	"github.com/bluekeyes/go-gitdiff/gitdiff"
 	"github.com/doptime/eloevo/agent"
 	"github.com/doptime/eloevo/config"
 	"github.com/doptime/eloevo/models"
@@ -19,11 +17,14 @@ import (
 	"github.com/doptime/eloevo/utils"
 	"github.com/doptime/redisdb"
 	"github.com/dustin/go-humanize"
+	"github.com/hexops/gotextdiff"
+	"github.com/hexops/gotextdiff/myers"
+	"github.com/hexops/gotextdiff/span"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
 
-var KeyGitCommits = redisdb.NewHashKey[string, gitdiff.File](redisdb.Opt.HttpVisit(), redisdb.Opt.Key("GitCommits"))
+var KeyGitCommits = redisdb.NewHashKey[string, []string](redisdb.Opt.HttpVisit(), redisdb.Opt.Key("GitCommits"))
 
 func LoadAllEvoProjects(KeepFileNames ...[]string) string {
 	var allFileInfo strings.Builder
@@ -45,25 +46,21 @@ func LoadAllEvoProjects(KeepFileNames ...[]string) string {
 			}
 
 			// Read the file content
-			content, err := os.ReadFile(path)
-			if err != nil {
-				log.Printf("Error reading file %q: %v\n", path, err)
-				return err
-			}
+			content := utils.TextFromFile(path)
 			if binaryFile := strings.Contains(string(content), "\x00") || len(content) == 0; binaryFile {
 				return nil
 			}
 			fileSz := "\n<file-size>" + humanize.Bytes(uint64(len(content))) + "</file-size>"
-			fileContent := "\n<file-content>\n" + utils.LineNumberedFileContent(string(content)) + "\n</file-content>"
+			fileContent := "\n<file-content>\n" + utils.LineNumberedFileContent(string(content), 1) + "\n</file-content>"
 
 			gitDiffFileToShow, _ := KeyGitCommits.ConcatKey(realm.Enable).HGet(relativePath)
-			if len(gitDiffFileToShow.TextFragments) > 5 {
-				gitDiffFileToShow.TextFragments = gitDiffFileToShow.TextFragments[len(gitDiffFileToShow.TextFragments)-5:]
-			}
-
 			commitStr := ""
-			if len(gitDiffFileToShow.TextFragments) > 0 {
-				commitStr = "\n<git-commits>\n" + gitDiffFileToShow.String() + "\n</git-commits>"
+			if len(gitDiffFileToShow) > 0 {
+				var gitdiffs strings.Builder
+				for i := 0; i < len(gitDiffFileToShow) && i < 5; i++ {
+					gitdiffs.WriteString(gitDiffFileToShow[i] + "\n")
+				}
+				commitStr = "\n<git-commits-unified-diff-file>\n" + gitdiffs.String() + "\n</git-commits-unified-diff-file>"
 			}
 
 			fileinfo := fmt.Sprint("\n<file>\n<file-name>", relativePath, "</file-name>"+fileSz+commitStr, fileContent, "\n</file>\n")
@@ -188,14 +185,8 @@ func LoadAllEvoProjects(KeepFileNames ...[]string) string {
 
 // 实施方案：模拟服务端响应，验证客户端从加载到显示内容的完整流程。
 
-type TextFragment struct {
-	Comment     string   `description:"The git commit message or comment associated with the hunk. This provides context for the changes."`
-	OldPosition int64    `description:"The starting line number in the original (old) file from which this fragment begins."`
-	NewPosition int64    `description:"The starting line number in the modified (new) file from which this fragment begins."`
-	Lines       []string `description:"A strings of mutiple lines, representing the lines in this fragment. Each line is prefixed with a character: ' ' for context (unchanged), '+' for a new line, and '-' for a deleted line."`
-}
-type GitCommitUsingUnifiedDiffFormat struct {
-	OldName string `description:"The name of the file before the change."`
+type FileChange struct {
+	OldName string `description:"required. The name of the file before the change."`
 	NewName string `description:"The name of the file after the change."`
 
 	IsNew    bool `description:"Indicates if the file is newly added in this commit."`
@@ -203,10 +194,18 @@ type GitCommitUsingUnifiedDiffFormat struct {
 	IsCopy   bool `description:"Indicates if the file was copied from another file in this commit."`
 	IsRename bool `description:"Indicates if the file was renamed in this commit."`
 
-	TextFragments []*TextFragment `description:"An array of hunks (text fragments), each detailing a specific change block (additions, deletions, or modifications) within the file."`
+	Comment string `description:"required. The git commit message or comment associated with the hunk. This provides context for the changes."`
+}
+type TextEditByFragments struct {
+	FileName             string         `description:"required. The name of the file the changed."`
+	Comment              string         `description:"required. The git commit message or comment associated with the hunk. This provides context for the changes."`
+	OldFragmentStartLine int64          `description:"The starting line number in the original file from which this fragment begins.(1-minimal)"`
+	OldFragmentEndLine   int64          `description:"The end line number in the original file from which this fragment begins.(1-minimal)"`
+	NewFragmentTextLines string         `description:"A strings of mutiple lines, representing the new lines in this fragment. The Old TextFragment will be replaced by this TextFragment" msgpack:"-"`
+	Params               map[string]any `description:"-" msgpack:"-"`
 }
 
-var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
+var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent().WithTemplate(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
 # 系统演化任务描述:
 
 ## 系统的目标:
@@ -227,7 +226,7 @@ var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(templat
 
 <Implementation Steps>
 实施中间步骤:
-1. **初步改进方案**：基于现有方案，提出一个准确、可靠的改进方案,以便实施evolution Goals。
+1. **初步改进方案**：基于现有方案，提出一个准确、可靠的改进方案,以具体的增量编辑代码/文本的方式实施evolution Goals。
 2. **基于行为准则的方案强化**：对改进方案进行进一步评估优化，以确保新的改进方案能够克服对本系统的行为准则的破坏。重点评估并优化的领域包括：目标明确、用户价值、结构质量、可维护性、性能与可靠性。
 	- **目标明确**：明确围绕特定的目标来提升现有方案。高质量实施给定目标，最小化副作用。
 	- **用户价值**：强化业务场景覆盖度、用户满意度和长期价值。
@@ -235,105 +234,83 @@ var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(templat
 	- **可维护性**：应关注核心逻辑文档覆盖率的提升，确保代码可理解和可测试。
 	- **性能与可靠性**：优化代码的正确性、变更失败率、预估延迟和吞吐量。
 	针对评估中发现的问题进一步优化，对每个重要缺陷给出具体的优化方案。确保在当前能力圈的安全边际内进行调整。
-3. 尝试使用UnifiedDiffFormat格式生成最终的优化方案。
+3. 尝试使用toml 格式给出增量编辑的优化方案。对每个优化方案给与序号作为编号。
+4. 对每一个代码块，讨论确定需要替换的旧文本的在原始文件的行范围，也就是OldFragmentStartLine（delete included）, OldFragmentEndLine（delete included）。确保NewFragmentTextLines对这个代码短的替换符合意图，没有异常。
 
 ## 提交最终改进方案
-最后通过 N次独立的toolcall调用: GitCommitUsingUnifiedDiffFormat 来提交一个使用 Git Unified Diff 格式的代码变更。
+最后通过 N次独立的toolcall: TextEditByFragments,以分段、增量修改的方式，每个调用仅完成一个文件操作或者是文件中的单个代码块的内容变更。
 </Implementation Steps>
 
-`))).WithToolCallMutextRun().WithTools(tool.NewTool("GitCommitUsingUnifiedDiffFormat", "提交一个使用 Git Unified Diff 格式的代码变更", func(file *GitCommitUsingUnifiedDiffFormat) {
-
-	OldName, _ := utils.ToLocalEvoFile(file.OldName)
-	newName, realmNew := utils.ToLocalEvoFile(file.NewName)
-
-	if file.IsDelete {
-		os.Remove(OldName)
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("FileChange", "File change, including rename,copy, move, rename, delete", func(edits *FileChange) {
+	edits.NewName = lo.CoalesceOrEmpty(edits.NewName, edits.OldName)
+	edits.NewName = lo.CoalesceOrEmpty(edits.NewName, edits.NewName)
+	OldName, _ := utils.ToLocalEvoFile(edits.NewName)
+	newName, _ := utils.ToLocalEvoFile(edits.NewName)
+	if edits.IsDelete {
+		os.Remove(edits.OldName)
 		return
-	} else if file.IsNew {
+	} else if edits.IsNew {
 		os.MkdirAll(filepath.Dir(newName), 0o755)
-	} else if file.IsCopy {
-		os.MkdirAll(filepath.Dir(newName), 0o755)
-		os.Link(OldName, newName)
-		return
-	} else if file.IsRename {
+	} else if edits.IsCopy {
 		os.MkdirAll(filepath.Dir(newName), 0o755)
 		os.Link(OldName, newName)
+		return
+	} else if edits.IsRename {
+		os.MkdirAll(filepath.Dir(newName), 0o755)
+		os.Link(OldName, newName)
 		os.Remove(OldName)
 	}
-	content, err := os.Open(OldName)
-	if err != nil {
+
+}), tool.NewTool("TextEditByFragments", "提交代码文本变更，针对1)文件名称变动 2)内容变动", func(edits *TextEditByFragments) {
+	edits.FileName = lo.CoalesceOrEmpty(edits.FileName, edits.FileName)
+	FileName, Realm := utils.ToLocalEvoFile(edits.FileName)
+
+	if edits.FileName == "" {
+		fmt.Println("OldName is empty, bad case")
 		return
 	}
-	defer content.Close()
-	var contentBytes []byte = make([]byte, 10*1024*1024)
-	n, e := content.Read(contentBytes)
-	if e != nil || n == 0 {
-		fmt.Println("read file error: none such file or empty")
-	}
-	linesInFile := strings.Split(string(contentBytes), "\n")
-	gitDiffFile, err := KeyGitCommits.ConcatKey(realmNew.Name).HGet(file.NewName)
-	if err != nil {
-		gitDiffFile = gitdiff.File{OldName: file.OldName, NewName: file.NewName, IsNew: file.IsNew, IsDelete: file.IsDelete, IsCopy: file.IsCopy, IsRename: file.IsRename}
-	}
-	for _, fragment := range file.TextFragments {
-		// count the types of lines in the fragment content
-		frag := gitdiff.TextFragment{Comment: fragment.Comment, OldPosition: fragment.OldPosition, NewPosition: fragment.NewPosition}
-		var addedLines, deletedLines int64 = 0, 0
-		splitLines := strings.Split(strings.Join(fragment.Lines, "\n"), "\n")
-		for _, line := range splitLines {
-			if len(line) == 0 {
-				continue
-			}
-			gline := gitdiff.Line{Line: line[1:]}
-			switch line[0] {
-			case ' ':
-				gline.Op = gitdiff.OpContext
-				frag.OldLines++
-				frag.NewLines++
-				if addedLines == 0 && deletedLines == 0 {
-					frag.LeadingContext++
-				} else {
-					frag.TrailingContext++
-				}
-				frag.Lines = append(frag.Lines, gline)
-			case '+':
-				gline.Op = gitdiff.OpAdd
-				frag.NewLines++
-				frag.LinesAdded++
-				addedLines++
-				frag.TrailingContext = 0
-				frag.Lines = append(frag.Lines, gline)
-			case '-':
-				gline.Op = gitdiff.OpDelete
-				frag.OldLines++
-				frag.LinesDeleted++
-				deletedLines++
-				frag.TrailingContext = 0
-				frag.Lines = append(frag.Lines, gline)
-			}
-		}
-		//fix start line number
-		for i := 0; len(linesInFile) > 0 && len(frag.Lines) > 0 && i < 5; i++ {
-			ib, ie := int(frag.OldPosition)+i, int(frag.OldPosition)-i
-			if ib >= 0 && ib < len(linesInFile) && linesInFile[ib] == frag.Lines[0].Line {
-				frag.OldPosition, frag.NewPosition = int64(ib)+1, int64(ib)+1
-				break
-			}
-			if ie >= 0 && ie < len(linesInFile) && linesInFile[ie] == frag.Lines[0].Line {
-				frag.OldPosition, frag.NewPosition = int64(ie)+1, int64(ie)+1
-				break
-			}
-		}
+	var RawFileStr string
+	linesInMap := map[int]string{}
+	_, NonFirstTrail := edits.Params["RawFile_"+FileName]
+	if NonFirstTrail {
+		RawFileStr = edits.Params["RawFile_"+FileName].(string)
+		linesInMap = edits.Params["LineMap_"+FileName].(map[int]string)
+	} else {
+		RawFileStr = utils.TextFromFile(FileName)
+		edits.Params["RawFile_"+FileName] = RawFileStr
 
-		if len(frag.Lines) > 0 {
-			gitDiffFile.TextFragments = append(gitDiffFile.TextFragments, &frag)
+		linesInFile := strings.Split(RawFileStr, "\n")
+		for i, line := range linesInFile {
+			linesInMap[int(i+1)] = line
 		}
+		edits.Params["LineMap_"+FileName] = linesInMap
 	}
-	var output bytes.Buffer
-	if err = gitdiff.Apply(&output, content, &gitDiffFile); err != nil {
-		log.Fatal(err)
+
+	for i := edits.OldFragmentStartLine; i <= edits.OldFragmentEndLine; i++ {
+		delete(linesInMap, int(i))
 	}
-	if err := os.WriteFile(newName, output.Bytes(), 0o644); err != nil {
+	linesInMap[int(edits.OldFragmentStartLine)] = utils.RemoveLineNumber(edits.NewFragmentTextLines)
+
+	var contentStrBuilder strings.Builder
+	keys := lo.Keys(linesInMap)
+	slices.Sort(keys)
+	for _, key := range keys {
+		contentStrBuilder.WriteString(linesInMap[key] + "\n")
+	}
+
+	_edits := myers.ComputeEdits(span.URIFromPath(edits.FileName), RawFileStr, contentStrBuilder.String())
+	diff := gotextdiff.ToUnified(edits.FileName, edits.FileName, RawFileStr, _edits)
+
+	commitFragment, _ := KeyGitCommits.ConcatKey(Realm.Name).HGet(edits.FileName)
+	if NonFirstTrail {
+		commitFragment[0] = time.Now().Format("2006-01-02 15:04:05") + " " + edits.Comment + "\n" + fmt.Sprintln(diff)
+	} else {
+		commitFragment = append([]string{time.Now().Format("2006-01-02 15:04:05") + " " + edits.Comment + "\n" + fmt.Sprintln(diff)}, commitFragment...)
+	}
+	//key 20 item  max
+	KeyGitCommits.ConcatKey(Realm.Name).HSet(edits.FileName, commitFragment[:min(20, len(commitFragment))])
+
+	if err := os.WriteFile(FileName, []byte(contentStrBuilder.String()), 0o644); err != nil {
 		return
 	}
 
@@ -367,10 +344,12 @@ func MakeAEvo() {
 		errorGroup := errgroup.Group{}
 		errorGroup.Go(func() error {
 			//Gemini25Flashlight Gemini25ProAigpt Glm45AirLocal
-			return AgentEvoLearningSolutionLearnByChoose.WithModels(models.Qwen3B235Thinking2507).WithMsgDeClipboard(). //CopyPromptOnly(). //Qwen3B32Thinking
-																	Call(context.Background(), map[string]any{
+			return AgentEvoLearningSolutionLearnByChoose.WithModels(models.Qwen3B235Thinking2507). //CopyPromptOnly(). //Qwen3B32Thinking
+														Call(context.Background(), map[string]any{
 					"ProductGoal": string(ProductGoalUniLearning) + "\n\n",
 					"Solution":    SolutionSummaryTrimed,
+					//agent.ParamMsgClipboard: true,
+					agent.UseToolcallsOnly: []tool.ToolInterface{},
 				})
 		})
 		err := errorGroup.Wait()

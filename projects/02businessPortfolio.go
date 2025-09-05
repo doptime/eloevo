@@ -104,7 +104,7 @@ func PruneOnePlan() {
 	}
 }
 
-var AgentGenNicheMarketOpportunity = agent.NewAgent(template.Must(template.New("question").Parse(`
+var AgentGenNicheMarketOpportunity = agent.NewAgent().WithTemplate(template.Must(template.New("question").Parse(`
 请作为一位创新思维专家, 全面探索AGI时代，一切都即将开始无人化运营后，将要出现的应用领域及其盈利机会.
 
 生成的商业函数将采用这个效用函数:	UtilityFunction = exp(WeightMarketSizeln(MarketSize) + 0.18ln(MarketGrowthRate) + 0.22ln(ExpectedReturn) + 0.10ln(TechnicalFeasibility) + 0.15ln(InnovationPotential) + 0.080ln(ResourceAllocation) - 0.12ln(ProjectRisk + 1) - 0.080ln(CompetitionIntensity) - 0.10ln(ImplementationDifficulty) + 0.060ln(TimeToMarket) + 0.040ln(TeamExperience) + 0.050ln(PolicySupport))

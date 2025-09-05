@@ -114,6 +114,7 @@ func ToolcallParserDefault(resp openai.ChatCompletionResponse) (toolCalls []*Fun
 			if len(toolcallString) < 10 {
 				continue
 			}
+			toolcallString = strings.TrimSpace(toolcallString)
 			toolcall := ParseToolCallFromXlm(toolcallString)
 			if toolcall == nil {
 				if i := strings.Index(toolcallString, "{"); i > 0 {

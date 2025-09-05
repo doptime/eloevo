@@ -36,7 +36,7 @@ var keyBusinessUtility = redisdb.NewHashKey[string, *BusinessUtility](redisdb.Op
 
 // 为什么Qwen能自我改进推理，Llama却不行 https://mp.weixin.qq.com/s/OvS61OrDp6rB-R5ELg48Aw
 // 并且每次就一个确切的改进方向进行深度分析，反代的深度分析第一性原理之上的需求，深度创新以做出实质的改进。要痛恨泛泛而谈的内容，重复空洞的内容，因为现在是在开发世界级的工具。
-var AgentBusinessUtility = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
+var AgentBusinessUtility = agent.NewAgent().WithTemplate(template.Must(template.New("utilifyFunction").Parse(`
 现在我们要设计AGI时代商业项目的评估函数。目标是在一个以无人化的方式运营几乎一切的业务的世界中，确定值得运营的业务的优先序。
 
 你需要讨论并且提出这个评估函数的数据结构，和评估函数的具体表达式。

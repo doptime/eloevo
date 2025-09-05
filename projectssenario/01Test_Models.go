@@ -47,7 +47,7 @@ func init() {
 	ModelMap, _ = keyAircraftModels.HGetAll()
 }
 
-var AgentGenSolutionModel = agent.NewAgent(template.Must(template.New("GenTestSolution").Parse(`
+var AgentGenSolutionModel = agent.NewAgent().WithTemplate(template.Must(template.New("GenTestSolution").Parse(`
 总体商业目标：实现AGI时代最受欢迎的无人机载具平台。作为各种机器人投递平台，物流投送平台。
 
 # 本系统(TestBuilder)实现总体目标的工作原理：

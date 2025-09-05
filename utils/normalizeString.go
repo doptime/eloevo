@@ -39,11 +39,12 @@ func NormalizeFileContent(s string) string {
 	s = strings.Replace(s, "use client;\n", "'use client';", 1)
 	return s
 }
-func LineNumberedFileContent(s string) string {
+func LineNumberedFileContent(s string, minimalLineNumber ...int) string {
 	s = NormalizeFileContent(s)
 	lines := strings.Split(s, "\n")
+	sequenceBase := lo.Ternary(len(minimalLineNumber) > 0, minimalLineNumber[0], 0)
 	for i := range lines {
-		lines[i] = fmt.Sprintf("%d: %s", i+1, lines[i])
+		lines[i] = fmt.Sprintf("%d: %s", i+sequenceBase, lines[i])
 	}
 	return strings.Join(lines, "\n")
 }

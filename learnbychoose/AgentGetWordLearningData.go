@@ -19,7 +19,7 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 )
 
-var AgentGetWordLearningData = agent.NewAgent(template.Must(template.New("GetWordLearningData").Parse(`
+var AgentGetWordLearningData = agent.NewAgent().WithTemplate(template.Must(template.New("GetWordLearningData").Parse(`
 给定一个词语 或 问题  或  一个知识点
 {{.Word}}
 

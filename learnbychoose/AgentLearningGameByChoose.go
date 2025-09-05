@@ -48,7 +48,7 @@ func SaveContentToPath1(node *FileRefine) {
 	}
 }
 
-var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
+var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent().WithTemplate(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
 ## 本系统采用迭代方式完成开发工作,以实现或改进方案的实现。
 - 简洁可靠: 优先删除无效的引用、消除错误。确保实现方案和代码简洁可靠。
 - 以终为始: 努力实现系统的目标意图，并使得项目处于可编译、可运行的状态。

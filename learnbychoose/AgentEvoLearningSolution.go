@@ -55,7 +55,7 @@ func nodeRefine(newItem *SolutionFileNode) {
 
 }
 
-var AgentEvoLearningSolution = agent.NewAgent(template.Must(template.New("AgentEvoLearningCallback").Parse(`
+var AgentEvoLearningSolution = agent.NewAgent().WithTemplate(template.Must(template.New("AgentEvoLearningCallback").Parse(`
 ## 本系统采用迭代方式完成开发工作,以实现或改进方案的实现。
 请确保采用简单且Just-Enough的方式来实现或改进方案的实现。
 

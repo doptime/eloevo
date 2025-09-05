@@ -12,7 +12,7 @@ type SelectLLMContextFiles struct {
 	Result           []string `description:"-"`
 }
 
-var AgentSelectContextFiles = NewAgent(template.Must(template.New("SelectLLMContextFiles").Parse(`
+var AgentSelectContextFiles = NewAgent().WithTemplate(template.Must(template.New("SelectLLMContextFiles").Parse(`
 {{.Context}}
 
 ## 任务说明

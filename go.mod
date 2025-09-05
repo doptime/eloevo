@@ -4,13 +4,13 @@ go 1.23.0
 
 require (
 	github.com/BurntSushi/toml v1.5.0
-	github.com/bluekeyes/go-gitdiff v0.8.1
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/doptime/config v0.0.0-20250322030901-0115e7134058
 	github.com/doptime/doptime v0.1.1-0.20250716014959-913bed2755d6
 	github.com/doptime/redisdb v0.0.0-20250716014910-a604cf0d41fb
 	github.com/dustin/go-humanize v1.0.1
 	github.com/faiface/beep v1.1.0
+	github.com/hexops/gotextdiff v1.0.3
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mroth/weightedrand v1.0.0
 	github.com/open-spaced-repetition/go-fsrs v1.2.1

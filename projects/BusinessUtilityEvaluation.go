@@ -36,7 +36,7 @@ var keyBusinessUtilityEvaluation = redisdb.NewHashKey[string, *BusinessUtilityEv
 
 // 为什么Qwen能自我改进推理，Llama却不行 https://mp.weixin.qq.com/s/OvS61OrDp6rB-R5ELg48Aw
 // 并且每次就一个确切的改进方向进行深度分析，反代的深度分析第一性原理之上的需求，深度创新以做出实质的改进。要痛恨泛泛而谈的内容，重复空洞的内容，因为现在是在开发世界级的工具。
-var AgentBusinessUtilityEvaluation = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
+var AgentBusinessUtilityEvaluation = agent.NewAgent().WithTemplate(template.Must(template.New("utilifyFunction").Parse(`
 现在我们要设计AGI时代商业项目的评估函数。目标是在一个以无人化的方式运营几乎一切的业务的世界中，确定值得运营的业务的优先序。
 
 这是现在确定的商业效用函数"BusinessUtility": "exp(0.35*ln(MarketSize) + 0.30*ln(MarketGrowthRate) + 0.10*ln(ExpectedReturn) + 0.25*ln(TechnicalFeasibility) + 0.20*ln(InnovationPotential) + 0.12*ln(ResourceAllocation) + 0.19*ln(AIAdoptionSynergy) + 0.09*ln(AIAdaptability) + 0.15*ln(DataQuality) + 0.30*ln(EthicalAlignment) + 0.20*ln(SustainabilityImpact) -0.50*ln(ProjectRisk+1) -0.40*ln(CompetitionIntensity) -0.25*ln(ImplementationDifficulty) -0.15*ln(TimeToMarket) +0.25*ln(TeamExperience) +0.23*ln(PolicySupport))"

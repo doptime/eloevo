@@ -52,7 +52,7 @@ var keyRationalCognitionFramework = redisdb.NewHashKey[string, *RationalCognitiv
 
 // 为什么Qwen能自我改进推理，Llama却不行 https://mp.weixin.qq.com/s/OvS61OrDp6rB-R5ELg48Aw
 // 并且每次就一个确切的改进方向进行深度分析，反代的深度分析第一性原理之上的需求，深度创新以做出实质的改进。要痛恨泛泛而谈的内容，重复空洞的内容，因为现在是在开发世界级的工具。
-var AgentUtilityFrameGen = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
+var AgentUtilityFrameGen = agent.NewAgent().WithTemplate(template.Must(template.New("utilifyFunction").Parse(`
 现在我们要演进有限理性认知的一般范式。目标是生成一个数据模板，或者说是元认知模板。以便通过数百遍地迭代有限理性认知，从而最终完成对目标任务的认知。
 
 这里我们有一些期望：

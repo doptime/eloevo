@@ -47,7 +47,7 @@ func (u *AntiAging) ScoreAccessor(delta ...int) int {
 //	}))
 var keyAntiAging = redisdb.NewHashKey[string, *AntiAging](redisdb.Opt.Rds("projects"))
 
-var AgentUtilityFrameGen = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
+var AgentUtilityFrameGen = agent.NewAgent().WithTemplate(template.Must(template.New("utilifyFunction").Parse(`
 现在我们演进面向40岁男性的抗衰老方案，目标是最大化延长寿命，对衰老相关的器官进行有效抗衰老。
 所有的解决方案必须来自市场中的可用材料。比如破壁机，益生菌，麦片，绿茶，发酵箱等。
 
