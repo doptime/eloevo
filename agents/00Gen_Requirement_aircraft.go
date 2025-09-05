@@ -52,7 +52,7 @@ var Requirement = `不同的创业项目和行业，其关键成功因素可能�
 风险管理（2%）
 
 有效的风险管理能够降低项目失败的可能性。`
-var AgentGenRequirement = agent.NewAgent().WithTemplate(template.Must(template.New("question").Parse(`
+var AgentGenRequirement = agent.NewAgent(template.Must(template.New("question").Parse(`
 AGI时代使用物流无人机/作为机器人载具的无人机会有丰富的需求场景。这个场景需求将被用来分析以指导无人机模块的设计和开发工作。
 请以0.5的几率作为一位商业应用创新思维专家,生成无人机的应用场景以便应用场景覆盖各种环境和任务，以增强这个无人机项目商业前景。
 请以0.5的几率作为一位风险评估专家,生成无人机遇到危险或紧急情况的场景以便增强无人机的模块化设计来应对这些复杂环境和任务的挑战，以增强这个无人机项目商业前景。

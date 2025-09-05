@@ -45,7 +45,7 @@ var keyBusinessClustering = redisdb.NewHashKey[string, *BusinessClusterItem](red
 
 // 为什么Qwen能自我改进推理，Llama却不行 https://mp.weixin.qq.com/s/OvS61OrDp6rB-R5ELg48Aw
 // 并且每次就一个确切的改进方向进行深度分析，反代的深度分析第一性原理之上的需求，深度创新以做出实质的改进。要痛恨泛泛而谈的内容，重复空洞的内容，因为现在是在开发世界级的工具。
-var AgentBusinessClustering = agent.NewAgent().WithTemplate(template.Must(template.New("utilifyFunction").Parse(`
+var AgentBusinessClustering = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
 现在我们要对世界上的商业活动进行分类 (创建商业活动的类目)（注意，不是创建具体的商业项目）。
 
 要关注类目的分布的覆盖性,能够覆盖世界上绝大多数的商业活动，并且按照重要性排序。

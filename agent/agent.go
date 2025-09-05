@@ -43,7 +43,7 @@ type Agent struct {
 	SharedMemory map[string]any
 	Models       []*models.Model
 
-	Prompt             *template.Template
+	PromptTemplate     *template.Template
 	Tools              []openai.Tool
 	ToolInSystemPrompt bool
 	ToolInUserPrompt   bool
@@ -56,11 +56,12 @@ type Agent struct {
 	ToolCallRunningMutext interface{}
 }
 
-func NewAgent(tools ...tool.ToolInterface) (a *Agent) {
+func NewAgent(_template *template.Template, tools ...tool.ToolInterface) (a *Agent) {
 	a = &Agent{
 		Models:         []*models.Model{models.ModelDefault},
 		toolsCallbacks: map[string]func(Param interface{}, CallMemory map[string]any) error{},
 		SharedMemory:   map[string]any{},
+		PromptTemplate: _template,
 	}
 	a.WithTools(tools...)
 	a.WithToolcallParser(nil)
@@ -168,7 +169,7 @@ func (a *Agent) Messege(params map[string]any) string {
 	var promptBuffer bytes.Buffer
 	if _UseTemplate, ok := params[UseTemplate].(*template.Template); ok && _UseTemplate != nil {
 		_UseTemplate.Execute(&promptBuffer, params)
-	} else if err := a.Prompt.Execute(&promptBuffer, params); err != nil {
+	} else if err := a.PromptTemplate.Execute(&promptBuffer, params); err != nil {
 		fmt.Printf("Error rendering prompt: %v\n", err)
 		return ""
 	}
@@ -311,8 +312,8 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 
 	return a.ExeResponse(params, resp)
 }
-func Call(memories ...map[string]any) (err error) {
-	var agent *Agent = NewAgent()
+func Call(_template *template.Template, memories map[string]any) (err error) {
+	var agent *Agent = NewAgent(_template)
 	ctx := context.Background()
-	return agent.Call(ctx, memories...)
+	return agent.Call(ctx, memories)
 }

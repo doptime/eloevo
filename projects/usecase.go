@@ -38,7 +38,7 @@ var keyUseCase = redisdb.NewHashKey[string, *UseCase](redisdb.Opt.Rds("usecase")
 
 // 为什么Qwen能自我改进推理，Llama却不行 https://mp.weixin.qq.com/s/OvS61OrDp6rB-R5ELg48Aw
 // 并且每次就一个确切的改进方向进行深度分析，反代的深度分析第一性原理之上的需求，深度创新以做出实质的改进。要痛恨泛泛而谈的内容，重复空洞的内容，因为现在是在开发世界级的工具。
-var AgentUseCaseGen = agent.NewAgent().WithTemplate(template.Must(template.New("utilifyFunction").Parse(`
+var AgentUseCaseGen = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
 现在我们要从软件工程的角度，完成对一个商业项目的需求建模。要求生成完备的覆盖全部需求场景的用例集合 Use Cases。
 场景必须覆盖以下几个方面，这些方面的权重重要性数值已经给出。用例的描述必须符合这些方面的权重重要性数值。
 {

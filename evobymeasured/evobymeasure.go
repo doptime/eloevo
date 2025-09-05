@@ -205,7 +205,7 @@ type TextEditByFragments struct {
 	Params               map[string]any `description:"-" msgpack:"-"`
 }
 
-var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent().WithTemplate(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
+var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
 # 系统演化任务描述:
 
 ## 系统的目标:

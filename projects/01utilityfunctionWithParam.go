@@ -90,7 +90,7 @@ var expiredSchemaKey = redisdb.NewHashKey[string, *EvaluationSchema](redisdb.Opt
 var evaluationSchemaMutex sync.Mutex = sync.Mutex{}
 
 // evaluationSchemaAgent 是负责生成和改进 EvaluationSchema 的 Agent。
-var evaluationSchemaAgent = agent.NewAgent().WithTemplate(template.Must(template.New("evaluationSchemaPrompt").Parse(`
+var evaluationSchemaAgent = agent.NewAgent(template.Must(template.New("evaluationSchemaPrompt").Parse(`
 这是一个AGI 给出的时代商业项目的评估函数：
 UtilityFunction = exp(w1*ln(MarketSize) + WeightMarketGrowthRate*ln(MarketGrowthRate) + WeightExpectedReturn*ln(ExpectedReturn) + WeightTechnicalFeasibility*ln(TechnicalFeasibility) + WeightInnovationPotential*ln(InnovationPotential) + WeightResourceAllocation*ln(ResourceAllocation) - WeightProjectRisk*ln(ProjectRisk + 1) - WeightCompetitionIntensity*ln(CompetitionIntensity) - WeightImplementationDifficulty*ln(ImplementationDifficulty) + WeightTimeToMarket*ln(TimeToMarket) + WeightTeamExperience*ln(TeamExperience) + WeightPolicySupport*ln(PolicySupport))
 

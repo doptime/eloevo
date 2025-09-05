@@ -21,7 +21,7 @@ type SimplifyLLMPrompt struct {
 	Result            *string              `description:"-"`
 }
 
-var AgentSelectContextLines = NewAgent().WithTemplate(template.Must(template.New("SimplifyLLMPrompt").Parse(`
+var AgentSelectContextLines = NewAgent(template.Must(template.New("SimplifyLLMPrompt").Parse(`
 {{.LinedContext}}
 
 ## 任务说明
