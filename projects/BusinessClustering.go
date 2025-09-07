@@ -1,7 +1,6 @@
 package projects
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -196,7 +195,7 @@ func BusinessClusteringExploration() {
 		param := map[string]any{"ItemList": listSorted, "TotoalNodes": len(best)}
 		go func(param map[string]any) {
 			defer func() { <-MaxThreadsSemaphore }()
-			err := AgentBusinessClustering.WithModels(models.Qwq32B).Call(context.Background(), param)
+			err := AgentBusinessClustering.WithModels(models.Qwq32B).Call(param)
 			if err != nil {
 				fmt.Printf("Agent call failed: %v\n", err)
 			}

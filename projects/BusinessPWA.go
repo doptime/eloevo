@@ -1,7 +1,6 @@
 package projects
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -133,7 +132,7 @@ func BusinessPlansPWAExploration() {
 			mutable.Shuffle(BusinessListPWA)
 			param := map[string]any{"RootList": RootList}
 			//models.Qwq32B, models.Gemma3, models.DeepSeekV3
-			err := AgentBusinessPlansPWAEd.WithModels(models.Qwq32B).Call(context.Background(), param)
+			err := AgentBusinessPlansPWAEd.WithModels(models.Qwq32B).Call(param)
 			if err != nil {
 				fmt.Printf("Agent call failed: %v\n", err)
 			}

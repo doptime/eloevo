@@ -114,7 +114,7 @@ func EvoLearningSolution() {
 			MaxThreadsSemaphore <- struct{}{} // Acquire a spot in the semaphore
 			go func(backlogs []*scrum.Backlog, whatToDo, SolutionSummary string, AllItems map[string]*SolutionFileNode) {
 				defer func() { <-MaxThreadsSemaphore }()
-				err := AgentEvoLearningSolution.WithModels(models.Qwen3B32Thinking).Call(context.Background(), map[string]any{
+				err := AgentEvoLearningSolution.WithModels(models.Qwen3B32Thinking).Call( map[string]any{
 					"WhatTodoInFollowingIter": whatToDo,
 					"Backlogs":                backlogs,
 					"ProductGoal":             string(scrum.ProductGoalUniLearning) + "\n\n这是当前规划的游戏场景:\n" + PlanForTopic + "\n\n" + FileItems,

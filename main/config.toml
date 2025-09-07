@@ -69,7 +69,7 @@ SUToken = "HboVsNf0bMa1fYq9HXr02SaRD7yz3gyj"
 [[EvoRealms]]
 Enable = false
 Name = "RedisDB"
-RootPath = "/Users/yang/learniverse"
+RootPath = "/Users/yang/doptime/redisdb"
 GitIgnore = ".*,*.mod,*.sum,*.doc,*.git,*.idea,*.vscode,*.evolab"
 
 [[EvoRealms]]

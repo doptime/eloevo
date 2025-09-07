@@ -1,7 +1,6 @@
 package evobymeasured
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -36,7 +35,7 @@ func LoadAllEvoProjects(KeepFileNames ...[]string) string {
 		}
 	}
 
-	for _, realm := range lo.Filter(config.EvoRealms, func(realm *config.EvoRealm, _ int) bool { return realm.Enable }) {
+	for _, realm := range lo.Filter(lo.Values(config.EvoRealms), func(realm *config.EvoRealm, _ int) bool { return realm.Enable }) {
 		realm.WalkDir(func(path, relativePath string, info os.FileInfo) (e error) {
 			fmt.Printf("Processing file: %s\n", path)
 			if len(KeepFileNames) > 0 {
@@ -322,15 +321,6 @@ func MakeAEvo() {
 		time.Sleep(300 * time.Millisecond)
 		ProductGoalUniLearning := utils.TextFromFile("/Users/yang/learn-by-choose-goserver/learninggame.md")
 
-		// SolutionSummary := LoadAllEvoProjects()
-		// messege := AgentEvoLearningSolutionLearnByChoose.Messege(map[string]any{
-		// 	"ProductGoal": string(ProductGoalUniLearning) + "\n\n",
-		// 	"Solution":    SolutionSummary,
-		// })
-		// param := map[string]any{"Context": messege, "Result": []string{}}
-		// agent.AgentSelectContextFiles.Call(context.Background(), param)
-		// ResultRelatedFileNames, _ := param["Result"].([]string)
-
 		ResultRelatedFileNames := []string{
 			"/learniversebackend/fsrs_example.go",
 			"/learniversebackend/fsrs_integrate.go",
@@ -345,11 +335,9 @@ func MakeAEvo() {
 		errorGroup.Go(func() error {
 			//Gemini25Flashlight Gemini25ProAigpt Glm45AirLocal
 			return AgentEvoLearningSolutionLearnByChoose.WithModels(models.Qwen3B235Thinking2507). //CopyPromptOnly(). //Qwen3B32Thinking
-														Call(context.Background(), map[string]any{
+														Call(map[string]any{
 					"ProductGoal": string(ProductGoalUniLearning) + "\n\n",
 					"Solution":    SolutionSummaryTrimed,
-					//agent.ParamMsgClipboard: true,
-					agent.UseToolcallsOnly: []tool.ToolInterface{},
 				})
 		})
 		err := errorGroup.Wait()

@@ -1,7 +1,6 @@
 package projects
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -189,7 +188,7 @@ func RefineEvaluationSchemas() {
 				for i, v := range items {
 					ret.WriteString(fmt.Sprintf("第%v个评估方案：\n%v\n", i, v.String()))
 				}
-				err := evaluationSchemaAgent.WithModels(models.FuseO1).Call(context.Background(), map[string]any{
+				err := evaluationSchemaAgent.WithModels(models.FuseO1).Call(map[string]any{
 					"previousSchemaProposals": ret.String(), // 使用重命名后的变量名
 					"NewId":                   redisdb.NanoId(8),
 				})

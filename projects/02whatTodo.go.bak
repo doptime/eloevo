@@ -137,7 +137,7 @@ func GenBusinessPlanParallel() {
 			defer wg.Done()
 			for j := 0; j < numCallsPerThread; j++ {
 
-				AgentGenNicheMarketOpportunity.WithModel(models.FuseO1).Call(context.Background(), map[string]any{
+				AgentGenNicheMarketOpportunity.WithModel(models.FuseO1).Call( map[string]any{
 					"BusinessPlans": utils.GetRandomNFromMap(BusinessPlanMap, 10),
 				})
 			}

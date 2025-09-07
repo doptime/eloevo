@@ -1,7 +1,6 @@
 package projects
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"text/template"
@@ -117,7 +116,7 @@ func PersonalAdminExploration() {
 				fmt.Println("solution top ", i+1, v.GetId(), "Elo", v.ScoreAccessor(), v.Question)
 			}
 			//models.Qwq32B, models.Gemma3, models.DeepSeekV3
-			err := AgentPersonalAdmin.WithModels(models.Qwq32B).Call(context.Background(),
+			err := AgentPersonalAdmin.WithModels(models.Qwq32B).Call(
 				map[string]any{"ItemList": listSorted, "TotoalNodes": len(best)},
 			)
 			if err != nil {

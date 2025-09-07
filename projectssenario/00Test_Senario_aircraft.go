@@ -1,7 +1,6 @@
 package projectssenario
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"text/template"
@@ -127,7 +126,7 @@ func GeTestSenarioParallel() {
 					"TestScenarios": testGroup,
 				}
 				//.WithModel(models.EloModels.SelectOne("roundrobin"))
-				err := AgentGenTestSenarioModule.WithModels(models.FuseO1).Call(context.Background(), inputsParams)
+				err := AgentGenTestSenarioModule.WithModels(models.FuseO1).Call(inputsParams)
 				if err != nil {
 					fmt.Printf("Agent call failed: %v\n", err)
 					continue

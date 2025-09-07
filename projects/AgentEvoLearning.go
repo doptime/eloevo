@@ -1,7 +1,6 @@
 package projects
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -186,7 +185,7 @@ AgentName: EndGoalDrivenPlanner
 		solution = SolutionGraphNodeList(nodes).Solution().PathnameSorted().FullView()
 	}
 
-	err := AgentEvoLearningCallback.Call(context.Background(), map[string]interface{}{
+	err := AgentEvoLearningCallback.Call(map[string]interface{}{
 		"WhatTodoInFollowingIter": param.WhatTodoInFollowingIter,
 		"MemoToTheNextIter":       param.MemoToTheNextIter,
 		"RelativeSolutionNodes":   solution,
@@ -240,7 +239,7 @@ func EvoLearning() {
 
 		go func(backlogs []*scrum.Backlog, SuperEdges string, AllItems map[string]*SolutionGraphNode, newNodes SolutionGraphNodeList) {
 			defer func() { <-MaxThreadsSemaphore }()
-			err := AgentEvoLearning.WithModels(models.Qwen3B32Thinking).Call(context.Background(), map[string]any{
+			err := AgentEvoLearning.WithModels(models.Qwen3B32Thinking).Call(map[string]any{
 				"Backlogs":        backlogs,
 				"SuperEdges":      SuperEdges,
 				"ProductGoal":     scrum.ProductGoalUniLearning,

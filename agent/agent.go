@@ -33,7 +33,7 @@ const (
 	UseContentToFile               string = "ContentToFile"
 	UseContentToRedisKey           string = "ContentToRedisKey"
 	UseCopyPromptOnly              string = "CopyPromptOnly"
-	UseToolcallsOnly               string = "ToolcallOnly"
+	UseModel                       string = "Model"
 	UseTemplate                    string = "Template"
 )
 
@@ -178,7 +178,7 @@ func (a *Agent) Messege(params map[string]any) string {
 
 // ProposeGoals generates goals based on the provided file contents.
 // It renders the prompt, sends a request to the OpenAI model, and processes the response.
-func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error) {
+func (a *Agent) Call(memories ...map[string]any) (err error) {
 	// Render the prompt with the provided files content and available functions
 	var params = map[string]any{}
 	if len(memories) > 0 {
@@ -201,10 +201,10 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 	fmt.Printf("Requesting prompt: %v\n", messege)
 
 	//model might be changed by other process
-	model, ok := params["Model"].(*models.Model)
+	model, ok := params[UseModel].(*models.Model)
 	if !ok || model == nil {
 		model = models.LoadbalancedPick(a.Models...)
-		params["Model"] = models.LoadbalancedPick(a.Models...)
+		params[UseModel] = models.LoadbalancedPick(a.Models...)
 	}
 
 	// Create the chat completion request with function calls enabled
@@ -223,12 +223,7 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 	if model.TopP > 0 {
 		req.TopP = model.TopP
 	}
-	if _UseToolcallsOnly, ok := params[UseToolcallsOnly].([]tool.ToolInterface); ok && len(_UseToolcallsOnly) > 0 {
-		req.Tools = []openai.Tool{}
-		for _, toolcall := range _UseToolcallsOnly {
-			req.Tools = append(req.Tools, *toolcall.OaiTool())
-		}
-	} else if len(a.Tools) > 0 {
+	if len(a.Tools) > 0 {
 		if model.ToolInPrompt != nil {
 			model.ToolInPrompt.WithToolcallSysMsg(a.Tools, &req)
 		} else {
@@ -268,7 +263,7 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 		msg := openai.ChatCompletionMessage{Role: "assistant", Content: string(textbytes)}
 		resp = openai.ChatCompletionResponse{Choices: []openai.ChatCompletionChoice{{Message: msg}}}
 	} else if len(req.Messages) > 0 {
-		resp, err = model.Client.CreateChatCompletion(ctx, req)
+		resp, err = model.Client.CreateChatCompletion(context.Background(), req)
 	} else {
 		return fmt.Errorf("no messages in request")
 	}
@@ -307,13 +302,8 @@ func (a *Agent) Call(ctx context.Context, memories ...map[string]any) (err error
 		return err
 	}
 	if a.CallBack != nil {
-		a.CallBack(ctx, resp.Choices[0].Message.Content)
+		a.CallBack(context.Background(), resp.Choices[0].Message.Content)
 	}
 
 	return a.ExeResponse(params, resp)
-}
-func Call(_template *template.Template, memories map[string]any) (err error) {
-	var agent *Agent = NewAgent(_template)
-	ctx := context.Background()
-	return agent.Call(ctx, memories)
 }

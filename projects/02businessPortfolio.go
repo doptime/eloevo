@@ -1,7 +1,6 @@
 package projects
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"slices"
@@ -188,7 +187,7 @@ func GenBusinessPlanParallel() {
 			defer wg.Done()
 			for j := 0; j < numCallsPerThread; j++ {
 				param := map[string]any{"BusinessPlans": utils.GetRandomNValueFromMap(BusinessPlanMap, 10)}
-				err := AgentGenNicheMarketOpportunity.WithModels(models.FuseO1).Call(context.Background(), param)
+				err := AgentGenNicheMarketOpportunity.WithModels(models.FuseO1).Call(param)
 				if err != nil {
 					fmt.Println(err)
 				}

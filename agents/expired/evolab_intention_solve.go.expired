@@ -88,8 +88,8 @@ func SolveIntention(ctx context.Context) error {
 		errorgroup.Go(func() (err error) {
 			var param map[string]any = map[string]any{"Intention": v}
 
-			AgentIntentionDiveIn.Call(context.Background(), param)
-			AgentIntentionSave.Call(context.Background(), param)
+			AgentIntentionDiveIn.Call( param)
+			AgentIntentionSave.Call( param)
 			return nil
 		})
 

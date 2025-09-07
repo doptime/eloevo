@@ -1,7 +1,6 @@
 package learnbychoose
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log"
@@ -97,7 +96,7 @@ var ApiWordLearningData = api.Api(func(in []string) (out []*WordLearningData, er
 			go func(idx int, w string) {
 				defer swg.Done()
 
-				err := AgentGetWordLearningData.WithModels(models.Gemini20FlashImageAigpt).Call(context.Background(), map[string]any{
+				err := AgentGetWordLearningData.WithModels(models.Gemini20FlashImageAigpt).Call(map[string]any{
 					"Word": w,
 				})
 				if err != nil {

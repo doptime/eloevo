@@ -1,7 +1,6 @@
 package agents
 
 import (
-	"context"
 	"log"
 	"math/rand"
 	"slices"
@@ -108,7 +107,7 @@ func Clustering() {
 		"Directories": dirs,
 		"Files":       &FileData{Module: file, Content: clustered[file]},
 	}
-	AgentClustering.Call(context.Background(), memory)
+	AgentClustering.Call(memory)
 }
 
 var clustered map[string]string

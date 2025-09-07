@@ -1,7 +1,6 @@
 package projects
 
 import (
-	"context"
 	"fmt"
 	"math/big"
 	"slices"
@@ -128,7 +127,7 @@ func UseCaseExploration() {
 		}
 		go func(param map[string]any) {
 			defer func() { <-MaxThreadsSemaphore }()
-			err := AgentUseCaseGen.Call(context.Background(), param)
+			err := AgentUseCaseGen.Call(param)
 			if err != nil {
 				fmt.Printf("Agent call failed: %v\n", err)
 			}

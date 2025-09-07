@@ -1,7 +1,6 @@
 package learnbychoose
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -178,7 +177,7 @@ export const apiWordLearningData = createApi<WordSensationTask, WordLearningData
 `
 			//Gemini25Flashlight
 			err := AgentEvoLearningSolution.WithModels(models.Gemini20FlashImageAigpt). //UseClipboardMsg().
-													Call(context.Background(), map[string]any{
+													Call(map[string]any{
 					"runtimeError": string(runtimeError),
 					"ProductGoal":  string(scrum.ProductGoalUniLearning) + "\n\n这是当前规划的游戏场景:\n" + PlanForWordSensation + "\n\n",
 					"HashKey":      keySolution,

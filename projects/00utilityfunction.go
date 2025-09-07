@@ -1,7 +1,6 @@
 package projects
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -134,7 +133,7 @@ func EvoUtilityFunctionExploration() {
 				if len(items) > ProjectsUtilityFunctionTopN {
 					items = items[:ProjectsUtilityFunctionTopN]
 				}
-				err := AgentBusinessUtilityFunctionGen.WithModels(models.FuseO1).Call(context.Background(), map[string]any{
+				err := AgentBusinessUtilityFunctionGen.WithModels(models.FuseO1).Call(map[string]any{
 					"UtilityFunctionExplorations": UtilityFunctionExplorationList(items),
 					"NewId":                       redisdb.NanoId(8),
 				})

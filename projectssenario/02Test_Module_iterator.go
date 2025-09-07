@@ -1,7 +1,6 @@
 package projectssenario
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"text/template"
@@ -126,7 +125,7 @@ func GeSolutionModule() {
 					}),
 				}
 				//.WithModel(models.EloModels.SelectOne("roundrobin"))
-				err := AgentModuleEvalBuild.WithModels(models.FuseO1).Call(context.Background(), inputsParams)
+				err := AgentModuleEvalBuild.WithModels(models.FuseO1).Call(inputsParams)
 				if err != nil {
 					fmt.Printf("Agent call failed: %v\n", err)
 					continue

@@ -1,7 +1,6 @@
 package projectssenario
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"text/template"
@@ -131,7 +130,7 @@ func GenModelParallel() {
 					}),
 					"ModelId": redisdb.NanoId(8),
 				}
-				err := AgentGenSolutionModel.WithModels(models.FuseO1).Call(context.Background(), inputsParams)
+				err := AgentGenSolutionModel.WithModels(models.FuseO1).Call(inputsParams)
 				if err == nil {
 					continue
 				}

@@ -1,7 +1,6 @@
 package projects
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"text/template"
@@ -186,7 +185,7 @@ var AgentApplySelectedAgent = agent.NewAgent(template.Must(template.New("AgentAu
 		solution = SolutionGraphNodeList(nodes).Solution().PathnameSorted().FullView()
 	}
 
-	err := param.ThisAgent.Call(context.Background(), map[string]interface{}{
+	err := param.ThisAgent.Call(map[string]interface{}{
 		"WhatTodoInFollowingIter": param.WhatTodoInFollowingIter,
 		"MemoToTheNextIter":       param.MemoToTheNextIter,
 		"RelativeSolutionNodes":   solution,
@@ -237,7 +236,7 @@ func AgentSelectAndExecute() {
 
 		go func(backlogs []*scrum.Backlog, SuperEdges string, AllItems map[string]*SolutionGraphNode, newNodes SolutionGraphNodeList) {
 			defer func() { <-MaxThreadsSemaphore }()
-			err := AgentApplySelectedAgent.WithModels(models.Qwen3B32Thinking).Call(context.Background(), map[string]any{
+			err := AgentApplySelectedAgent.WithModels(models.Qwen3B32Thinking).Call(map[string]any{
 				"Backlogs":        backlogs,
 				"SuperEdges":      SuperEdges,
 				"ProductGoal":     scrum.ProductGoalAntiAging,

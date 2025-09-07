@@ -232,7 +232,7 @@ var AgentGenSuperEdge = agent.NewAgent(template.Must(template.New("AgentGenSuper
 
 // 		go func(backlogs []*scrum.Backlog, SuperEdges string, AllItems map[string]*SolutionGraphNode, newNodes SolutionGraphNodeList) {
 // 			defer func() { <-MaxThreadsSemaphore }()
-// 			err := AgentApplySelectedAgent.WithTools(ToolDroneBatchEloResults).WithModels(models.Qwen3B32Thinking).Call(context.Background(), map[string]any{
+// 			err := AgentApplySelectedAgent.WithTools(ToolDroneBatchEloResults).WithModels(models.Qwen3B32Thinking).Call( map[string]any{
 // 				"Backlogs":    backlogs,
 // 				"SuperEdges":  SuperEdges,
 // 				"ProductGoal": scrum.ProductGoalAntiAging,

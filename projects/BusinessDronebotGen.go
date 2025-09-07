@@ -330,13 +330,13 @@ package projects
 // 		go func(Communities, SuperEdges, TopicToDiscuss, CommunitiesAll string, AllItems map[string]*SolutionGraphNode, newNodes SolutionGraphNodeList) {
 // 			defer func() { <-MaxThreadsSemaphore }()
 // 			//models.Qwq32B, models.Gemma3, models.DeepSeekV3, models.DeepSeekV3TB,models.Qwen32B,models.GeminiTB,models.Qwen30BA3,models.GLM32B
-// 			// err := AgentBusinessPlans.WithTools(ToolDroneBotIterPlan, ToolDroneBotSolutionItemRefine).WithModels(models.Qwen32B).CopyPromptOnly().Call(context.Background(), map[string]any{
+// 			// err := AgentBusinessPlans.WithTools(ToolDroneBotIterPlan, ToolDroneBotSolutionItemRefine).WithModels(models.Qwen32B).CopyPromptOnly().Call( map[string]any{
 // 			// 	"Communities":    Communities,
 // 			// 	"SuperEdges":     SuperEdges,
 // 			// 	"TopicToDiscuss": TopicToDiscuss,
 // 			// 	"task":           "batchElo",
 // 			// })
-// 			err := AgentBusinessPlans.WithTools(ToolDroneBatchEloResults).WithModels(models.EloModels.SequentialPick(models.Gemma3B27)).CopyPromptOnly().Call(context.Background(), map[string]any{
+// 			err := AgentBusinessPlans.WithTools(ToolDroneBatchEloResults).WithModels(models.EloModels.SequentialPick(models.Gemma3B27)).CopyPromptOnly().Call( map[string]any{
 // 				"Communities":    Communities,
 // 				"CommunitiesAll": CommunitiesAll,
 // 				"SuperEdges":     SuperEdges,

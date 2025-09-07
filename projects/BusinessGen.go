@@ -143,7 +143,7 @@ package projects
 // 				fmt.Println("Rank", i+1, v.String())
 // 			}
 //models.Qwq32B, models.Gemma3, models.DeepSeekV3
-// 			err := AgentBusinessPlans.WithModel(models.Qwq32B).Call(context.Background(), param)
+// 			err := AgentBusinessPlans.WithModel(models.Qwq32B).Call( param)
 // 			if err != nil {
 // 				fmt.Printf("Agent call failed: %v\n", err)
 // 			}

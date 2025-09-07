@@ -18,7 +18,7 @@ type EvoRealm struct {
 	GitIgnore string
 }
 
-var EvoRealms []*EvoRealm
+var EvoRealms map[string]*EvoRealm
 
 type FileData struct {
 	Path    string
@@ -81,5 +81,10 @@ func (evoRealm *EvoRealm) WalkDir(fn func(path, relativePath string, info os.Fil
 }
 
 func init() {
-	dconfig.LoadItemFromToml("EvoRealms", &EvoRealms)
+	var EvoRealmsArray []*EvoRealm
+	dconfig.LoadItemFromToml("EvoRealms", &EvoRealmsArray)
+	EvoRealms = make(map[string]*EvoRealm)
+	for _, realm := range EvoRealmsArray {
+		EvoRealms[realm.Name] = realm
+	}
 }

@@ -98,7 +98,7 @@ package projects
 // 				"Model":       models.LoadbalancedPick(models.FuseO1),
 // 				"TotoalNodes": len(best),
 // 			}
-// 			err := AgentPersonalAdmin.Call(context.Background(), param)
+// 			err := AgentPersonalAdmin.Call( param)
 // 			if err != nil {
 // 				fmt.Printf("Agent call failed: %v\n", err)
 // 			}

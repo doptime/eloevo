@@ -32,7 +32,7 @@ var AgentIntentionSolveWithMinimalFiles = agent.NewAgent(template.Must(template.
 	WithMsgDeFile("IntentionSolved.md").CopyPromptOnly()
 
 func GenQWithMinimalFiles() {
-	AgentIntentionSolveWithMinimalFiles.Call(context.Background(), map[string]any{})
+	AgentIntentionSolveWithMinimalFiles.Call( map[string]any{})
 	ctxFiles, ok := memory.SharedMemory["ContextFiles"].([]string)
 	if !ok {
 		return
@@ -65,7 +65,7 @@ func GenQWithMinimalFiles() {
 	
 	`)), tools.SaveStringToFile.Tool).WithMsgDeFile("IntentionSolved.md").CopyPromptOnly()
 
-	AgentIntentionSolve.Call(context.Background(), map[string]any{})
+	AgentIntentionSolve.Call( map[string]any{})
 
 	utils.PlayBeep()
 

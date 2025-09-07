@@ -191,8 +191,8 @@ func GenModuleParallel() {
 					"RequirementNames":         lo.Keys(AircraftRequirements),
 				}
 				fmt.Println("GenNicheMarketOpportunity...")
-				//return AgentGenNicheMarketOpportunity.WithModel(models.EloModels.SelectOne("roundrobin")).		Call(context.Background(), inputsParams)
-				AgentGenRequirement.WithModel(models.EloModels.SelectOne("roundrobin")).Call(context.Background(), inputsParams)
+				//return AgentGenNicheMarketOpportunity.WithModel(models.EloModels.SelectOne("roundrobin")).		Call( inputsParams)
+				AgentGenRequirement.WithModel(models.EloModels.SelectOne("roundrobin")).Call( inputsParams)
 			}
 		}()
 	}

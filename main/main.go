@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/doptime/doptime/httpserve"
+	"github.com/doptime/eloevo/evo"
 	"github.com/doptime/eloevo/evobymeasured"
 	"github.com/doptime/eloevo/projects"
 	"github.com/doptime/eloevo/utils"
@@ -11,6 +12,7 @@ import (
 )
 
 func main() {
+	evo.SetGoals("/Users/yang/doptime/redisdb/intentions_and_goals/goals.toml", "RedisDB")
 	evobymeasured.MakeAEvo()
 	//learnbychoose.EvoLearnByChooseSolution()
 	httpserve.Debug()
@@ -18,7 +20,7 @@ func main() {
 	a, e := utils.GetEmbedding("hello world")
 	println("embedding result", a, e.Error())
 	projects.AgentSelectAndExecute()
-	// agents.AgentFunctioncallTest.Call(context.Background(), map[string]any{})
+	// agents.AgentFunctioncallTest.Call( map[string]any{})
 	// agents.AgentResponseTest()
 	//projects.LoadResultsToRedis()
 	// scrum.AgentSessionArrangementCall()

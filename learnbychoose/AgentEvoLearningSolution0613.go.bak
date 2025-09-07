@@ -97,7 +97,7 @@ var AgentEvoLearningSolution = agent.NewAgent(template.Must(template.New("AgentE
 		solution = SolutionNodeList(lo.Values(param.AllItems)).PathnameSorted().View(param.BackgroundNodesToPass)
 	}
 
-	err := param.ThisAgent.Call(context.Background(), map[string]interface{}{
+	err := param.ThisAgent.Call( map[string]interface{}{
 		"WhatTodoInFollowingIter": param.WhatTodoInFollowingIter,
 		"MemoToTheNextIter":       param.MemoToTheNextIter,
 		"Solution":                solution,
@@ -131,7 +131,7 @@ func EvoLearningSolution() {
 
 		go func(backlogs []*scrum.Backlog, SolutionSummary string, AllItems map[string]*SolutionNode) {
 			defer func() { <-MaxThreadsSemaphore }()
-			err := AgentEvoLearningSolution.WithModels(models.Qwen3B32Thinking).Call(context.Background(), map[string]any{
+			err := AgentEvoLearningSolution.WithModels(models.Qwen3B32Thinking).Call( map[string]any{
 				"WhatTodoInFollowingIter": "End Goal Driven Planner",
 				"Backlogs":                backlogs,
 				"ProductGoal":             string(scrum.ProductGoalUniLearning) + "\n\n这是当前规划的游戏场景:\n" + PlanForTopic + "\n\n" + FileItems,

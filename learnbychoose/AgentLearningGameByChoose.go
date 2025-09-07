@@ -1,7 +1,6 @@
 package learnbychoose
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -149,7 +148,7 @@ fix:
 			ProductGoalUniLearning := utils.TextFromFile("/Users/yang/learn-by-choose-goserver/learninggame.md")
 			//Gemini25Flashlight Gemini25ProAigpt
 			err := AgentEvoLearningSolutionLearnByChoose.WithModels(models.Glm45AirLocal). //CopyPromptOnly(). //Qwen3B32Thinking
-													Call(context.Background(), map[string]any{
+													Call(map[string]any{
 					"runtimeError": string(runtimeError),
 					"ProductGoal":  string(ProductGoalUniLearning) + "\n\n",
 					"HashKey":      keySolution,
