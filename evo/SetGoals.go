@@ -1,7 +1,9 @@
 package evo
 
 import (
+	"fmt"
 	"os"
+	"slices"
 	"text/template"
 
 	"github.com/BurntSushi/toml"
@@ -142,7 +144,11 @@ type GoalsSetted struct {
 
 	GoalNameAsID       string `description:"The file names to reserve in the context"`
 	GoalDescription    string `description:"The description of the goal"`
-	ParentGoalNameAsID string `description:"optional, the parent goal name id"`
+	ParentGoalNameAsID string `description:"optional, the parent goal name id. If the Goal is part of Key Objectives of another Goal, it should be specified here."`
+
+	ProblemToResolve string `description:"The problems to resolve. What is the current System Pain Points"`
+	WhatToAchieve    string `description:"The goals to achieve. What is the expected System Output"`
+	HowToAchieve     string `description:"Tow to achieve the goals. What is the expected System Behavior"`
 
 	VisionContributionDescription string  `description:"The vision contribution of the goal"`
 	VisionContributionScore       float64 `description:"[1.0-10], the vision contribution of the goal"`
@@ -159,38 +165,51 @@ type GoalsSetted struct {
 	Weights  []float64 `description:"array, the weights for each evaluation dimension. w_V, w_F, w_R, w_L respectively"`
 	Priority float64   `description:"-"`
 
-	ProblemToResolve string    `description:"The problems to resolve. What is the current System Pain Points"`
-	WhatToAchieve    string    `description:"The goals to achieve. What is the expected System Output"`
-	HowToAchieve     string    `description:"Tow to achieve the goals. What is the expected System Behavior"`
-	Result           *[]string `description:"-"`
+	Status          string `toml:"Status" description:"目标当前状态: Proposed, Approved, InProgress, Completed, Failed, OnHold"`
+	OutcomeAnalysis string `toml:"OutcomeAnalysis" description:"当目标完成或失败后, 对结果的分析和学到的经验"`
+
+	Result *[]string `description:"-"`
+}
+type GoalsSortedList struct {
+	Goals []GoalsSetted
 }
 
 var ToolSetGoals = tool.NewTool("SetGoals", "要最大化这个系统的长期潜力和短期潜力。要设置哪些目标？	", func(commits *GoalsSetted) {
-	//calculate priority, with weights normalized
-	totalWeight := 0.0
-	for _, w := range commits.Weights {
-		totalWeight += w
-	}
-	if totalWeight <= 0.0001 {
-		totalWeight = 1
-	}
-	for i := range commits.Weights {
-		commits.Weights[i] /= totalWeight
-	}
-	commits.Priority = (commits.VisionContributionScore*commits.Weights[0] +
-		commits.FeasibilityScore*commits.Weights[1] +
-		commits.ShortTermReturnScore*commits.Weights[2] +
-		commits.LearningValueScore*commits.Weights[3]) / totalWeight
+	var GoalsSortedList GoalsSortedList
+	toml.DecodeFile(commits.FileName, &GoalsSortedList)
+	GoalsSortedList.Goals = append(GoalsSortedList.Goals, *commits)
 
-	utils.TextFromFile(commits.FileName)
-	commitsList := []GoalsSetted{}
-	toml.DecodeFile(commits.FileName, &commitsList)
-	commitsList = append(commitsList, *commits)
+	if commits.Action == "delete" {
+		GoalsSortedList.Goals = lo.Filter(GoalsSortedList.Goals, func(g GoalsSetted, i int) bool {
+			return g.GoalNameAsID != commits.GoalNameAsID
+		})
+	}
+
+	//calculate priority, with weights normalized
+	for _, item := range GoalsSortedList.Goals {
+		totalWeight := lo.Sum(item.Weights)
+		for i := range item.Weights {
+			item.Weights[i] /= max(0.0001, totalWeight)
+		}
+		item.Priority = item.VisionContributionScore*item.Weights[0] +
+			item.FeasibilityScore*item.Weights[1] +
+			item.ShortTermReturnScore*item.Weights[2] +
+			item.LearningValueScore*item.Weights[3]
+	}
+	slices.SortFunc(GoalsSortedList.Goals, func(a, b GoalsSetted) int {
+		return -int(b.Priority - a.Priority)
+	})
+	GoalsSortedList.Goals = lo.UniqBy(GoalsSortedList.Goals, func(a GoalsSetted) string {
+		return a.GoalNameAsID
+	})
 
 	var ioFileToSave *os.File
-	ioFileToSave, _ = os.OpenFile(commits.FileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	ioFileToSave, _ = os.OpenFile(commits.FileName, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
 
-	toml.NewEncoder(ioFileToSave).Encode(commitsList)
+	err := toml.NewEncoder(ioFileToSave).Encode(GoalsSortedList)
+	if err != nil {
+		fmt.Println("Error encoding TOML:", err)
+	}
 
 })
 
@@ -204,6 +223,7 @@ func SetGoals(goalFile string, realms ...string) (NewContextFiles []string) {
 	agent.NewAgent(PromptSetGoals).WithTools(ToolSetGoals).Call(map[string]any{
 		"ContextFiles": files,
 		"Result":       ReturnLineKept,
+		"FileName":     goalFile,
 		agent.UseModel: models.Qwen3B235Thinking2507,
 	})
 
