@@ -220,7 +220,7 @@ func SetGoals(goalFile string, realms ...string) (NewContextFiles []string) {
 	})
 	files := utils.TextFromEvoRealms(map[string]bool{}, _realm...)
 	var ReturnLineKept = &[]string{}
-	agent.NewAgent(PromptSetGoals).WithTools(ToolSetGoals).Call(map[string]any{
+	agent.Create(PromptSetGoals).WithTools(ToolSetGoals).Call(map[string]any{
 		"ContextFiles": files,
 		"Result":       ReturnLineKept,
 		"FileName":     goalFile,

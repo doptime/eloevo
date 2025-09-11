@@ -6,7 +6,7 @@ import (
 	"github.com/doptime/eloevo/agent"
 )
 
-var SampleCoding = agent.NewAgent(template.Must(template.New("question").Parse(`# 基于采样和进化的软件项目开发框架
+var SampleCoding = agent.Create(template.Must(template.New("question").Parse(`# 基于采样和进化的软件项目开发框架
 本软件开发框架借鉴物种的种内竞争进化和种间共生的思路。
 
 ## 需求说明文档

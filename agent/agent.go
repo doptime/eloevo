@@ -56,7 +56,7 @@ type Agent struct {
 	ToolCallRunningMutext interface{}
 }
 
-func NewAgent(_template *template.Template, tools ...tool.ToolInterface) (a *Agent) {
+func Create(_template *template.Template, tools ...tool.ToolInterface) (a *Agent) {
 	a = &Agent{
 		Models:         []*models.Model{models.ModelDefault},
 		toolsCallbacks: map[string]func(Param interface{}, CallMemory map[string]any) error{},

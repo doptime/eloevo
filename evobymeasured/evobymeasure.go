@@ -14,62 +14,12 @@ import (
 	"github.com/doptime/eloevo/models"
 	"github.com/doptime/eloevo/tool"
 	"github.com/doptime/eloevo/utils"
-	"github.com/doptime/redisdb"
-	"github.com/dustin/go-humanize"
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
 )
-
-var KeyGitCommits = redisdb.NewHashKey[string, []string](redisdb.Opt.HttpVisit(), redisdb.Opt.Key("GitCommits"))
-
-func LoadAllEvoProjects(KeepFileNames ...[]string) string {
-	var allFileInfo strings.Builder
-	fileKeepMap := map[string]bool{}
-
-	for _, fn := range KeepFileNames {
-		for _, f := range fn {
-			fileKeepMap[f] = true
-		}
-	}
-
-	for _, realm := range lo.Filter(lo.Values(config.EvoRealms), func(realm *config.EvoRealm, _ int) bool { return realm.Enable }) {
-		realm.WalkDir(func(path, relativePath string, info os.FileInfo) (e error) {
-			fmt.Printf("Processing file: %s\n", path)
-			if len(KeepFileNames) > 0 {
-				if _, ok := fileKeepMap[relativePath]; !ok {
-					return nil
-				}
-			}
-
-			// Read the file content
-			content := utils.TextFromFile(path)
-			if binaryFile := strings.Contains(string(content), "\x00") || len(content) == 0; binaryFile {
-				return nil
-			}
-			fileSz := "\n<file-size>" + humanize.Bytes(uint64(len(content))) + "</file-size>"
-			fileContent := "\n<file-content>\n" + utils.LineNumberedFileContent(string(content), 1) + "\n</file-content>"
-
-			gitDiffFileToShow, _ := KeyGitCommits.ConcatKey(realm.Enable).HGet(relativePath)
-			commitStr := ""
-			if len(gitDiffFileToShow) > 0 {
-				var gitdiffs strings.Builder
-				for i := 0; i < len(gitDiffFileToShow) && i < 5; i++ {
-					gitdiffs.WriteString(gitDiffFileToShow[i] + "\n")
-				}
-				commitStr = "\n<git-commits-unified-diff-file>\n" + gitdiffs.String() + "\n</git-commits-unified-diff-file>"
-			}
-
-			fileinfo := fmt.Sprint("\n<file>\n<file-name>", relativePath, "</file-name>"+fileSz+commitStr, fileContent, "\n</file>\n")
-
-			allFileInfo.WriteString(fileinfo)
-			return nil
-		})
-	}
-	return allFileInfo.String()
-}
 
 // ## 潜在的改进目标：
 // 1. 实现复习的调度算法
@@ -204,7 +154,7 @@ type TextEditByFragments struct {
 	Params               map[string]any `description:"-" msgpack:"-"`
 }
 
-var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
+var AgentEvoLearningSolutionLearnByChoose = agent.Create(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
 # 系统演化任务描述:
 
 ## 系统的目标:
@@ -300,14 +250,13 @@ var AgentEvoLearningSolutionLearnByChoose = agent.NewAgent(template.Must(templat
 	_edits := myers.ComputeEdits(span.URIFromPath(edits.FileName), RawFileStr, contentStrBuilder.String())
 	diff := gotextdiff.ToUnified(edits.FileName, edits.FileName, RawFileStr, _edits)
 
-	commitFragment, _ := KeyGitCommits.ConcatKey(Realm.Name).HGet(edits.FileName)
+	gitdiffHistoryFile := Realm.GitDiffFile(edits.FileName)
 	if NonFirstTrail {
-		commitFragment[0] = time.Now().Format("2006-01-02 15:04:05") + " " + edits.Comment + "\n" + fmt.Sprintln(diff)
+		utils.UpdateLatestGitDiff(gitdiffHistoryFile, time.Now().Format("2006-01-02 15:04:05")+" "+edits.Comment+"\n"+fmt.Sprintln(diff))
+
 	} else {
-		commitFragment = append([]string{time.Now().Format("2006-01-02 15:04:05") + " " + edits.Comment + "\n" + fmt.Sprintln(diff)}, commitFragment...)
+		utils.AppendGitDiff(gitdiffHistoryFile, time.Now().Format("2006-01-02 15:04:05")+" "+edits.Comment+"\n"+fmt.Sprintln(diff))
 	}
-	//key 20 item  max
-	KeyGitCommits.ConcatKey(Realm.Name).HSet(edits.FileName, commitFragment[:min(20, len(commitFragment))])
 
 	if err := os.WriteFile(FileName, []byte(contentStrBuilder.String()), 0o644); err != nil {
 		return
@@ -330,7 +279,7 @@ func MakeAEvo() {
 			"/learniversebackend/Learninggame.md",
 		}
 
-		SolutionSummaryTrimed := LoadAllEvoProjects(ResultRelatedFileNames)
+		SolutionSummaryTrimed := config.LoadAllEvoProjects(ResultRelatedFileNames)
 		errorGroup := errgroup.Group{}
 		errorGroup.Go(func() error {
 			//Gemini25Flashlight Gemini25ProAigpt Glm45AirLocal

@@ -23,7 +23,7 @@ type ModuleFile struct {
 
 var keyAircraftModuleFiles = redisdb.NewHashKey[string, *ModuleFile](redisdb.Opt.Key("AircraftModules"))
 
-var AgentModuleEvalBuild = agent.NewAgent(template.Must(template.New("GenTestSolution").Parse(`
+var AgentModuleEvalBuild = agent.Create(template.Must(template.New("GenTestSolution").Parse(`
 You are TestBuilder. 你的存在是为了通过创建商业场景来建构系统，并最终在真实场景中通过大量的测试。
 
 总体商业目标：实现AGI时代最受欢迎的无人机载具平台。作为各种机器人投递平台，物流投送平台。

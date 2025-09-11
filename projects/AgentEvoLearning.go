@@ -17,7 +17,7 @@ import (
 	"github.com/samber/lo"
 )
 
-var AgentEvoLearningCallback = agent.NewAgent(template.Must(template.New("AgentEvoLearningCallback").Parse(`
+var AgentEvoLearningCallback = agent.Create(template.Must(template.New("AgentEvoLearningCallback").Parse(`
 ## 本系统采用迭代方式来渐进实现系统的自动化构建，当前的迭代会持续数千次，直至最终目标实现。每一轮的迭代中，请通过一系列的Funtioncall 调用，来完善或改进方案的实现。
 	整个解决方案被建模为顶点和边的图。其中的边为超边(超边是连接多个顶点的边)可以连接两个或两个以上的模块节点。 现有的方案由两类节点构成:
 	1) 超边节点
@@ -92,7 +92,7 @@ var AgentEvoLearningCallback = agent.NewAgent(template.Must(template.New("AgentE
 
 })).WithModels(models.Qwen3B32Thinking)
 
-var AgentEvoLearning = agent.NewAgent(template.Must(template.New("AgentEvoLearning").Parse(`
+var AgentEvoLearning = agent.Create(template.Must(template.New("AgentEvoLearning").Parse(`
 ## 本系统采用迭代方式来渐进实现系统的自动化构建，当前的迭代会持续数千次，直至最终目标实现。每一轮的迭代中，请通过一系列的Funtioncall 调用，来完善或改进方案的实现。
 	整个解决方案被建模为顶点和边的图。其中的边为超边(超边是连接多个顶点的边)可以连接两个或两个以上的模块节点。 现有的方案由两类节点构成:
 	1) 超边节点

@@ -35,7 +35,7 @@ var keyPersonalAdmin = redisdb.NewHashKey[string, *PersonalAdmin](redisdb.Opt.Rd
 
 // 为什么Qwen能自我改进推理，Llama却不行 https://mp.weixin.qq.com/s/OvS61OrDp6rB-R5ELg48Aw
 // 并且每次就一个确切的改进方向进行深度分析，反代的深度分析第一性原理之上的需求，深度创新以做出实质的改进。要痛恨泛泛而谈的内容，重复空洞的内容，因为现在是在开发世界级的工具。
-var AgentPersonalAdmin = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
+var AgentPersonalAdmin = agent.Create(template.Must(template.New("utilifyFunction").Parse(`
 我想要用填写开放问题的方式来最大化一天的时间效用。
 有哪些问题应当保持在清单上面？
 避免超过15个问题。否则我将浪费太多时间在填表上。

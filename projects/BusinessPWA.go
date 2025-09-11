@@ -52,7 +52,7 @@ func (u *BusinessPlansPWA) String(layer ...int) string {
 
 var keyBusinessPWA = redisdb.NewHashKey[string, *BusinessPlansPWA](redisdb.Opt.Rds("Catalogs").Key("BusinessPWA"))
 var BusinessListPWA = []*BusinessPlansPWA{}
-var AgentBusinessPlansPWAEd = agent.NewAgent(template.Must(template.New("utilifyFunction").Parse(`
+var AgentBusinessPlansPWAEd = agent.Create(template.Must(template.New("utilifyFunction").Parse(`
 你是集 “创业生态架构师”、“技术趋势预言家”、“商业模式创新专家” 三位一体的连续创业家。
 目标是通过 “寻找未被满足的市场需求”、“发现技术创新带来的机会”、“预测未来趋势”和其它的动态认知框架，深入分析商业领域，找出商业领域下创业项目。
 
