@@ -24,14 +24,26 @@ type EvoRealm struct {
 func (realm *EvoRealm) RelativePath(path string) string {
 	return "/" + realm.Name + strings.TrimPrefix(path, realm.RootPath)
 }
-func (realm *EvoRealm) GitDiffFile(relativePath string) string {
-	filename := strings.TrimLeft(relativePath, "/"+realm.Name)
-	filename = strings.Join(strings.Split(filename, "/")[1:], "--")
 
+type EvoFileType string
+
+const (
+	EvoFileTypeGoal         EvoFileType = "goals.toml"
+	EvoFileProposedSolution EvoFileType = "ProposedSolution.toml"
+	EvoUnifiedDiffFormat    EvoFileType = "GitDiffs.toml"
+)
+
+func (realm *EvoRealm) EvoFile(filetype EvoFileType, tag ...string) (filename string) {
 	dir := strings.TrimRight(realm.RootPath, "/") + "/.evo/"
 	os.MkdirAll(dir, 0755)
-	gitdiffHistoryFile := dir + "/" + filename
-	return gitdiffHistoryFile
+	filename = fmt.Sprintf("%s/.evo/%s", realm.RootPath, filetype)
+	if len(tag) > 0 {
+		p := tag[0]
+		p = strings.TrimPrefix(p, realm.RootPath)
+		p = strings.Replace(p, "/", "--", -1)
+		filename = fmt.Sprintf("%s/.evo/%s-%s", realm.RootPath, strings.TrimSuffix(string(filetype), ".toml"), p+".toml")
+	}
+	return filename
 }
 
 func (realm *EvoRealm) LoadOneXmlFile(path, gitdiffFile string) string {
@@ -104,24 +116,33 @@ func (realm *EvoRealm) LoadProjectFiles(fileKeepMap map[string]bool) string {
 	return allFileInfo.String()
 }
 
+type EvoRealmSelected []*EvoRealm
+
+func WithSelectedRealms(realmNames ...string) EvoRealmSelected {
+	if len(realmNames) == 0 {
+		return lo.Filter(lo.Values(AllEvoRealmsInFile), func(realm *EvoRealm, _ int) bool { return realm.Enable })
+	}
+	return lo.Filter(lo.Values(AllEvoRealmsInFile), func(realm *EvoRealm, _ int) bool {
+		return lo.Contains(realmNames, realm.Name)
+	})
+}
+
 // 将LoadAllEvoProjects 放到utils ,部分出于
-func LoadAllEvoProjects(KeepFileNames ...[]string) string {
+func (selected EvoRealmSelected) LoadAllEvoProjects(KeepFileNames ...string) string {
 	var allFileInfo strings.Builder
 	fileKeepMap := map[string]bool{}
 
 	for _, fn := range KeepFileNames {
-		for _, f := range fn {
-			fileKeepMap[f] = true
-		}
+		fileKeepMap[fn] = true
 	}
 
-	for _, realm := range lo.Filter(lo.Values(EvoRealms), func(realm *EvoRealm, _ int) bool { return realm.Enable }) {
+	for _, realm := range selected {
 		allFileInfo.WriteString(realm.LoadProjectFiles(fileKeepMap))
 	}
 	return allFileInfo.String()
 }
 
-var EvoRealms map[string]*EvoRealm
+var AllEvoRealmsInFile map[string]*EvoRealm
 
 type FileData struct {
 	Path    string
@@ -135,15 +156,6 @@ func (f *FileData) RealmName() string {
 
 func (f *FileData) String() string {
 	return "\n\nPath: " + f.RealmName() + "\nContent: \n" + f.Content + "\nEOF\n"
-}
-func DefaultRealmPath() string {
-	for _, realm := range EvoRealms {
-		if len(realm.Name) > 0 && realm.Enable {
-			return realm.RootPath
-		}
-	}
-	fmt.Println("No default realm found in config")
-	return ""
 }
 func (evoRealm *EvoRealm) WalkDir(fn func(path, relativePath string, info os.FileInfo) error) {
 	// Check if the directory exists
@@ -186,8 +198,12 @@ func (evoRealm *EvoRealm) WalkDir(fn func(path, relativePath string, info os.Fil
 func init() {
 	var EvoRealmsArray []*EvoRealm
 	dconfig.LoadItemFromToml("EvoRealms", &EvoRealmsArray)
-	EvoRealms = make(map[string]*EvoRealm)
+	AllEvoRealmsInFile = make(map[string]*EvoRealm)
 	for _, realm := range EvoRealmsArray {
-		EvoRealms[realm.Name] = realm
+		realm.RootPath = strings.TrimRight(realm.RootPath, "/")
+		if realm.RootPath == "" || realm.Name == "" {
+			continue
+		}
+		AllEvoRealmsInFile[realm.Name] = realm
 	}
 }

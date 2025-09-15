@@ -138,7 +138,7 @@ $$ P = (w_V \cdot V) + (w_F \cdot F) + (w_R \cdot R) + (w_L \cdot L) $$
 最后请使用多个调用: SetGoals 来提交Goals变更. 
 `))
 
-type GoalsSetted struct {
+type Goal struct {
 	FileName string `description:"-"`
 	Action   string `description:"edit, add, delete"`
 
@@ -165,22 +165,30 @@ type GoalsSetted struct {
 	Weights  []float64 `description:"array, the weights for each evaluation dimension. w_V, w_F, w_R, w_L respectively"`
 	Priority float64   `description:"-"`
 
-	Status          string `toml:"Status" description:"目标当前状态: Proposed, Approved, InProgress, Completed, Failed, OnHold"`
-	OutcomeAnalysis string `toml:"OutcomeAnalysis" description:"当目标完成或失败后, 对结果的分析和学到的经验"`
+	Status          string   `toml:"Status" description:"目标当前状态: Proposed, Approved, InProgress, Completed, Failed, OnHold"`
+	OutcomeAnalysis string   `toml:"OutcomeAnalysis" description:"当目标完成或失败后, 对结果的分析和学到的经验"`
+	RelatedFiles    []string `toml:"RelatedFiles" description:"-"`
 
 	Result *[]string `description:"-"`
 }
-type GoalsSortedList struct {
-	Goals []GoalsSetted
+
+func (g *Goal) String() string {
+	return fmt.Sprintf("<Goal>: Name:%s\nDescription: %s\nProblemToResolve: %s\nWhatToAchieve: %s\nHowToAchieve: %s\nVisionContribution: %f\nFeasibility: %f\nShortTermReturn: %f\nLearningValue: %f\nPriority: %f\n</Goal>\n",
+		g.GoalNameAsID, g.GoalDescription, g.ProblemToResolve, g.WhatToAchieve, g.HowToAchieve,
+		g.VisionContributionScore, g.FeasibilityScore, g.ShortTermReturnScore, g.LearningValueScore, g.Priority)
 }
 
-var ToolSetGoals = tool.NewTool("SetGoals", "要最大化这个系统的长期潜力和短期潜力。要设置哪些目标？	", func(commits *GoalsSetted) {
+type GoalsSortedList struct {
+	Goals []Goal
+}
+
+var ToolSetGoals = tool.NewTool("SetGoals", "要最大化这个系统的长期潜力和短期潜力。要设置哪些目标？	", func(commits *Goal) {
 	var GoalsSortedList GoalsSortedList
 	toml.DecodeFile(commits.FileName, &GoalsSortedList)
 	GoalsSortedList.Goals = append(GoalsSortedList.Goals, *commits)
 
 	if commits.Action == "delete" {
-		GoalsSortedList.Goals = lo.Filter(GoalsSortedList.Goals, func(g GoalsSetted, i int) bool {
+		GoalsSortedList.Goals = lo.Filter(GoalsSortedList.Goals, func(g Goal, i int) bool {
 			return g.GoalNameAsID != commits.GoalNameAsID
 		})
 	}
@@ -196,10 +204,10 @@ var ToolSetGoals = tool.NewTool("SetGoals", "要最大化这个系统的长期�
 			item.ShortTermReturnScore*item.Weights[2] +
 			item.LearningValueScore*item.Weights[3]
 	}
-	slices.SortFunc(GoalsSortedList.Goals, func(a, b GoalsSetted) int {
+	slices.SortFunc(GoalsSortedList.Goals, func(a, b Goal) int {
 		return -int(b.Priority - a.Priority)
 	})
-	GoalsSortedList.Goals = lo.UniqBy(GoalsSortedList.Goals, func(a GoalsSetted) string {
+	GoalsSortedList.Goals = lo.UniqBy(GoalsSortedList.Goals, func(a Goal) string {
 		return a.GoalNameAsID
 	})
 
@@ -210,12 +218,23 @@ var ToolSetGoals = tool.NewTool("SetGoals", "要最大化这个系统的长期�
 	if err != nil {
 		fmt.Println("Error encoding TOML:", err)
 	}
-
 })
+
+func LoadGoal(realm *config.EvoRealm, goalName string) *Goal {
+	var GoalsSortedList GoalsSortedList
+	toml.DecodeFile(realm.EvoFile(config.EvoFileTypeGoal), &GoalsSortedList)
+	t, found := lo.Find(GoalsSortedList.Goals, func(g Goal) bool {
+		return g.GoalNameAsID == goalName
+	})
+	if !found {
+		return nil
+	}
+	return &t
+}
 
 func SetGoals(goalFile string, realms ...string) (NewContextFiles []string) {
 
-	_realm := lo.Filter(lo.Values(config.EvoRealms), func(r *config.EvoRealm, i int) bool {
+	_realm := lo.Filter(lo.Values(config.AllEvoRealmsInFile), func(r *config.EvoRealm, i int) bool {
 		return lo.Contains(realms, r.Name)
 	})
 	files := utils.TextFromEvoRealms(map[string]bool{}, _realm...)
@@ -224,7 +243,7 @@ func SetGoals(goalFile string, realms ...string) (NewContextFiles []string) {
 		"ContextFiles": files,
 		"Result":       ReturnLineKept,
 		"FileName":     goalFile,
-		agent.UseModel: models.Qwen3B235Thinking2507,
+		agent.UseModel: models.Qwen3Next80B,
 	})
 
 	return *ReturnLineKept

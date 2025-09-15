@@ -45,9 +45,6 @@ func ID(v interface{}, Idlength ...int) string {
 	case []byte:
 		inputString = string(v)
 	default:
-		inputString = ""
-	}
-	if inputString == "" {
 		inputString = fmt.Sprintf("%v", time.Now().UnixNano())
 	}
 

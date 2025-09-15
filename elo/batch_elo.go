@@ -7,7 +7,7 @@ import (
 )
 
 // BatchUpdateWinnings updates Elo ratings for a list of winners and players
-func BatchUpdateWinnings(winners []Elo, players []Elo, matchId string) {
+func BatchUpdateWinnings(winners []Elo, players []Elo) {
 	// Create a map for quick lookup of winners
 	winnerMap := lo.SliceToMap(winners, func(m Elo) (string, struct{}) { return m.GetId(), struct{}{} })
 

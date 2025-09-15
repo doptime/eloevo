@@ -250,7 +250,7 @@ var AgentEvoLearningSolutionLearnByChoose = agent.Create(template.Must(template.
 	_edits := myers.ComputeEdits(span.URIFromPath(edits.FileName), RawFileStr, contentStrBuilder.String())
 	diff := gotextdiff.ToUnified(edits.FileName, edits.FileName, RawFileStr, _edits)
 
-	gitdiffHistoryFile := Realm.GitDiffFile(edits.FileName)
+	gitdiffHistoryFile := Realm.EvoFile(config.EvoUnifiedDiffFormat, edits.FileName)
 	if NonFirstTrail {
 		utils.UpdateLatestGitDiff(gitdiffHistoryFile, time.Now().Format("2006-01-02 15:04:05")+" "+edits.Comment+"\n"+fmt.Sprintln(diff))
 
@@ -279,7 +279,7 @@ func MakeAEvo() {
 			"/learniversebackend/Learninggame.md",
 		}
 
-		SolutionSummaryTrimed := config.LoadAllEvoProjects(ResultRelatedFileNames)
+		SolutionSummaryTrimed := config.WithSelectedRealms().LoadAllEvoProjects(ResultRelatedFileNames...)
 		errorGroup := errgroup.Group{}
 		errorGroup.Go(func() error {
 			//Gemini25Flashlight Gemini25ProAigpt Glm45AirLocal

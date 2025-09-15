@@ -17,13 +17,10 @@ func getLocalFileName(filename string) string {
 		var timeFormat = "2006-01-02-15-04"
 		filename = strings.Replace(filename, ".Now", "."+time.Now().Format(timeFormat), 1)
 	}
-	for _, c := range config.EvoRealms {
+	for _, c := range config.AllEvoRealmsInFile {
 		if ind := strings.Index(filename, c.Name); ind == 0 {
 			filename = strings.Replace(filename, c.Name, c.RootPath, 1)
 		}
-	}
-	if filename[0] != '/' {
-		filename = strings.TrimRight(config.DefaultRealmPath(), "/") + "/" + filename
 	}
 	return filename
 }
