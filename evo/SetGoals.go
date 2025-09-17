@@ -173,9 +173,8 @@ type Goal struct {
 }
 
 func (g *Goal) String() string {
-	return fmt.Sprintf("<Goal>: Name:%s\nDescription: %s\nProblemToResolve: %s\nWhatToAchieve: %s\nHowToAchieve: %s\nVisionContribution: %f\nFeasibility: %f\nShortTermReturn: %f\nLearningValue: %f\nPriority: %f\n</Goal>\n",
-		g.GoalNameAsID, g.GoalDescription, g.ProblemToResolve, g.WhatToAchieve, g.HowToAchieve,
-		g.VisionContributionScore, g.FeasibilityScore, g.ShortTermReturnScore, g.LearningValueScore, g.Priority)
+	return fmt.Sprintf("Name:%s\nDescription: %s\nProblemToResolve: %s\nWhatToAchieve: %s\nHowToAchieve: %s",
+		g.GoalNameAsID, g.GoalDescription, g.ProblemToResolve, g.WhatToAchieve, g.HowToAchieve)
 }
 
 type GoalsSortedList struct {

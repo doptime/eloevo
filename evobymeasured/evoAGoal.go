@@ -9,7 +9,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/doptime/eloevo/agent"
 	"github.com/doptime/eloevo/config"
 	"github.com/doptime/eloevo/elo"
@@ -17,6 +16,7 @@ import (
 	"github.com/doptime/eloevo/models"
 	"github.com/doptime/eloevo/tool"
 	"github.com/doptime/eloevo/utils"
+	"github.com/doptime/redisdb"
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
@@ -25,12 +25,13 @@ import (
 )
 
 type Solution struct {
-	Edits       []*TextFragmentsEdited    `description:"The list of text fragment edits that make up this solution."`
-	EloScore    int64                     `description:"-"` //该方案的Elo评分
-	EvolutionID string                    `description:"-"` //该方案的唯一ID,一般是时间戳+随机数
-	FileBefore  map[string]string         `description:"-"` // before modification, key is filename, value is file content
-	LinesAfter  map[string]map[int]string `description:"-"` // after modification, key is filename, value is file content
-	Diffs       map[string]string         `description:"-"` // after modification, key is filename, value is git diff content
+	GoalToAchieve string                    `description:"The name of the goal this solution is intended to achieve."`
+	Edits         []*TextFragmentsEdited    `description:"The list of text fragment edits that make up this solution."`
+	EloScore      int64                     `description:"-"` //该方案的Elo评分
+	EvolutionID   string                    `description:"-"` //该方案的唯一ID,一般是时间戳+随机数
+	FileBefore    map[string]string         `description:"-"` // before modification, key is filename, value is file content
+	ModifiedLines map[string]map[int]string `description:"-"` // after modification, key is filename, value is file content
+	Diffs         map[string]string         `description:"-"` // after modification, key is filename, value is git diff content
 }
 
 func (s *Solution) GetId() string {
@@ -42,12 +43,41 @@ func (s *Solution) ScoreAccessor(delta ...int) int {
 	}
 	return int(s.EloScore)
 }
+func (s *Solution) RemoveDueToFileChanged(key *redisdb.HashKey[string, *Solution]) bool {
+	for _, file := range lo.Keys(s.FileBefore) {
+		OriginalContent := s.FileBefore[file]
+		FileName, _ := utils.ToLocalEvoFile(file)
+		RawFileStr := utils.TextFromFile(FileName)
+		if RawFileStr != OriginalContent {
+			delete(s.FileBefore, file)
+			delete(s.ModifiedLines, file)
+			delete(s.Diffs, file)
+			//also remove the edits related to this file
+			s.Edits = lo.Filter(s.Edits, func(edit *TextFragmentsEdited, _ int) bool {
+				return edit.FileName != file
+			})
+		}
+		//remove Edits related to this file
+		for i := len(s.Edits) - 1; i >= 0; i-- {
+			if s.Edits[i].FileName == file {
+				s.Edits = append(s.Edits[:i], s.Edits[i+1:]...)
+			}
+		}
+	}
+	if len(s.FileBefore) == 0 {
+		key.HDel(s.EvolutionID)
+		return true
+	} else {
+		key.HSet(s.EvolutionID, s)
+		return false
+	}
+}
 
 type TextFragmentsEdited struct {
 	GoalName string `description:"The name of the goal this change is associated with, used as an identifier."`
 
 	FileName string `description:"required. The name of the file before the change."`
-	NewName  string `description:"required when renaming or copying. The name of the file after the change."`
+	NewName  string `description:"optional when renaming or copying. The new name of the file changed to."`
 
 	IsNew    bool `description:"Indicates if the file is newly added in this commit."`
 	IsDelete bool `description:"Indicates if the file was deleted in this commit."`
@@ -62,19 +92,24 @@ type TextFragmentsEdited struct {
 
 	OldFragmentStartLine                int64  `description:"The starting line number in the original file from which this fragment begins.(1-minimal)"`
 	OldFragmentEndLine                  int64  `description:"The end line number in the original file from which this fragment begins.(1-minimal)"`
-	NewFragmentText_NoLeadingLineNumber string `description:"A strings of mutiple lines, representing the new lines in this fragment. The Old TextFragment will be replaced by this TextFragment" msgpack:"-"`
+	NewFragmentText_NoLeadingLineNumber string `description:"A strings of mutiple lines, representing the new lines in this fragment. The Old TextFragment will be replaced by this TextFragment"`
 
 	Realm *config.EvoRealm `description:"-" msgpack:"-"`
 	Goal  *evo.Goal        `description:"-" msgpack:"-"` //目标
 
-	EvolutionID string `description:"-"` //该方案的唯一ID,一般是时间戳+随机数
+	EvolutionID string                              `description:"-"` //该方案的唯一ID,一般是时间戳+随机数
+	SolutionKey *redisdb.HashKey[string, *Solution] `description:"-" msgpack:"-"`
 }
 
 func (solution *Solution) String() string {
 	var solutionStrBuilder strings.Builder
 	solutionStrBuilder.WriteString(fmt.Sprintf("<Evolution ID=%s>\n", solution.EvolutionID))
+	solutionStrBuilder.WriteString(fmt.Sprintf("\t<GoalToAchieve>%s</GoalToAchieve>\n", solution.GoalToAchieve))
 	for _, edits := range solution.Edits {
-		solutionStrBuilder.WriteString(fmt.Sprintf("TextFragmentsEdited(GoalName=%s, OldName=%s, NewName=%s, IsNew=%v, IsDelete=%v, IsCopy=%v, IsRename=%v, EvolutionParentIDs=%v, Comment=%s, OldFragmentStartLine=%d, OldFragmentEndLine=%d, NewFragmentTextLines=%s, Realm=%v, Goal=%v)", edits.GoalName, edits.FileName, edits.NewName, edits.IsNew, edits.IsDelete, edits.IsCopy, edits.IsRename, edits.EvolutionParentIDs, edits.Comment, edits.OldFragmentStartLine, edits.OldFragmentEndLine, edits.NewFragmentText_NoLeadingLineNumber, edits.Realm, edits.Goal))
+		NewFragmentTextLines := "\n\t<NewFragmentTextLines>\n" + edits.NewFragmentText_NoLeadingLineNumber + "\n\t</NewFragmentTextLines>"
+		ChangesOfUnifiedDiffFormat := "\n\t<ChangesInUnifiedDiffFormat>\n" + solution.Diffs[edits.FileName] + "\n\t</ChangesInUnifiedDiffFormat>"
+		Comment := "\n\t<Comment>\n" + edits.Comment + "\n\t</Comment>\n"
+		solutionStrBuilder.WriteString(fmt.Sprintf("\t<TextFragmentsEdited  FileName=%s NewName=%s IsNew=%v IsDelete=%v IsCopy=%v IsRename=%v EvolutionParentIDs=%v OldFragmentStartLine=%d, OldFragmentEndLine=%d>%s %s %s \n\t</TextFragmentsEdited>", edits.FileName, edits.NewName, edits.IsNew, edits.IsDelete, edits.IsCopy, edits.IsRename, edits.EvolutionParentIDs, edits.Comment, edits.OldFragmentStartLine, edits.OldFragmentEndLine, Comment, NewFragmentTextLines, ChangesOfUnifiedDiffFormat))
 	}
 	solutionStrBuilder.WriteString(fmt.Sprintf("</Evolution ID=%s>\n", solution.EvolutionID))
 	return solutionStrBuilder.String()
@@ -84,7 +119,7 @@ func (solution *Solution) CommitResultToFile() {
 
 		edits.FileName = lo.CoalesceOrEmpty(edits.FileName, edits.NewName)
 		edits.NewName = lo.CoalesceOrEmpty(edits.NewName, edits.FileName)
-		OldName, _ := utils.ToLocalEvoFile(edits.NewName)
+		FileName, _ := utils.ToLocalEvoFile(edits.NewName)
 		newName, _ := utils.ToLocalEvoFile(edits.NewName)
 		if edits.IsDelete {
 			os.Remove(edits.FileName)
@@ -93,15 +128,15 @@ func (solution *Solution) CommitResultToFile() {
 			os.MkdirAll(filepath.Dir(newName), 0o755)
 		} else if edits.IsCopy {
 			os.MkdirAll(filepath.Dir(newName), 0o755)
-			os.Link(OldName, newName)
+			os.Link(FileName, newName)
 			return
 		} else if edits.IsRename {
 			os.MkdirAll(filepath.Dir(newName), 0o755)
-			os.Link(OldName, newName)
-			os.Remove(OldName)
+			os.Link(FileName, newName)
+			os.Remove(FileName)
 		}
 	}
-	for file, lines := range solution.LinesAfter {
+	for file, lines := range solution.ModifiedLines {
 		FileName, _ := utils.ToLocalEvoFile(file)
 
 		if FileName == "" {
@@ -128,7 +163,7 @@ func (solution *Solution) CommitResultToFile() {
 
 }
 
-var solutionFileLock = make(chan struct{}, 1)
+var keySolution = redisdb.NewHashKey[string, *Solution]()
 
 var AgentEvoAGoal = agent.Create(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
 # 系统演化任务描述:
@@ -143,7 +178,7 @@ var AgentEvoAGoal = agent.Create(template.Must(template.New("AgentEvoLearningSol
 
 <ParentSolutions>
 {{range .ParentSolutions}}
-	{{.}}
+{{.}}
 {{end}}
 </ParentSolutions>
 
@@ -167,47 +202,36 @@ var AgentEvoAGoal = agent.Create(template.Must(template.New("AgentEvoLearningSol
 ## 提交最终改进方案
 最后通过 N次独立的toolcall: TextFragmentsEdited,以分段、增量修改的方式，每个调用仅完成一个文件操作或者是文件中的单个代码块的内容变更。
 </Implementation Steps>
-
+<think>
 `))).WithToolCallMutextRun().WithTools(tool.NewTool("TextFragmentsEdited", "提交代码文本变更，针对1)文件变动 2)内容变动", func(edits *TextFragmentsEdited) {
 
 	edits.NewName = lo.CoalesceOrEmpty(edits.NewName, edits.FileName)
 	edits.FileName = lo.CoalesceOrEmpty(edits.FileName, edits.NewName)
-	OldName, _ := utils.ToLocalEvoFile(edits.NewName)
-	newName, _ := utils.ToLocalEvoFile(edits.NewName)
-	if edits.IsDelete {
-		os.Remove(edits.FileName)
-		return
-	} else if edits.IsNew {
-		os.MkdirAll(filepath.Dir(newName), 0o755)
-	} else if edits.IsCopy {
-		os.MkdirAll(filepath.Dir(newName), 0o755)
-		os.Link(OldName, newName)
-		return
-	} else if edits.IsRename {
-		os.MkdirAll(filepath.Dir(newName), 0o755)
-		os.Link(OldName, newName)
-		os.Remove(OldName)
-	}
 
-	edits.NewName = lo.CoalesceOrEmpty(edits.NewName, edits.NewName)
-	FileName, Realm := utils.ToLocalEvoFile(edits.NewName)
-
+	FileName, _ := utils.ToLocalEvoFile(edits.NewName)
 	if edits.NewName == "" || edits.GoalName == "" {
 		fmt.Println("OldName is empty, bad case")
 		return
 	}
-	//now save it To local file
-	SolutionFile := Realm.EvoFile(config.EvoFileProposedSolution, edits.GoalName)
-
 	//lock the file
-	solutionFileLock <- struct{}{}
 	var Solutions = map[string]*Solution{}
-	toml.DecodeFile(SolutionFile, &Solutions)
+	Solutions, _ = edits.SolutionKey.HGetAll()
+	for _, solutionKey := range lo.Keys(Solutions) {
+		if Solutions[solutionKey].RemoveDueToFileChanged(edits.SolutionKey) {
+			delete(Solutions, solutionKey)
+		}
+	}
+
+	edits.SolutionKey.HGet(edits.EvolutionID)
 	if _, found := Solutions[edits.EvolutionID]; !found {
 		Solutions[edits.EvolutionID] = &Solution{
-			EvolutionID: edits.EvolutionID,
-			Edits:       []*TextFragmentsEdited{},
-			EloScore:    1200,
+			EvolutionID:   edits.EvolutionID,
+			GoalToAchieve: edits.GoalName,
+			Edits:         []*TextFragmentsEdited{},
+			EloScore:      1200,
+			FileBefore:    map[string]string{},
+			ModifiedLines: map[string]map[int]string{},
+			Diffs:         map[string]string{},
 		}
 	}
 	currentSolution := Solutions[edits.EvolutionID]
@@ -215,21 +239,19 @@ var AgentEvoAGoal = agent.Create(template.Must(template.New("AgentEvoLearningSol
 
 	//ioFileToSave, _ = os.OpenFile(SolutionFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
 
-	var RawFileStr string
-	_, NonFirstTrail := currentSolution.FileBefore[FileName]
+	_, NonFirstTrail := currentSolution.FileBefore[edits.NewName]
 	if !NonFirstTrail {
-		currentSolution.FileBefore[FileName] = utils.TextFromFile(FileName)
-		for i, line := range strings.Split(RawFileStr, "\n") {
-			currentSolution.LinesAfter[FileName][int(i+1)] = line
-		}
+		RawFileStr := utils.TextFromFile(FileName)
+		currentSolution.FileBefore[edits.NewName] = RawFileStr
+		currentSolution.ModifiedLines[edits.NewName] = utils.LineNumberedMap(RawFileStr, 1)
 	}
 
 	for i := edits.OldFragmentStartLine; i <= edits.OldFragmentEndLine; i++ {
-		delete(currentSolution.LinesAfter[FileName], int(i))
+		delete(currentSolution.ModifiedLines[edits.NewName], int(i))
 	}
-	currentSolution.LinesAfter[FileName][int(edits.OldFragmentStartLine)] = utils.RemoveLineNumber(edits.NewFragmentText_NoLeadingLineNumber)
+	currentSolution.ModifiedLines[edits.NewName][int(edits.OldFragmentStartLine)] = utils.RemoveLineNumber(edits.NewFragmentText_NoLeadingLineNumber)
 	parentNodes := lo.Filter(lo.Values(Solutions), func(s *Solution, i int) bool {
-		return s.EvolutionID == edits.EvolutionID
+		return lo.Contains(edits.EvolutionParentIDs, s.EvolutionID)
 	})
 
 	//update elo score
@@ -238,21 +260,23 @@ var AgentEvoAGoal = agent.Create(template.Must(template.New("AgentEvoLearningSol
 	elo.BatchUpdateWinnings(parentElo, allElo)
 
 	var contentStrBuilder strings.Builder
-	keys := lo.Keys(currentSolution.LinesAfter[FileName])
+	keys := lo.Keys(currentSolution.ModifiedLines[edits.NewName])
 	slices.Sort(keys)
 	for _, key := range keys {
-		contentStrBuilder.WriteString(currentSolution.LinesAfter[FileName][key] + "\n")
+		contentStrBuilder.WriteString(currentSolution.ModifiedLines[edits.NewName][key] + "\n")
 	}
 	//save the git diff
 
-	_edits := myers.ComputeEdits(span.URIFromPath(edits.FileName), currentSolution.FileBefore[FileName], contentStrBuilder.String())
-	diff := gotextdiff.ToUnified(edits.FileName, edits.FileName, currentSolution.FileBefore[FileName], _edits)
+	_edits := myers.ComputeEdits(span.URIFromPath(edits.FileName), currentSolution.FileBefore[edits.NewName], contentStrBuilder.String())
+	diff := gotextdiff.ToUnified(edits.FileName, edits.FileName, currentSolution.FileBefore[edits.NewName], _edits)
 
-	gitdiffHistoryFile := currentSolution.Diffs[edits.FileName]
-	currentSolution.Diffs[edits.FileName] = gitdiffHistoryFile + time.Now().Format("2006-01-02 15:04:05") + " " + edits.Comment + "\n" + fmt.Sprintln(diff)
-
+	currentSolution.Diffs[edits.FileName] = time.Now().Format("2006-01-02 15:04:05") + " " + edits.Comment + "\n" + fmt.Sprintln(diff)
+	edits.SolutionKey.HSet(edits.EvolutionID, currentSolution)
+	//also update parent nodes to save elo score
+	for _, solution := range parentNodes {
+		edits.SolutionKey.HSet(solution.EvolutionID, solution)
+	}
 	//unlock the file
-	<-solutionFileLock
 
 }))
 
@@ -263,22 +287,23 @@ func EvoAGoal(RealmStr, GoalNameAsID string) {
 		fmt.Println("No goal found")
 		return
 	}
-
+	solutionKey := keySolution.ConcatKey(realm.Name).ConcatKey(GoalNameAsID)
 	for i, TurnNum := 0, 6; i < TurnNum; i++ {
 		time.Sleep(300 * time.Millisecond)
 		//key: evolutionID, value: []*TextFragmentsEdited
 		var Solutions = map[string]*Solution{}
-		toml.DecodeFile(realm.EvoFile(config.EvoFileProposedSolution, goal.GoalNameAsID), &Solutions)
+		Solutions, _ = solutionKey.HGetAll()
 		errorGroup := errgroup.Group{}
-		for j := 0; j < 8; j++ {
+		for j := 0; j < 2; j++ {
 			errorGroup.Go(func() error {
 				//Gemini25Flashlight Gemini25ProAigpt Glm45AirLocal
-				return AgentEvoAGoal.WithModels(models.Qwen3B235Thinking2507). //CopyPromptOnly(). //Qwen3B32Thinking
-												Call(map[string]any{
+				return AgentEvoAGoal.WithModels(models.Qwen3Next80B). //CopyPromptOnly(). //Qwen3B32Thinking
+											Call(map[string]any{
 						"SystemEvolutionGoal": string(goal.String()) + "\n\n",
 						"CurrentSystem":       config.WithSelectedRealms("RedisDB").LoadAllEvoProjects(goal.RelatedFiles...),
 						"ParentSolutions":     lo.Values(Solutions),
 						"EvolutionID":         utils.ID(nil, 8),
+						"SolutionKey":         solutionKey,
 					})
 			})
 		}
@@ -289,17 +314,15 @@ func EvoAGoal(RealmStr, GoalNameAsID string) {
 	}
 	//TODO: now TurnNum has been done, it's time to select the best solution	 and commit it to the goal file
 	var Solutions = map[string]*Solution{}
-	toml.DecodeFile(realm.EvoFile(config.EvoFileProposedSolution, goal.GoalNameAsID), &Solutions)
-	if len(Solutions) == 0 {
-		fmt.Println("No solution found")
-		return
-	}
+	Solutions, _ = solutionKey.HGetAll()
 	solutionsList := lo.Values(Solutions)
 	slices.SortFunc(solutionsList, func(a, b *Solution) int {
 		return int(b.EloScore - a.EloScore)
 	})
-	BestSolution := solutionsList[0]
-	fmt.Println("Best solution found:", BestSolution.String())
-	BestSolution.CommitResultToFile()
+	if len(solutionsList) > 0 {
+		BestSolution := solutionsList[0]
+		fmt.Println("Best solution found:", BestSolution.String())
+		BestSolution.CommitResultToFile()
+	}
 
 }

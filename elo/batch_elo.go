@@ -25,7 +25,6 @@ func BatchUpdateWinnings(winners []Elo, players []Elo) {
 	// Initialize maps to store expected and actual scores
 	expectedScores := make(map[string]float64, len(players))
 	actualScores := make(map[string]float64, len(players))
-	comparisonsNum := make(map[string]float64, len(players))
 
 	// Calculate expected and actual scores for each player
 	for _, winner := range winners {
@@ -33,28 +32,21 @@ func BatchUpdateWinnings(winners []Elo, players []Elo) {
 			// Aggregate expected scores for both winner and loser
 			expectedScores[winner.GetId()] += ExpectedScoreA(winner.ScoreAccessor(), loser.ScoreAccessor())
 			expectedScores[loser.GetId()] += ExpectedScoreA(loser.ScoreAccessor(), winner.ScoreAccessor())
-			comparisonsNum[winner.GetId()]++
-			comparisonsNum[loser.GetId()]++
 			// Set actual scores based on win/loss
 			actualScores[winner.GetId()] += 1.0
+			// actualScores[loser.GetId()] remains 0 (implicitly)
 		}
 	}
 
 	// Update ratings for each player
 	for _, player := range players {
-		expected, actual := expectedScores[player.GetId()], actualScores[player.GetId()]
-		var numComparisons float64 = comparisonsNum[player.GetId()]
-		// Avoid division by zero
-		if numComparisons == 0 {
-			continue
-		}
-
+		expected := expectedScores[player.GetId()]
+		actual := actualScores[player.GetId()]
 		// Calculate rating change
 		k := 20
-		delta := ((actual - expected) / numComparisons) * float64(k)
+		delta := (actual - expected) * float64(k)
 		deltaInt := int(math.Round(delta))
 
-		// Update the player's rating
 		player.ScoreAccessor(deltaInt)
 	}
 }
@@ -79,7 +71,6 @@ func BatchUpdateRanking(playersRanked ...Elo) {
 	// 计算每个玩家的预期得分和实际得分
 	expectedScores := make(map[string]float64, numPlayers)
 	actualScores := make(map[string]float64, numPlayers)
-	comparisonsNum := make(map[string]float64, numPlayers)
 
 	// 遍历每个玩家并计算其与其他玩家的预期得分
 	for i := 0; i < numPlayers; i++ {
@@ -93,8 +84,6 @@ func BatchUpdateRanking(playersRanked ...Elo) {
 			// 计算预期得分
 			expectedScores[winner.GetId()] += ExpectedScoreA(winner.ScoreAccessor(), loser.ScoreAccessor())
 			expectedScores[loser.GetId()] += ExpectedScoreA(loser.ScoreAccessor(), winner.ScoreAccessor())
-			comparisonsNum[winner.GetId()]++
-			comparisonsNum[loser.GetId()]++
 
 			// 记录实际得分
 			actualScores[winner.GetId()] += 1.0
@@ -109,7 +98,7 @@ func BatchUpdateRanking(playersRanked ...Elo) {
 
 		// 计算评级变化值
 		k := 20
-		delta := (actual - expected) / comparisonsNum[player.GetId()] * float64(k)
+		delta := (actual - expected) * float64(k)
 		deltaInt := int(math.Round(delta))
 
 		// 更新玩家评分
