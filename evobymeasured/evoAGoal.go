@@ -57,12 +57,6 @@ func (s *Solution) RemoveDueToFileChanged(key *redisdb.HashKey[string, *Solution
 				return edit.FileName != file
 			})
 		}
-		//remove Edits related to this file
-		for i := len(s.Edits) - 1; i >= 0; i-- {
-			if s.Edits[i].FileName == file {
-				s.Edits = append(s.Edits[:i], s.Edits[i+1:]...)
-			}
-		}
 	}
 	if len(s.FileBefore) == 0 {
 		key.HDel(s.EvolutionID)
@@ -184,20 +178,21 @@ var AgentEvoAGoal = agent.Create(template.Must(template.New("AgentEvoLearningSol
 
 <Implementation Steps>
 实施中间步骤:
-1. **找出需要借鉴的最佳父分支方案**：对现有的改进方案进行评估，以便新的方案可以在此基础上进行改进。
-	现有改进方案指的是针对既定目标，已有的git-commits-unified-diff-file方案。 现有改进方案重点评估并优化的领域包括：目标明确、用户价值、结构质量、可维护性、性能与可靠性。
+step1. **找出需要借鉴的最佳父分支方案**：对现有的改进方案进行评估，以便新的方案可以在此基础上进行改进。
+	现有改进方案位于ParentSolutions当中。 这些改进方案重点评估并优化的领域包括：目标明确、第一性原理、用户价值、结构质量、可维护性、性能与可靠性。
 	- **目标明确**：明确围绕特定的目标来提升现有方案。高质量实施给定目标，最小化副作用。
+	- **第一性原理**：准确平衡全面的内容或事实，逻辑自洽。改进方案应基于第一性原理，避免认知偏差。
 	- **用户价值**：强化业务场景覆盖度、用户满意度和长期价值。
-	- **结构质量**：应着重在认知复杂度、圈复杂度、模块耦合度、内聚度和代码简洁度方面进行优化。
+	- **结构质量**：应着重在认知复杂度、模块耦合度、内聚度和代码简洁度方面进行优化。
 	- **可维护性**：应关注核心逻辑文档覆盖率的提升，确保代码可理解和可测试。
 	- **性能与可靠性**：优化代码的正确性、变更失败率、预估延迟和吞吐量。
-	给出1-4个方案作为父分支方案。以便借鉴这些方案的核心优势，进行改进。
+	显性且仔细思考父分支方案的优劣。以便选定并借鉴优秀的父分支，并进行改进。
 
-2. **制定改进方案**：
-	- 首先，然后提出一个基于有限理性，基于第一性原理的关键改进思路，然后按照行动优先，探索优先的思路，先用具体的、核心改进代码或文本，给出改进思路。
-	- 对现有的改进思路融合父方案进行基于缺陷最小化的融合。给出融合思路+改进思路下的具体的改进方案
+step2. **制定改进方案**：
+	- 1. 讨论，并且提出一个基于有限理性、基于第一性原理的关键改进思路，然后按照行动优先，探索优先的思路，用代码或文本给出具体的实质的改进。
+	- 2. 融合父方案进行基于缺陷最小化的融合。给出融合思路+改进思路下的具体的改进方案
 
-3. **方案提交之前的审核修正**： 尝试使用toml 格式给出符合 TextFragmentsEdited 约定的 增量编辑的优化方案。并显式检查其中参数是否准确无误。特别是确定需要替换的旧文本的在原始文件的行范围，也就是OldFragmentStartLine（delete included）, OldFragmentEndLine（delete included）。确保TextFragmentsEdited对这个代码短的替换符合意图，没有异常。
+step3. **方案提交之前的审核修正**： 给出符合 TextFragmentsEdited 约定的 增量编辑的优化方案。并显式检查其中参数是否准确无误。特别是确定需要替换的旧文本的在原始文件的行范围，也就是OldFragmentStartLine（delete included）, OldFragmentEndLine（delete included）。确认或者是修改参数，对TextFragmentsEdited调用符合意图，没有异常。
 
 ## 提交最终改进方案
 最后通过 N次独立的toolcall: TextFragmentsEdited,以分段、增量修改的方式，每个调用仅完成一个文件操作或者是文件中的单个代码块的内容变更。
@@ -293,12 +288,19 @@ func EvoAGoal(RealmStr, GoalNameAsID string) {
 		//key: evolutionID, value: []*TextFragmentsEdited
 		var Solutions = map[string]*Solution{}
 		Solutions, _ = solutionKey.HGetAll()
+		for _, key := range lo.Keys(Solutions) {
+			if Solutions[key].RemoveDueToFileChanged(solutionKey) {
+				delete(Solutions, key)
+			}
+		}
 		errorGroup := errgroup.Group{}
 		for j := 0; j < 2; j++ {
 			errorGroup.Go(func() error {
 				//Gemini25Flashlight Gemini25ProAigpt Glm45AirLocal
-				return AgentEvoAGoal.WithModels(models.Qwen3Next80B). //CopyPromptOnly(). //Qwen3B32Thinking
-											Call(map[string]any{
+				model := []*models.Model{models.Qwendeepresearch, models.Qwen3Next80B}[j%2]
+				return AgentEvoAGoal. //CopyPromptOnly(). //Qwen3B32Thinking
+							Call(map[string]any{
+						agent.UseModel:        model,
 						"SystemEvolutionGoal": string(goal.String()) + "\n\n",
 						"CurrentSystem":       config.WithSelectedRealms("RedisDB").LoadAllEvoProjects(goal.RelatedFiles...),
 						"ParentSolutions":     lo.Values(Solutions),

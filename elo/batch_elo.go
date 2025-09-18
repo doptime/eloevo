@@ -6,6 +6,11 @@ import (
 	"github.com/samber/lo"
 )
 
+type BatchElo struct {
+	Winners []Elo
+	Players []Elo
+}
+
 // BatchUpdateWinnings updates Elo ratings for a list of winners and players
 func BatchUpdateWinnings(winners []Elo, players []Elo) {
 	// Create a map for quick lookup of winners
