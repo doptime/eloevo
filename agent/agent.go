@@ -33,6 +33,7 @@ const (
 	UseContentToFile               string = "ContentToFile"
 	UseContentToRedisKey           string = "ContentToRedisKey"
 	UseCopyPromptOnly              string = "CopyPromptOnly"
+	UseSharedMemory                string = "SharedMemory"
 	UseModel                       string = "Model"
 	UseTemplate                    string = "Template"
 )
@@ -40,18 +41,16 @@ const (
 // GoalProposer is responsible for proposing goals using an OpenAI model,
 // handling function calls, and managing callbacks.
 type Agent struct {
-	SharedMemory map[string]any
-	Models       []*models.Model
-
-	PromptTemplate     *template.Template
-	Tools              []openai.Tool
-	ToolInSystemPrompt bool
-	ToolInUserPrompt   bool
-	toolsCallbacks     map[string]func(Param interface{}, CallMemory map[string]any) error
-
-	functioncallParsers []func(resp openai.ChatCompletionResponse) (toolCalls []*FunctionCall)
-
-	CallBack func(ctx context.Context, inputs string) error
+	Models                      []*models.Model
+	PromptTemplate              *template.Template
+	Tools                       []openai.Tool
+	ToolInSystemPrompt          bool
+	ToolInUserPrompt            bool
+	toolsCallbacks              map[string]func(Param interface{}, CallMemory map[string]any) error
+	functioncallParsers         []func(resp openai.ChatCompletionResponse) (toolCalls []*FunctionCall)
+	CallBack                    func(ctx context.Context, inputs string) error
+	CheckToolCallsBeforeCalling func(toolCalls []*FunctionCall) error
+	// CallBackBeforeToolCall func(toolCall *FunctionCall, CallMemory map[string]any) error
 
 	ToolCallRunningMutext interface{}
 }
@@ -60,19 +59,18 @@ func Create(_template *template.Template, tools ...tool.ToolInterface) (a *Agent
 	a = &Agent{
 		Models:         []*models.Model{models.ModelDefault},
 		toolsCallbacks: map[string]func(Param interface{}, CallMemory map[string]any) error{},
-		SharedMemory:   map[string]any{},
 		PromptTemplate: _template,
 	}
 	a.WithTools(tools...)
 	a.WithToolcallParser(nil)
 	return a
 }
-func (a *Agent) WithTemplate(prompt *template.Template) *Agent {
-	return a
-}
-
 func (a *Agent) WithToolCallMutextRun() *Agent {
 	a.ToolCallRunningMutext = &sync.Mutex{}
+	return a
+}
+func (a *Agent) WithToolCallsCheckedBeforeCalling(checkToolCallsBeforeCalling func(toolCalls []*FunctionCall) error) *Agent {
+	a.CheckToolCallsBeforeCalling = checkToolCallsBeforeCalling
 	return a
 }
 func (a *Agent) WithTools(tools ...tool.ToolInterface) (ret *Agent) {
@@ -86,13 +84,6 @@ func (a *Agent) WithTools(tools ...tool.ToolInterface) (ret *Agent) {
 }
 
 type FieldReaderFunc func(content string) (field string)
-
-func (a *Agent) ShareMemoryUpdate(MemoryCacheKey string, param interface{}) {
-	if len(MemoryCacheKey) == 0 {
-		return
-	}
-	a.SharedMemory[MemoryCacheKey] = param
-}
 
 func (a *Agent) Clone() *Agent {
 	var b Agent = *a
@@ -124,47 +115,6 @@ type QAPaire struct {
 
 var keyQA = redisdb.NewListKey[*QAPaire](redisdb.Opt.Rds("Catalogs"))
 
-func (a *Agent) ExeResponse(params map[string]any, resp openai.ChatCompletionResponse) (err error) {
-	var toolCalls []*FunctionCall
-	for _, parser := range a.functioncallParsers {
-		toolCalls = append(toolCalls, parser(resp)...)
-	}
-	ToolCallHash := map[uint64]bool{}
-	for _, toolcall := range toolCalls {
-		//skip redundant toolcall
-		hash, _ := utils.GetCanonicalHash(toolcall.Arguments)
-		if _, ok := ToolCallHash[hash]; ok {
-			continue
-		}
-		ToolCallHash[hash] = true
-
-		_tool, ok := a.toolsCallbacks[toolcall.Name]
-		if ok {
-			if a.ToolCallRunningMutext != nil {
-				a.ToolCallRunningMutext.(*sync.Mutex).Lock()
-				_tool(toolcall.Arguments, params)
-				a.ToolCallRunningMutext.(*sync.Mutex).Unlock()
-			} else {
-				_tool(toolcall.Arguments, params)
-			}
-		} else if !ok {
-			return fmt.Errorf("error: function not found in FunctionMap")
-		}
-	}
-	return nil
-
-}
-func (a *Agent) CallWithResponseString(content string) (err error) {
-	var params = map[string]any{}
-	for k, v := range a.SharedMemory {
-		params[k] = v
-	}
-	resp, err := utils.StringToResponse(content)
-	if err != nil {
-		return err
-	}
-	return a.ExeResponse(params, resp)
-}
 func (a *Agent) Messege(params map[string]any) string {
 	var promptBuffer bytes.Buffer
 	if _UseTemplate, ok := params[UseTemplate].(*template.Template); ok && _UseTemplate != nil {
@@ -184,7 +134,12 @@ func (a *Agent) Call(memories ...map[string]any) (err error) {
 	if len(memories) > 0 {
 		params = memories[0]
 	}
-	for k, v := range a.SharedMemory {
+	var SharedMemory map[string]any = map[string]any{}
+	if _, ok := params[UseSharedMemory]; ok {
+		SharedMemory = params[UseSharedMemory].(map[string]any)
+	}
+
+	for k, v := range SharedMemory {
 		params[k] = v
 	}
 	params["ThisAgent"] = a // add self reference to memory
@@ -305,5 +260,37 @@ func (a *Agent) Call(memories ...map[string]any) (err error) {
 		a.CallBack(context.Background(), resp.Choices[0].Message.Content)
 	}
 
-	return a.ExeResponse(params, resp)
+	// Parse and handle function calls in the response
+	var nonRedundantToolCalls []*FunctionCall
+	ToolCallHash := map[uint64]bool{}
+	for _, parser := range a.functioncallParsers {
+		toolcalls := parser(resp)
+		for _, toolcall := range toolcalls {
+			hash, _ := utils.GetCanonicalHash(toolcall.Arguments)
+			if _, ok := ToolCallHash[hash]; ok {
+				continue
+			}
+			nonRedundantToolCalls = append(nonRedundantToolCalls, toolcall)
+		}
+	}
+	if a.CheckToolCallsBeforeCalling != nil {
+		if err := a.CheckToolCallsBeforeCalling(nonRedundantToolCalls); err != nil {
+			return err
+		}
+	}
+	for _, toolcall := range nonRedundantToolCalls {
+		_tool, ok := a.toolsCallbacks[toolcall.Name]
+		if ok {
+			if a.ToolCallRunningMutext != nil {
+				a.ToolCallRunningMutext.(*sync.Mutex).Lock()
+				_tool(toolcall.Arguments, params)
+				a.ToolCallRunningMutext.(*sync.Mutex).Unlock()
+			} else {
+				_tool(toolcall.Arguments, params)
+			}
+		} else if !ok {
+			return fmt.Errorf("error: function not found in FunctionMap")
+		}
+	}
+	return nil
 }

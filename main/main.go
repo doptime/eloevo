@@ -12,9 +12,9 @@ import (
 )
 
 func main() {
+	evo.GenerateGoals("/Users/yang/doptime/redisdb/intentions_and_goals/goals.toml", "RedisDB")
 	evobymeasured.EvoAGoal("RedisDB", "CreateUnifiedCookbook")
 	return
-	evo.SetGoals("/Users/yang/doptime/redisdb/intentions_and_goals/goals.toml", "RedisDB")
 	//learnbychoose.EvoLearnByChooseSolution()
 	httpserve.Debug()
 	time.Sleep(1000000 * time.Second)

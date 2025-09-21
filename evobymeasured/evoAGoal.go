@@ -78,11 +78,11 @@ type TextFragmentsEdited struct {
 	IsCopy   bool `description:"Indicates if the file was copied from another file in this commit."`
 	IsRename bool `description:"Indicates if the file was renamed in this commit."`
 
-	EvolutionParentIDs []string `description:"当前该方案应该从一个最有价值或者是潜力的方案的派生，这是父派生方案的ID。如果是新方案,则为空"`
+	KeyConsiderations      string `description:"Key considerations or important aspects that were taken into account while making this change. This could include facts, design principles, constraints, or specific requirements that influenced the change."`
+	FocusedSettlements     string `description:"The specific areas or aspects that were the primary focus of this change. This could include performance improvements, bug fixes, feature additions, code refactoring, or any other targeted objectives."`
+	CommitValueDeclaration string `description:"A brief declaration of the value or purpose of this commit. This should be a concise summary that highlights the main intent behind the changes."`
 
 	Comment string `description:"required. The git commit message or comment associated with the hunk. This provides what was done in this changes."`
-
-	CommitValueDeclaration string `description:"A brief declaration of the value or purpose of this commit. This should be a concise summary that highlights the main intent behind the changes."`
 
 	OldFragmentStartLine                int64  `description:"The starting line number in the original file from which this fragment begins.(1-minimal)"`
 	OldFragmentEndLine                  int64  `description:"The end line number in the original file from which this fragment begins.(1-minimal)"`
@@ -103,7 +103,7 @@ func (solution *Solution) String() string {
 		NewFragmentTextLines := "\n\t<NewFragmentTextLines>\n" + edits.NewFragmentText_NoLeadingLineNumber + "\n\t</NewFragmentTextLines>"
 		ChangesOfUnifiedDiffFormat := "\n\t<ChangesInUnifiedDiffFormat>\n" + solution.Diffs[edits.FileName] + "\n\t</ChangesInUnifiedDiffFormat>"
 		Comment := "\n\t<Comment>\n" + edits.Comment + "\n\t</Comment>\n"
-		solutionStrBuilder.WriteString(fmt.Sprintf("\t<TextFragmentsEdited  FileName=%s NewName=%s IsNew=%v IsDelete=%v IsCopy=%v IsRename=%v EvolutionParentIDs=%v OldFragmentStartLine=%d, OldFragmentEndLine=%d>%s %s %s \n\t</TextFragmentsEdited>", edits.FileName, edits.NewName, edits.IsNew, edits.IsDelete, edits.IsCopy, edits.IsRename, edits.EvolutionParentIDs, edits.Comment, edits.OldFragmentStartLine, edits.OldFragmentEndLine, Comment, NewFragmentTextLines, ChangesOfUnifiedDiffFormat))
+		solutionStrBuilder.WriteString(fmt.Sprintf("\t<TextFragmentsEdited  FileName=%s NewName=%s IsNew=%v IsDelete=%v IsCopy=%v IsRename=%v KeyConsiderations=\"%s\" FocusedSettlements=\"%s\" CommitValueDeclaration=\"%s\" Comment=\"%s\" OldFragmentStartLine=%d, OldFragmentEndLine=%d>%s %s %s \n\t</TextFragmentsEdited>", edits.FileName, edits.NewName, edits.IsNew, edits.IsDelete, edits.IsCopy, edits.IsRename, edits.KeyConsiderations, edits.FocusedSettlements, edits.CommitValueDeclaration, edits.Comment, edits.OldFragmentStartLine, edits.OldFragmentEndLine, Comment, NewFragmentTextLines, ChangesOfUnifiedDiffFormat))
 	}
 	solutionStrBuilder.WriteString(fmt.Sprintf("</Evolution ID=%s>\n", solution.EvolutionID))
 	return solutionStrBuilder.String()
@@ -159,8 +159,43 @@ func (solution *Solution) CommitResultToFile() {
 
 var keySolution = redisdb.NewHashKey[string, *Solution]()
 
+type ParentSolutionAnalyzeAndFork struct {
+	EvolutionParentIDs          []string                            `description:"当前该方案应该从一个最有价值或者是潜力的方案的派生，这是父派生方案的ID。如果是新方案,则为空"`
+	EvolutionShouldBeRemovedIDs []string                            `description:"remove these evolution IDs from the parent solutions, because they are no longer relevant or have been superseded by better solutions, or redundant to others."`
+	SolutionKey                 *redisdb.HashKey[string, *Solution] `description:"-" msgpack:"-"`
+}
+
+var toolSolutionChoose = tool.NewTool("ParentSolutionAnalyzeAndFork", "提交代码文本变更，针对1)文件变动 2)内容变动", func(edits *ParentSolutionAnalyzeAndFork) {
+
+	var Solutions = map[string]*Solution{}
+	Solutions, _ = edits.SolutionKey.HGetAll()
+	parentNodes := lo.Filter(lo.Values(Solutions), func(s *Solution, i int) bool {
+		return lo.Contains(edits.EvolutionParentIDs, s.EvolutionID)
+	})
+
+	//update elo score
+	winners := lo.Map(parentNodes, func(s *Solution, _ int) elo.Elo { return s })
+	allElo := lo.Map(lo.Values(Solutions), func(s *Solution, _ int) elo.Elo { return s })
+	lossers := lo.Filter(allElo, func(s elo.Elo, _ int) bool { return lo.Contains(edits.EvolutionShouldBeRemovedIDs, s.GetId()) })
+	batchElo := elo.NewBatchElo(allElo...)
+	batchElo.BatchUpdateWinnings(winners...)
+	batchElo.BatchUpdateLosses(lossers...)
+
+	// update winners and lossers
+	modified := append(lo.Map(winners, func(e elo.Elo, _ int) *Solution { return e.(*Solution) }), lo.Map(lossers, func(e elo.Elo, _ int) *Solution { return e.(*Solution) })...)
+	edits.SolutionKey.HMSet(lo.SliceToMap(modified, func(s *Solution) (string, *Solution) { return s.EvolutionID, s }))
+	// remove solutios has elo score < 700
+	for _, s := range lossers {
+		if s.ScoreAccessor() < 700 {
+			edits.SolutionKey.HDel(s.GetId())
+			delete(Solutions, s.GetId())
+		}
+	}
+
+})
+
 var AgentEvoAGoal = agent.Create(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
-# 系统演化任务描述:
+You are a deep system evolute assistant . You should analyze the given system ,and make some changes based on the tools provided. The TODO Goal was defined in SystemEvolutionGoal, your core function is to conduct thorough, multi-source investigations into any topic. You must handle both broad, open-domain inquiries and queries within specialized academic fields. For every request, synthesize information from credible, diverse sources to deliver a comprehensive, accurate, and objective response. When you have gathered sufficient information and are ready to provide the definitive response.
 
 <Current System>
 {{.CurrentSystem}}
@@ -177,8 +212,7 @@ var AgentEvoAGoal = agent.Create(template.Must(template.New("AgentEvoLearningSol
 </ParentSolutions>
 
 <Implementation Steps>
-实施中间步骤:
-step1. **找出需要借鉴的最佳父分支方案**：对现有的改进方案进行评估，以便新的方案可以在此基础上进行改进。
+step1. **找出需要借鉴的父分支方案**：对现有的改进方案进行评估，以便新的方案可以在此基础上进行改进。
 	现有改进方案位于ParentSolutions当中。 这些改进方案重点评估并优化的领域包括：目标明确、第一性原理、用户价值、结构质量、可维护性、性能与可靠性。
 	- **目标明确**：明确围绕特定的目标来提升现有方案。高质量实施给定目标，最小化副作用。
 	- **第一性原理**：准确平衡全面的内容或事实，逻辑自洽。改进方案应基于第一性原理，避免认知偏差。
@@ -186,7 +220,8 @@ step1. **找出需要借鉴的最佳父分支方案**：对现有的改进方案
 	- **结构质量**：应着重在认知复杂度、模块耦合度、内聚度和代码简洁度方面进行优化。
 	- **可维护性**：应关注核心逻辑文档覆盖率的提升，确保代码可理解和可测试。
 	- **性能与可靠性**：优化代码的正确性、变更失败率、预估延迟和吞吐量。
-	显性且仔细思考父分支方案的优劣。以便选定并借鉴优秀的父分支，并进行改进。
+	仔细思考父分支方案的优劣。以便选定需要借鉴的优秀父分支，并进行改进。同时，也需要及时删除那些已经变得冗余、过时、不再适用的父分支方案（通过填写EvolutionShouldBeRemovedIDs）。
+	
 
 step2. **制定改进方案**：
 	- 1. 讨论，并且提出一个基于有限理性、基于第一性原理的关键改进思路，然后按照行动优先，探索优先的思路，用代码或文本给出具体的实质的改进。
@@ -194,11 +229,11 @@ step2. **制定改进方案**：
 
 step3. **方案提交之前的审核修正**： 给出符合 TextFragmentsEdited 约定的 增量编辑的优化方案。并显式检查其中参数是否准确无误。特别是确定需要替换的旧文本的在原始文件的行范围，也就是OldFragmentStartLine（delete included）, OldFragmentEndLine（delete included）。确认或者是修改参数，对TextFragmentsEdited调用符合意图，没有异常。
 
-## 提交最终改进方案
-最后通过 N次独立的toolcall: TextFragmentsEdited,以分段、增量修改的方式，每个调用仅完成一个文件操作或者是文件中的单个代码块的内容变更。
+step4. **提交最终改进方案**：
+	1. 通过toolcall:ParentSolutionAnalyzeAndFork 提交父分支评估结果。
+	2. 通过 N次独立的toolcall: TextFragmentsEdited,以分段、增量修改的方式，每个调用仅完成一个文件操作或者是文件中的单个代码块的内容变更。
 </Implementation Steps>
-<think>
-`))).WithToolCallMutextRun().WithTools(tool.NewTool("TextFragmentsEdited", "提交代码文本变更，针对1)文件变动 2)内容变动", func(edits *TextFragmentsEdited) {
+`))).WithToolCallMutextRun().WithTools(toolSolutionChoose, tool.NewTool("TextFragmentsEdited", "提交代码文本变更，针对1)文件变动 2)内容变动", func(edits *TextFragmentsEdited) {
 
 	edits.NewName = lo.CoalesceOrEmpty(edits.NewName, edits.FileName)
 	edits.FileName = lo.CoalesceOrEmpty(edits.FileName, edits.NewName)
@@ -211,11 +246,6 @@ step3. **方案提交之前的审核修正**： 给出符合 TextFragmentsEdited
 	//lock the file
 	var Solutions = map[string]*Solution{}
 	Solutions, _ = edits.SolutionKey.HGetAll()
-	for _, solutionKey := range lo.Keys(Solutions) {
-		if Solutions[solutionKey].RemoveDueToFileChanged(edits.SolutionKey) {
-			delete(Solutions, solutionKey)
-		}
-	}
 
 	edits.SolutionKey.HGet(edits.EvolutionID)
 	if _, found := Solutions[edits.EvolutionID]; !found {
@@ -245,14 +275,6 @@ step3. **方案提交之前的审核修正**： 给出符合 TextFragmentsEdited
 		delete(currentSolution.ModifiedLines[edits.NewName], int(i))
 	}
 	currentSolution.ModifiedLines[edits.NewName][int(edits.OldFragmentStartLine)] = utils.RemoveLineNumber(edits.NewFragmentText_NoLeadingLineNumber)
-	parentNodes := lo.Filter(lo.Values(Solutions), func(s *Solution, i int) bool {
-		return lo.Contains(edits.EvolutionParentIDs, s.EvolutionID)
-	})
-
-	//update elo score
-	parentElo := lo.Map(parentNodes, func(s *Solution, _ int) elo.Elo { return s })
-	allElo := lo.Map(lo.Values(Solutions), func(s *Solution, _ int) elo.Elo { return s })
-	elo.BatchUpdateWinnings(parentElo, allElo)
 
 	var contentStrBuilder strings.Builder
 	keys := lo.Keys(currentSolution.ModifiedLines[edits.NewName])
@@ -267,13 +289,16 @@ step3. **方案提交之前的审核修正**： 给出符合 TextFragmentsEdited
 
 	currentSolution.Diffs[edits.FileName] = time.Now().Format("2006-01-02 15:04:05") + " " + edits.Comment + "\n" + fmt.Sprintln(diff)
 	edits.SolutionKey.HSet(edits.EvolutionID, currentSolution)
-	//also update parent nodes to save elo score
-	for _, solution := range parentNodes {
-		edits.SolutionKey.HSet(solution.EvolutionID, solution)
-	}
 	//unlock the file
 
-}))
+})).WithToolCallsCheckedBeforeCalling(func(toolCalls []*agent.FunctionCall) error {
+	//check the toolcalls, make sure they are valid
+	names := lo.Map(toolCalls, func(t *agent.FunctionCall, _ int) string { return t.Name })
+	if !lo.Contains(names, "ParentSolutionAnalyzeAndFork") || !lo.Contains(names, "TextFragmentsEdited") {
+		return fmt.Errorf("no valid toolcall found, should contain ParentSolutionAnalyzeAndFork or TextFragmentsEdited both")
+	}
+	return nil
+})
 
 func EvoAGoal(RealmStr, GoalNameAsID string) {
 	realm := config.WithSelectedRealms(RealmStr)[0]
@@ -294,19 +319,17 @@ func EvoAGoal(RealmStr, GoalNameAsID string) {
 			}
 		}
 		errorGroup := errgroup.Group{}
-		for j := 0; j < 2; j++ {
+		for j := 0; j < 1; j++ {
 			errorGroup.Go(func() error {
-				//Gemini25Flashlight Gemini25ProAigpt Glm45AirLocal
-				model := []*models.Model{models.Qwendeepresearch, models.Qwen3Next80B}[j%2]
-				return AgentEvoAGoal. //CopyPromptOnly(). //Qwen3B32Thinking
-							Call(map[string]any{
-						agent.UseModel:        model,
-						"SystemEvolutionGoal": string(goal.String()) + "\n\n",
-						"CurrentSystem":       config.WithSelectedRealms("RedisDB").LoadAllEvoProjects(goal.RelatedFiles...),
-						"ParentSolutions":     lo.Values(Solutions),
-						"EvolutionID":         utils.ID(nil, 8),
-						"SolutionKey":         solutionKey,
-					})
+				return AgentEvoAGoal.Call(map[string]any{
+					//agent.UseCopyPromptOnly: true,
+					agent.UseModel:        models.Qwen3Next80B, //.WithToolsInUserPrompt(), //CopyPromptOnly(). //Qwen3B32Thinking  model := []*models.Model{models.Qwendeepresearch, models.Qwen3Next80B}[j%2]
+					"SystemEvolutionGoal": string(goal.String()) + "\n\n",
+					"CurrentSystem":       config.WithSelectedRealms("RedisDB").LoadAllEvoProjects(goal.RelatedFiles...),
+					"ParentSolutions":     lo.Values(Solutions),
+					"EvolutionID":         utils.ID(nil, 8),
+					"SolutionKey":         solutionKey,
+				})
 			})
 		}
 		err := errorGroup.Wait()

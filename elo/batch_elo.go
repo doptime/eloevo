@@ -7,17 +7,22 @@ import (
 )
 
 type BatchElo struct {
-	Winners []Elo
 	Players []Elo
 }
 
+func NewBatchElo(players ...Elo) *BatchElo {
+	return &BatchElo{
+		Players: players,
+	}
+}
+
 // BatchUpdateWinnings updates Elo ratings for a list of winners and players
-func BatchUpdateWinnings(winners []Elo, players []Elo) {
+func (b *BatchElo) BatchUpdateWinnings(winners ...Elo) {
 	// Create a map for quick lookup of winners
 	winnerMap := lo.SliceToMap(winners, func(m Elo) (string, struct{}) { return m.GetId(), struct{}{} })
 
 	// Identify the losers
-	losers := lo.Filter(players, func(m Elo, _ int) bool {
+	losers := lo.Filter(b.Players, func(m Elo, _ int) bool {
 		_, exists := winnerMap[m.GetId()]
 		return !exists
 	})
@@ -28,8 +33,8 @@ func BatchUpdateWinnings(winners []Elo, players []Elo) {
 	}
 
 	// Initialize maps to store expected and actual scores
-	expectedScores := make(map[string]float64, len(players))
-	actualScores := make(map[string]float64, len(players))
+	expectedScores := make(map[string]float64, len(b.Players))
+	actualScores := make(map[string]float64, len(b.Players))
 
 	// Calculate expected and actual scores for each player
 	for _, winner := range winners {
@@ -44,7 +49,7 @@ func BatchUpdateWinnings(winners []Elo, players []Elo) {
 	}
 
 	// Update ratings for each player
-	for _, player := range players {
+	for _, player := range b.Players {
 		expected := expectedScores[player.GetId()]
 		actual := actualScores[player.GetId()]
 		// Calculate rating change
@@ -54,6 +59,17 @@ func BatchUpdateWinnings(winners []Elo, players []Elo) {
 
 		player.ScoreAccessor(deltaInt)
 	}
+}
+
+func (b *BatchElo) BatchUpdateLosses(losers ...Elo) {
+	losersMap := lo.SliceToMap(losers, func(m Elo) (string, struct{}) { return m.GetId(), struct{}{} })
+	winners := []Elo{}
+	for _, p := range b.Players {
+		if _, exists := losersMap[p.GetId()]; !exists {
+			winners = append(winners, p)
+		}
+	}
+	b.BatchUpdateWinnings(winners...)
 }
 
 const DefaultEloScore = 1000
