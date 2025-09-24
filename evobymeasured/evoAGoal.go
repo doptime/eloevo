@@ -300,14 +300,15 @@ step4. **提交最终改进方案**：
 	return nil
 })
 
-func EvoAGoal(RealmStr, GoalNameAsID string) {
+func EvoAGoal(RealmStr, GoalID string) {
 	realm := config.WithSelectedRealms(RealmStr)[0]
-	goal := evo.LoadGoal(realm, "CreateUnifiedCookbook")
+	keyGoal := evo.KeyGoals.ConcatKey(realm.Name).ConcatKey("CreateUnifiedCookbook")
+	goal, _ := keyGoal.HGet(GoalID)
 	if goal == nil {
 		fmt.Println("No goal found")
 		return
 	}
-	solutionKey := keySolution.ConcatKey(realm.Name).ConcatKey(GoalNameAsID)
+	solutionKey := keySolution.ConcatKey(realm.Name).ConcatKey(GoalID)
 	for i, TurnNum := 0, 6; i < TurnNum; i++ {
 		time.Sleep(300 * time.Millisecond)
 		//key: evolutionID, value: []*TextFragmentsEdited

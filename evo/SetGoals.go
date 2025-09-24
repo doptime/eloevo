@@ -2,22 +2,31 @@ package evo
 
 import (
 	"fmt"
-	"os"
+	"math"
 	"slices"
+	"strings"
 	"text/template"
 
-	"github.com/BurntSushi/toml"
 	"github.com/doptime/eloevo/agent"
 	"github.com/doptime/eloevo/config"
+	"github.com/doptime/eloevo/elo"
 	"github.com/doptime/eloevo/models"
 	"github.com/doptime/eloevo/tool"
 	"github.com/doptime/eloevo/utils"
+	"github.com/doptime/redisdb"
 	"github.com/samber/lo"
+	"golang.org/x/sync/errgroup"
 )
 
 var PromptSetGoals = template.Must(template.New("SetGoals").Parse(`
-## 当前系统
+<CurrentSystem>
 {{.ContextFiles}}
+</CurrentSystem>
+
+
+<CurrentGoalList>
+{{.CurrentGoalList}}
+</CurrentGoalList>
 
 
 <演进系统的目标生成与融合的一般原则>
@@ -132,17 +141,54 @@ $$ P = (w_V \cdot V) + (w_F \cdot F) + (w_R \cdot R) + (w_L \cdot L) $$
 
 </演进系统的目标生成与融合的一般原则>
 
-## TO Do: 生成演进系统的目标
-现在我们需要演进这个系统，请深度思考，并且提出有潜力的长期目标和短期目标。
+## TO Do: 生成演进系统的一系列目标，我们期望这些目标是有层次的，完备的。简练但是必不可少的。大的目标可以拆解成小的目标。小的目标可以按MECE原则合并成大的目标。
+1. 使用ToolCall调用 CurrentGoalAnalyze 来分析当前目标的优缺点，决定哪些目标需要被移除，哪些目标需要被保留和借鉴。
+2. 使用ToolCall调用 SetGoals 来提交新的目标变更。现在我们需要演进这个系统，请深度思考，并且提出有潜力的长期目标和短期目标。
 
 最后请使用多个调用: SetGoals 来提交Goals变更. 
 `))
 
+type CurrentGoalAnalyze struct {
+	ParentGoalIDs          []string `description:"当前需要展开或进一步分析的父目标，这是父目标的ID。如果是新方案,则为空"`
+	GoalShouldRemovedByIDs []string `description:"remove these Goal IDs from the parent Goals, because they are no longer relevant or have been superseded by better Goal, or redundant to others."`
+
+	GoalKey string `description:"-"`
+}
+
+var toolCurrentGoalAnalyze = tool.NewTool("CurrentGoalAnalyze", "分析当前目标的优缺点，决定哪些目标需要被移除，哪些目标需要被保留和借鉴", func(commits *CurrentGoalAnalyze) {
+	KeyGoal := redisdb.NewHashKey[string, *Goal](redisdb.Opt.Key(commits.GoalKey))
+	goals, _ := KeyGoal.HGetAll()
+	for _, g := range goals {
+		g.GoalKey = commits.GoalKey
+	}
+	allElos := lo.Map(lo.Values(goals), func(g *Goal, _ int) elo.Elo { return g })
+	batchelo := elo.NewBatchElo(allElos...)
+	batchelo.BatchUpdateLossesByIds(commits.ParentGoalIDs...)
+	batchelo.BatchUpdateLossesByIds(commits.GoalShouldRemovedByIDs...)
+	//删除全部EloScore小于800的目标
+	for _, g := range goals {
+		if g.EloScore < 600 {
+			KeyGoal.HDel(g.GoalID)
+			delete(goals, g.GoalID)
+		}
+	}
+	// 把剩余的EloScore 平均值重新设置为1000
+	avgElo := int64(math.Round(lo.SumBy(lo.Values(goals), func(g *Goal) float64 { return float64(g.EloScore) }) / float64(len(goals))))
+	for _, g := range goals {
+		g.EloScore = g.EloScore * 1000.0 / avgElo
+	}
+	KeyGoal.HMSet(goals)
+
+})
+
 type Goal struct {
 	FileName string `description:"-"`
-	Action   string `description:"edit, add, delete"`
+	GoalID   string `description:"unique id, if empty, will be generated as a uuid"`
 
-	GoalNameAsID       string `description:"The file names to reserve in the context"`
+	ParentGoalID string `description:"unique id, If this is a sub-goal, specify the parent goal ID here."`
+
+	EloScore           int64  `description:"-"`
+	GoalName           string `description:"The file names to reserve in the context"`
 	GoalDescription    string `description:"The description of the goal"`
 	ParentGoalNameAsID string `description:"optional, the parent goal name id. If the Goal is part of Key Objectives of another Goal, it should be specified here."`
 
@@ -169,81 +215,141 @@ type Goal struct {
 	OutcomeAnalysis string   `toml:"OutcomeAnalysis" description:"当目标完成或失败后, 对结果的分析和学到的经验"`
 	RelatedFiles    []string `toml:"RelatedFiles" description:"-"`
 
-	Result *[]string `description:"-"`
+	Result  *[]string `description:"-"`
+	GoalKey string    `description:"-"`
 }
 
 func (g *Goal) String() string {
-	return fmt.Sprintf("Name:%s\nDescription: %s\nProblemToResolve: %s\nWhatToAchieve: %s\nHowToAchieve: %s",
-		g.GoalNameAsID, g.GoalDescription, g.ProblemToResolve, g.WhatToAchieve, g.HowToAchieve)
+	return fmt.Sprintf("<Goal ID:%s ParentGoalID:%s> Name:%s\nDescription: %s\nProblemToResolve: %s\nWhatToAchieve: %s\nHowToAchieve: %s\nVisionContributionDescription: %s\nFeasibilityDescription: %s\nShortTermReturnDescription: %s \nLearningValueDescription: %s\n </Goal>\n",
+		g.GoalID, g.ParentGoalID, g.GoalName, g.GoalDescription, g.ProblemToResolve, g.WhatToAchieve, g.HowToAchieve, g.VisionContributionDescription, g.FeasibilityDescription, g.ShortTermReturnDescription, g.LearningValueDescription)
 }
 
-type GoalsSortedList struct {
-	Goals []Goal
+func (s *Goal) GetId() string {
+	return s.GoalID
+}
+func (s *Goal) ScoreAccessor(delta ...int) int {
+	if len(delta) > 0 {
+		s.EloScore += int64(delta[0])
+	}
+	return int(s.EloScore)
 }
 
-var ToolSetGoals = tool.NewTool("SetGoals", "要最大化这个系统的长期潜力和短期潜力。要设置哪些目标？	", func(commits *Goal) {
-	var GoalsSortedList GoalsSortedList
-	toml.DecodeFile(commits.FileName, &GoalsSortedList)
-	GoalsSortedList.Goals = append(GoalsSortedList.Goals, *commits)
+var KeyGoals = redisdb.NewHashKey[string, *Goal]()
 
-	if commits.Action == "delete" {
-		GoalsSortedList.Goals = lo.Filter(GoalsSortedList.Goals, func(g Goal, i int) bool {
-			return g.GoalNameAsID != commits.GoalNameAsID
-		})
+var ToolSetGoals = tool.NewTool("SetGoals", "为系统设置目标", func(commits *Goal) {
+	commits.GoalID = utils.ID(nil, 8)
+	commits.EloScore = 1000
+
+	KeyGoal := redisdb.NewHashKey[string, *Goal](redisdb.Opt.Key(commits.GoalKey))
+	goals, _ := KeyGoal.HGetAll()
+	for _, g := range goals {
+		g.GoalKey = commits.GoalKey
 	}
 
 	//calculate priority, with weights normalized
-	for _, item := range GoalsSortedList.Goals {
-		totalWeight := lo.Sum(item.Weights)
-		for i := range item.Weights {
-			item.Weights[i] /= max(0.0001, totalWeight)
-		}
-		item.Priority = item.VisionContributionScore*item.Weights[0] +
-			item.FeasibilityScore*item.Weights[1] +
-			item.ShortTermReturnScore*item.Weights[2] +
-			item.LearningValueScore*item.Weights[3]
+
+	if len(commits.Weights) != 4 {
+		commits.Weights = []float64{0.25, 0.25, 0.25, 0.25}
 	}
-	slices.SortFunc(GoalsSortedList.Goals, func(a, b Goal) int {
+	totalWeight := lo.Sum(commits.Weights)
+	for i := range commits.Weights {
+		commits.Weights[i] /= max(0.0001, totalWeight)
+	}
+	commits.Priority = commits.VisionContributionScore*commits.Weights[0] + commits.FeasibilityScore*commits.Weights[1] + commits.ShortTermReturnScore*commits.Weights[2] + commits.LearningValueScore*commits.Weights[3]
+	goals[commits.GoalID] = commits
+	goalSliceSortedByPriority := append(lo.Values(goals), commits)
+
+	slices.SortFunc(goalSliceSortedByPriority, func(a, b *Goal) int {
 		return -int(b.Priority - a.Priority)
 	})
-	GoalsSortedList.Goals = lo.UniqBy(GoalsSortedList.Goals, func(a Goal) string {
-		return a.GoalNameAsID
+	var SortedByPriority map[string]float64 = map[string]float64{}
+	for i, g := range goalSliceSortedByPriority {
+		SortedByPriority[g.GoalID] = float64(i + 1)
+	}
+
+	var SortedByElo map[string]float64 = map[string]float64{}
+	goalsSliceSortedByElo := lo.Values(goals)
+	slices.SortFunc(goalsSliceSortedByElo, func(a, b *Goal) int {
+		return -int(b.EloScore - a.EloScore)
 	})
+	for i, g := range goalsSliceSortedByElo {
+		SortedByElo[g.GoalID] = float64(i + 1)
+	}
 
-	var ioFileToSave *os.File
-	ioFileToSave, _ = os.OpenFile(commits.FileName, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
+	finalSorted := lo.Values(goals)
+	slices.SortFunc(finalSorted, func(a, b *Goal) int {
+		//几何平均值
+		geoMeanA := math.Sqrt(SortedByPriority[a.GoalID] * SortedByElo[a.GoalID])
+		geoMeanB := math.Sqrt(SortedByPriority[b.GoalID] * SortedByElo[b.GoalID])
+		if geoMeanA < geoMeanB {
+			return -1
+		} else if geoMeanA > geoMeanB {
+			return 1
+		}
+		return 0
 
-	err := toml.NewEncoder(ioFileToSave).Encode(GoalsSortedList)
+	})
+	_, err := KeyGoal.HMSet(goals)
 	if err != nil {
-		fmt.Println("Error encoding TOML:", err)
+		fmt.Println("Error saving goals to redis:", err)
+	}
+
+	type GoalList struct {
+		Goals []*Goal
+	}
+
+	if err = utils.ToTomlFile(commits.FileName, &GoalList{Goals: finalSorted}); err != nil {
+		fmt.Println("Error encoding goals to toml:", err)
 	}
 })
 
-func LoadGoal(realm *config.EvoRealm, goalName string) *Goal {
-	var GoalsSortedList GoalsSortedList
-	toml.DecodeFile(realm.EvoFile(config.EvoFileTypeGoal), &GoalsSortedList)
-	t, found := lo.Find(GoalsSortedList.Goals, func(g Goal) bool {
-		return g.GoalNameAsID == goalName
-	})
-	if !found {
-		return nil
+var agentGenerateTool = agent.Create(PromptSetGoals).WithTools(toolCurrentGoalAnalyze, ToolSetGoals).WithToolCallsCheckedBeforeCalling(func(toolCalls []*agent.FunctionCall) error {
+	//check the toolcalls, make sure they are valid
+	names := lo.Map(toolCalls, func(t *agent.FunctionCall, _ int) string { return t.Name })
+	if !lo.Contains(names, "CurrentGoalAnalyze") || !lo.Contains(names, "SetGoals") {
+		return fmt.Errorf("no valid toolcall found, should contain CurrentGoalAnalyze or SetGoals both")
 	}
-	return &t
-}
+	return nil
+})
 
-func SetGoals(goalFile string, realms ...string) (NewContextFiles []string) {
+func GenerateGoals(Goalrealms string, realms ...string) {
+	_realm := config.WithSelectedRealms(realms...)
 
-	_realm := lo.Filter(lo.Values(config.AllEvoRealmsInFile), func(r *config.EvoRealm, i int) bool {
-		return lo.Contains(realms, r.Name)
-	})
-	files := utils.TextFromEvoRealms(map[string]bool{}, _realm...)
-	var ReturnLineKept = &[]string{}
-	agent.Create(PromptSetGoals).WithTools(ToolSetGoals).Call(map[string]any{
-		"ContextFiles": files,
-		"Result":       ReturnLineKept,
-		"FileName":     goalFile,
-		agent.UseModel: models.Qwen3Next80B,
-	})
+	keyGoal := KeyGoals.ConcatKey(Goalrealms).ConcatKey("SystemGoals")
+	for batch := 0; batch < 6; batch++ {
 
-	return *ReturnLineKept
+		currentGoalssMap, err := keyGoal.HGetAll()
+		if err != nil {
+			fmt.Println("Error loading current goals from redis:", err)
+		}
+		goalFile := config.WithSelectedRealms(Goalrealms)[0].EvoFile(config.EvoFileTypeGoal, "GameTypes")
+		files := utils.TextFromEvoRealms(map[string]bool{}, _realm...)
+		var ReturnLineKept = &[]string{}
+
+		var CurrentGoals strings.Builder
+		CurrentGoals.WriteString("<CurrentGoalList>\n")
+		for _, g := range lo.Values(currentGoalssMap) {
+			CurrentGoals.WriteString(g.String() + "\n\n")
+		}
+		CurrentGoals.WriteString("</CurrentGoalList>\n")
+
+		errorGroup := errgroup.Group{}
+		for j := 0; j < 4; j++ {
+			errorGroup.Go(func() error {
+				return agentGenerateTool.Call(map[string]any{
+					"ContextFiles":    files,
+					"CurrentGoalList": CurrentGoals.String(),
+					"Result":          ReturnLineKept,
+					"FileName":        goalFile,
+					"GoalKey":         keyGoal.Key,
+					agent.UseModel:    []*models.Model{models.Qwen3Next80B, models.Qwen3Next80B}[j%2], //Oss120b Qwen3Next80B
+				})
+			})
+		}
+		err = errorGroup.Wait()
+		if err != nil {
+			fmt.Printf("Agent call failed: %v\n", err)
+		}
+	}
+	fmt.Printf("Task terminated!")
 }

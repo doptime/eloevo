@@ -12,7 +12,9 @@ import (
 )
 
 func main() {
-	evo.GenerateGoals("/Users/yang/doptime/redisdb/intentions_and_goals/goals.toml", "RedisDB")
+	evobymeasured.EvoAGoal("pickingmap")
+	evobymeasured.EvoAGoal("RedisDB", "CreateUnifiedCookbook")
+	evo.GenerateGoals("pickingmap", "pickingmap")
 	evobymeasured.EvoAGoal("RedisDB", "CreateUnifiedCookbook")
 	return
 	//learnbychoose.EvoLearnByChooseSolution()

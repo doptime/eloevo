@@ -60,6 +60,10 @@ func (b *BatchElo) BatchUpdateWinnings(winners ...Elo) {
 		player.ScoreAccessor(deltaInt)
 	}
 }
+func (b *BatchElo) BatchUpdateWinningsByIds(winnerIds ...string) {
+	winners := b.IdToElos(winnerIds...)
+	b.BatchUpdateWinnings(winners...)
+}
 
 func (b *BatchElo) BatchUpdateLosses(losers ...Elo) {
 	losersMap := lo.SliceToMap(losers, func(m Elo) (string, struct{}) { return m.GetId(), struct{}{} })
@@ -70,6 +74,19 @@ func (b *BatchElo) BatchUpdateLosses(losers ...Elo) {
 		}
 	}
 	b.BatchUpdateWinnings(winners...)
+}
+func (b *BatchElo) IdToElos(ids ...string) (ret []Elo) {
+	players := lo.SliceToMap(b.Players, func(m Elo) (string, Elo) { return m.GetId(), m })
+	for _, id := range ids {
+		if p, exists := players[id]; exists {
+			ret = append(ret, p)
+		}
+	}
+	return
+}
+func (b *BatchElo) BatchUpdateLossesByIds(loserIds ...string) {
+	losers := b.IdToElos(loserIds...)
+	b.BatchUpdateLosses(losers...)
 }
 
 const DefaultEloScore = 1000

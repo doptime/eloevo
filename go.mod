@@ -9,7 +9,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/doptime/config v0.0.0-20250322030901-0115e7134058
 	github.com/doptime/doptime v0.1.1-0.20250917030936-1d8c9bf71641
-	github.com/doptime/redisdb v0.0.0-20250917030832-fee848f06ff1
+	github.com/doptime/redisdb v0.0.0-20250922064655-447b4b321ea5
 	github.com/dustin/go-humanize v1.0.1
 	github.com/faiface/beep v1.1.0
 	github.com/hexops/gotextdiff v1.0.3
