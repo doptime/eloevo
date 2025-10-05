@@ -316,7 +316,7 @@ func GenerateGoals(Goalrealms string, realms ...string) {
 	_realm := config.WithSelectedRealms(realms...)
 
 	keyGoal := KeyGoals.ConcatKey(Goalrealms).ConcatKey("SystemGoals")
-	for batch := 0; batch < 6; batch++ {
+	for batch := 0; batch < 4; batch++ {
 
 		currentGoalssMap, err := keyGoal.HGetAll()
 		if err != nil {
@@ -334,7 +334,7 @@ func GenerateGoals(Goalrealms string, realms ...string) {
 		CurrentGoals.WriteString("</CurrentGoalList>\n")
 
 		errorGroup := errgroup.Group{}
-		for j := 0; j < 4; j++ {
+		for j := 0; j < 2; j++ {
 			errorGroup.Go(func() error {
 				return agentGenerateTool.Call(map[string]any{
 					"ContextFiles":    files,
@@ -342,7 +342,7 @@ func GenerateGoals(Goalrealms string, realms ...string) {
 					"Result":          ReturnLineKept,
 					"FileName":        goalFile,
 					"GoalKey":         keyGoal.Key,
-					agent.UseModel:    []*models.Model{models.Qwen3Next80B, models.Qwen3Next80B}[j%2], //Oss120b Qwen3Next80B
+					agent.UseModel:    []*models.Model{models.Qwen3Next80BThinking, models.Qwen3Next80B}[j%2], //Oss120b Qwen3Next80B
 				})
 			})
 		}

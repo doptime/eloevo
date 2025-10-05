@@ -79,10 +79,16 @@ RootPath = "/Users/yang/learn-by-choose-goserver"
 GitIgnore = ".*,*.mod,*.sum,*.doc,*.git,*.idea,*.vscode,*.evolab"
 
 [[EvoRealms]]
-Name = "pickingmap"
+Name = "dogtry"
 Enable = true
-RootPath = "/Users/yang/pickingmap"
+RootPath = "/Users/yang/dogtry"
 GitIgnore = ".*,*.mod,*.sum,*.doc,*.git,*.idea,*.vscode,*.evolab"
+[[EvoRealms]]
+
+Name = "dogtryapp"
+Enable = true
+RootPath = "/Users/yang/dogtryapp"
+GitIgnore = ".*,*.mod,*.sum,*.doc,*.git,*.idea,*.vscode,*.evolab,package-lock.json,node_modules,lib"
 
 [[EvoRealms]]
 Name = "learniverseweb"

@@ -29,7 +29,7 @@ func NormalizeFilename(name string) string {
 func ToLocalEvoFile(path string) (string, *config.EvoRealm) {
 	path = NormalizeFilename(path)
 	realm, found := lo.Find(lo.Values(config.AllEvoRealmsInFile), func(r *config.EvoRealm) bool {
-		return strings.HasPrefix(path, "/"+r.Name)
+		return strings.HasPrefix(path, "/"+r.Name+"/")
 	})
 	if found && realm != nil {
 		return filepath.Join(realm.RootPath, strings.TrimPrefix(path, "/"+realm.Name)), realm

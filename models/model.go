@@ -228,9 +228,12 @@ var (
 	Qwen3B32Nonthinking   = NewModel("http://rtxserver.lan:1214/v1", ApiKey, "qwen3b32").WithTemperature(0.2).WithTopP(0.8)
 	Qwen3B30A3b2507       = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3b30a3b2507").WithTemperature(0.7).WithTopP(0.8).WithTopK(20)
 	Qwen3B235Thinking2507 = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3-235b-a22b-thinking-2507")
-	Qwen3Next80B          = NewModel("http://rtxserver.lan:12304/v1", ApiKey, "qwen3-next-80b")
-	Qwendeepresearch      = NewModel("http://rtxserver.lan:12304/v1", ApiKey, "deepresearch").WithToolsInUserPrompt()
-	Qwen3_4B2507          = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3-4b-2507")
+	Qwen3vl30b            = NewModel("http://rtxserver.lan:12304/v1", ApiKey, "qwen3-vl-30b")
+
+	Qwen3Next80BThinking = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3-next-80b-thinking")
+	Qwen3Next80B         = NewModel("http://rtxserver.lan:12304/v1", ApiKey, "qwen3-next-80b")
+	Qwendeepresearch     = NewModel("http://rtxserver.lan:12304/v1", ApiKey, "deepresearch").WithToolsInUserPrompt()
+	Qwen3_4B2507         = NewModel("http://rtxserver.lan:12303/v1", ApiKey, "qwen3-4b-2507")
 
 	Qwen3B235Thinking2507Aliyun = NewModel("https://dashscope.aliyuncs.com/compatible-mode/v1", "aliyun", "qwen3-235b-a22b-thinking-2507")
 

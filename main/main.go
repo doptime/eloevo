@@ -1,41 +1,21 @@
 package main
 
-import (
-	"time"
+import evoprojectstepbystep "github.com/doptime/eloevo/evoproject-step-by-step"
 
-	"github.com/doptime/doptime/httpserve"
-	"github.com/doptime/eloevo/evo"
-	"github.com/doptime/eloevo/evobymeasured"
-	"github.com/doptime/eloevo/projects"
-	"github.com/doptime/eloevo/utils"
-	//_ "github.com/doptime/doptime/httpserve"
-)
+//_ "github.com/doptime/doptime/httpserve"
 
 func main() {
-	evobymeasured.EvoAGoal("pickingmap")
-	evobymeasured.EvoAGoal("RedisDB", "CreateUnifiedCookbook")
-	evo.GenerateGoals("pickingmap", "pickingmap")
-	evobymeasured.EvoAGoal("RedisDB", "CreateUnifiedCookbook")
+	evoprojectstepbystep.EvoAGoal("dogtryapp", "dogtryapp")
 	return
-	//learnbychoose.EvoLearnByChooseSolution()
-	httpserve.Debug()
-	time.Sleep(1000000 * time.Second)
-	a, e := utils.GetEmbedding("hello world")
-	println("embedding result", a, e.Error())
-	projects.AgentSelectAndExecute()
-	// agents.AgentFunctioncallTest.Call( map[string]any{})
-	// agents.AgentResponseTest()
-	//projects.LoadResultsToRedis()
-	// scrum.AgentSessionArrangementCall()
-	// go projects.BusinessPlansEdTechExploration()
+	// evobymeasured.EvoAGoal("RedisDB", "CreateUnifiedCookbook")
+	// evo.GenerateGoals("pickingmap", "pickingmap")
+	// evobymeasured.EvoAGoal("RedisDB", "CreateUnifiedCookbook")
+	// return
+	// //learnbychoose.EvoLearnByChooseSolution()
+	// httpserve.Debug()
 	// time.Sleep(1000000 * time.Second)
-	// go projects.BusinessPlansPWAExploration()
-	// projects.BusinessClusteringExploration()
-
-	//devops.UseCaseExploration()
-	//projects.GenBusinessPlanParallel()
-	//projects.RationalCognitionFrameworkExploration()
-	//projects.BusinessUtilityExploration()
-	//projects.PersonalAdminExploration()
+	// a, e := utils.GetEmbedding("hello world")
+	// println("embedding result", a, e.Error())
+	// projects.AgentSelectAndExecute()
 
 }

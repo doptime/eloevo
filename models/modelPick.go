@@ -76,6 +76,13 @@ var EloModels = ModelList{
 	},
 }
 
+func NewModelList(name string, models ...*Model) *ModelList {
+	return &ModelList{
+		Name:   name,
+		Models: models,
+	}
+}
+
 func (list *ModelList) SequentialPick(firstToStart ...*Model) (ret *Model) {
 	if len(list.Models) == 0 {
 		panic("no models defined for list")

@@ -2,8 +2,13 @@ package utils
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/doptime/eloevo/config"
 )
 
 func RemoveLineNumber(s string) string {
@@ -21,6 +26,48 @@ func RemoveLineNumber(s string) string {
 	}
 	return strings.Join(newLinesNoLineNum, "\n")
 }
+func FilesNamesInDir(dirPath string) []string {
+	// Check if the directory exists
+	info, err := os.Stat(dirPath)
+	if os.IsNotExist(err) {
+		log.Printf("Directory does not exist: %s", dirPath)
+		return nil
+	}
+	if !info.IsDir() {
+		log.Printf("Provided path is not a directory: %s", dirPath)
+		return nil
+	}
+	allFiles := []string{}
+	// Walk through the directory
+	filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			log.Printf("Error accessing path %q: %v\n", path, err)
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		allFiles = append(allFiles, path)
+		return nil
+	})
+	return allFiles
+}
+
+func LineNumberedPathContent(path string, evoRealm *config.EvoRealm, lineNumberStart int) string {
+	allFiles := FilesNamesInDir(path)
+	var allFileContent strings.Builder
+	for _, file := range allFiles {
+		relativePath := evoRealm.RelativePath(file)
+		content := TextFromFile(file)
+		if lineNumberStart <= 0 {
+			allFileContent.WriteString("\n\n<file path=\"" + relativePath + "\">\n" + content + "\n</file>\n")
+		} else {
+			allFileContent.WriteString("\n\n<file path=\"" + relativePath + "\">\nContent: \n" + LineNumberedFileContent(content, lineNumberStart) + "\nEOF\n</file>\n")
+		}
+	}
+	return allFileContent.String()
+}
+
 func LineNumberedFileContent(s string, lineNumberStart int) string {
 	s = NormalizeFileContent(s)
 	lines := strings.Split(s, "\n")
