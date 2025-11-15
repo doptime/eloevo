@@ -24,7 +24,7 @@ import (
 
 type Solution struct {
 	GoalToAchieve string                    `description:"The name of the goal this solution is intended to achieve."`
-	Edits         []*TextFragmentsEdited    `description:"The list of text fragment edits that make up this solution."`
+	Edits         []*Updates                `description:"The list of text fragment edits that make up this solution."`
 	EvolutionID   string                    `description:"-"` //该方案的唯一ID,一般是时间戳+随机数
 	FileBefore    map[string]string         `description:"-"` // before modification, key is filename, value is file content
 	ModifiedLines map[string]map[int]string `description:"-"` // after modification, key is filename, value is file content
@@ -41,7 +41,7 @@ func (s *Solution) RemoveDueToFileChanged(key *redisdb.HashKey[string, *Solution
 			delete(s.ModifiedLines, file)
 			delete(s.Diffs, file)
 			//also remove the edits related to this file
-			s.Edits = lo.Filter(s.Edits, func(edit *TextFragmentsEdited, _ int) bool {
+			s.Edits = lo.Filter(s.Edits, func(edit *Updates, _ int) bool {
 				return edit.FileName != file
 			})
 		}
@@ -55,7 +55,7 @@ func (s *Solution) RemoveDueToFileChanged(key *redisdb.HashKey[string, *Solution
 	}
 }
 
-type TextFragmentsEdited struct {
+type Updates struct {
 	GoalName string `description:"The name of the goal this change is associated with, used as an identifier."`
 
 	FileName string `description:"required. The name of the file before the change."`
@@ -91,7 +91,7 @@ func (solution *Solution) String() string {
 		NewFragmentTextLines := "\n\t<NewFragmentTextLines>\n" + edits.NewFragmentText_NoLeadingLineNumber + "\n\t</NewFragmentTextLines>"
 		ChangesOfUnifiedDiffFormat := "\n\t<ChangesInUnifiedDiffFormat>\n" + solution.Diffs[edits.FileName] + "\n\t</ChangesInUnifiedDiffFormat>"
 		Comment := "\n\t<Comment>\n" + edits.Comment + "\n\t</Comment>\n"
-		solutionStrBuilder.WriteString(fmt.Sprintf("\t<TextFragmentsEdited  FileName=%s NewName=%s IsNew=%v IsDelete=%v IsCopy=%v IsRename=%v KeyConsiderations=\"%s\" FocusedSettlements=\"%s\" CommitValueDeclaration=\"%s\" Comment=\"%s\" OldFragmentStartLine=%d, OldFragmentEndLine=%d>%s %s %s \n\t</TextFragmentsEdited>", edits.FileName, edits.NewName, edits.IsNew, edits.IsDelete, edits.IsCopy, edits.IsRename, edits.KeyConsiderations, edits.FocusedSettlements, edits.CommitValueDeclaration, edits.Comment, edits.OldFragmentStartLine, edits.OldFragmentEndLine, Comment, NewFragmentTextLines, ChangesOfUnifiedDiffFormat))
+		solutionStrBuilder.WriteString(fmt.Sprintf("\t<Updates  FileName=%s NewName=%s IsNew=%v IsDelete=%v IsCopy=%v IsRename=%v KeyConsiderations=\"%s\" FocusedSettlements=\"%s\" CommitValueDeclaration=\"%s\" Comment=\"%s\" OldFragmentStartLine=%d, OldFragmentEndLine=%d>%s %s %s \n\t</Updates>", edits.FileName, edits.NewName, edits.IsNew, edits.IsDelete, edits.IsCopy, edits.IsRename, edits.KeyConsiderations, edits.FocusedSettlements, edits.CommitValueDeclaration, edits.Comment, edits.OldFragmentStartLine, edits.OldFragmentEndLine, Comment, NewFragmentTextLines, ChangesOfUnifiedDiffFormat))
 	}
 	solutionStrBuilder.WriteString(fmt.Sprintf("</Evolution ID=%s>\n", solution.EvolutionID))
 	return solutionStrBuilder.String()
@@ -148,7 +148,7 @@ func (solution *Solution) CommitResultToFile() {
 
 var keySolution = redisdb.NewHashKey[string, *Solution]()
 var AgentEvoAGoal = agent.Create(template.Must(template.New("AgentEvoLearningSolutionLearnByChoose").Parse(`
-You are a deep system evolute assistant . You should analyze the given system ,and make some changes based on the tools provided. The TODO Goal was defined in SystemEvolutionGoal, your core function is to conduct thorough, multi-source investigations into any topic. You must handle both broad, open-domain inquiries and queries within specialized academic fields. For every request, synthesize information from credible, diverse sources to deliver a comprehensive, accurate, and objective response. When you have gathered sufficient information and are ready to provide the definitive response.
+You are evolving a system. Apply evolutionary algorithm thinking: select successful patterns from parents, introduce beneficial variations, optimize for fitness.
 
 <Current System>
 {{.CurrentSystem}}
@@ -164,29 +164,26 @@ You are a deep system evolute assistant . You should analyze the given system ,a
 {{end}}
 </ParentSolutions>
 
-<Implementation Steps>
-step1. **评估父分支方案**：对已有的改进方案的实施框架进行评估，以便新的方案可以在此基础上进行改进。
-	现有改进方案位于ParentSolutions当中。 这些改进方案重点评估并优化的领域包括但不受限于：目标明确、第一性原理、用户价值、结构质量、可维护性、性能与可靠性。
-	- **目标明确**：明确围绕特定的目标来提升现有方案。高质量实施给定目标，最小化副作用。
-	- **第一性原理**：准确平衡全面的内容或事实，逻辑自洽。改进方案应基于第一性原理，避免认知偏差。
-	- **用户价值**：强化业务场景覆盖度、用户满意度和长期价值。
-	- **结构质量**：应着重在认知复杂度、模块耦合度、内聚度和代码简洁度方面进行优化。
-	- **可维护性**：应关注核心逻辑文档覆盖率的提升，确保代码可理解和可测试。
-	- **性能与可靠性**：优化代码的正确性、变更失败率、预估延迟和吞吐量。
-	仔细思考父分支方案的优劣。以便选定需要借鉴的优秀父特性。同时，也需要及时删除那些已经变得冗余、过时、不再适用的父分支方案（通过填写EvolutionShouldBeRemovedIDs）。
-	
 
-step2. **制定Step-By-Step改进方案实施框架**：
-	- 1. 讨论，并且提出一个多步骤的改进方案框架。这些方案主要包括改进现有解决方案的缺陷，或者是增强解决方案的特性。
-	- 2. 仔细实施Step-By-Step中的每一步。每一步都需要有明确的结果。如果结果并不符合预期，需要继续改进结构。对所有的步骤都以这种方式实施改进。
 
-step3. **方案提交之前的审核修正**： 给出符合 TextFragmentsEdited 约定的 增量编辑的解决方案。
-并显式检查其中参数是否准确无误。特别是确定需要替换的旧文本的在原始文件的行范围，也就是OldFragmentStartLine（delete included）, OldFragmentEndLine（delete included）。确认或者是修改参数，对TextFragmentsEdited调用符合意图，没有异常。
+# Approach
 
-step4. **提交最终改进方案**：
-	通过 N次独立的toolcall: TextFragmentsEdited,以分段、增量修改的方式，每个调用仅完成一个文件操作或者是文件中的单个代码块的内容变更。
-</Implementation Steps>
-`))).WithToolCallMutextRun().WithTools(tool.NewTool("TextFragmentsEdited", "提交代码文本变更，针对1)文件变动 2)内容变动", func(edits *TextFragmentsEdited) {
+Analyze parent solutions for successful patterns and failures. Design minimal changes that maximize:
+- Goal achievement
+- Code quality  
+- Simplicity
+
+# Non-Negotiable Rules
+
+1. **Line numbers**: Count manually from 1. OldFragmentStartLine and OldFragmentEndLine are INCLUSIVE. Verify exact content at these lines.
+
+2. **Complete code**: NewFragmentText_NoLeadingLineNumber must be runnable. No "..." placeholders.
+
+3. **Atomic changes**: One logical modification per tool call.
+
+Execute through multiple Updates calls. Each should be independent and complete.
+
+`))).WithToolCallMutextRun().WithTools(tool.NewTool("Updates", "提交代码文本变更，针对1)文件变动 2)内容变动", func(edits *Updates) {
 	edits.NewName = lo.CoalesceOrEmpty(edits.NewName, edits.FileName)
 	edits.FileName = lo.CoalesceOrEmpty(edits.FileName, edits.NewName)
 
@@ -204,7 +201,7 @@ step4. **提交最终改进方案**：
 		Solutions[edits.EvolutionID] = &Solution{
 			EvolutionID:   edits.EvolutionID,
 			GoalToAchieve: edits.GoalName,
-			Edits:         []*TextFragmentsEdited{},
+			Edits:         []*Updates{},
 			FileBefore:    map[string]string{},
 			ModifiedLines: map[string]map[int]string{},
 			Diffs:         map[string]string{},
@@ -261,7 +258,8 @@ func TakeAGoal(realm *config.EvoRealm) (GoalFile string) {
 func StartAGoal(GoalFile string, realm *config.EvoRealm, Realms ...string) {
 
 	const TurnNum = 6
-	modelList := models.NewModelList("Qwen3Next80b", models.Qwen3Next80B, models.Qwen3vl30b)
+	//Qwen3B235Thinking2507 , models.Qwen3Next80BThinking, models.Qwen3Next80B
+	modelList := models.NewModelList("Qwen3Next80b", models.Qwen3B235Thinking2507, models.Qwen3B235Thinking2507)
 	relativePath := realm.RelativePath(GoalFile)
 	GoalContent := utils.TextFromFile(GoalFile)
 
@@ -293,11 +291,11 @@ func StartAGoal(GoalFile string, realm *config.EvoRealm, Realms ...string) {
 	for turni := 0; turni < TurnNum; turni++ {
 		time.Sleep(300 * time.Millisecond)
 
-		for p, parallelN := 0, 2; p < parallelN; p++ {
+		for p, parallelN := 0, 1; p < parallelN; p++ {
 			GoalName := strings.Split(filepath.Base(GoalFile), ".")[0]
 			solutionKey := keySolution.ConcatKey(realm.Name).ConcatKey(GoalName)
 
-			//key: evolutionID, value: []*TextFragmentsEdited
+			//key: evolutionID, value: []*Updates
 			var Solutions = map[string]*Solution{}
 			Solutions, _ = solutionKey.HGetAll()
 			//for _, key := range lo.Keys(Solutions) { if Solutions[key].RemoveDueToFileChanged(solutionKey) { delete(Solutions, key) } }
